@@ -1,0 +1,60 @@
+/* Global styles - FORCE dark mode everywhere */
+html, body, #root {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  background-color: #1a202c !important; /* gray.900 */
+  color: #f7fafc !important; /* gray.100 */
+  min-height: 100vh !important;
+}
+
+/* Force all elements to inherit dark theme */
+* {
+  color-scheme: dark !important;
+}
+
+/* Override any white backgrounds */
+.chakra-ui-light {
+  background-color: #1a202c !important;
+  color: #f7fafc !important;
+}
+
+/* Force sidebar dark */
+nav, aside, .sidebar {
+  background-color: #2d3748 !important; /* gray.800 */
+  color: #f7fafc !important;
+}
+
+/* Force main content dark */
+main, .main-content {
+  background-color: #1a202c !important;
+  color: #f7fafc !important;
+}
+
+/* Force all containers dark */
+.chakra-container, .chakra-box {
+  background-color: inherit !important;
+}
+
+/* Force buttons dark */
+.chakra-button {
+  background-color: #4a5568 !important; /* gray.700 */
+  color: #f7fafc !important;
+  border-color: #718096 !important; /* gray.500 */
+}
+
+.chakra-button:hover {
+  background-color: #718096 !important; /* gray.600 */
+}
+
+/* Force inputs dark */
+.chakra-input, .chakra-textarea {
+  background-color: #2d3748 !important; /* gray.800 */
+  color: #f7fafc !important;
+  border-color: #4a5568 !important; /* gray.700 */
+}
+
+/* Force text elements dark */
+h1, h2, h3, h4, h5, h6, p, span, div {
+  color: inherit !important;
+}
