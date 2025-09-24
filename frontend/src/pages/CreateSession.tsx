@@ -5,34 +5,63 @@ import {
   Heading,
   Text,
   Button,
-  Textarea,
   Icon,
-  Select,
   Flex,
-  Divider,
   FormControl,
   FormLabel,
   Badge,
   useColorModeValue,
+  useDisclosure,
+  IconButton,
 } from '@chakra-ui/react'
-import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { PhoneCall, PhoneOff, Radio, RadioReceiver } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { FileText } from 'lucide-react'
 import Vapi from '@vapi-ai/web'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import { supabase, Template } from '../config/supabase'
+import { useProfile } from '../contexts/ProfileContext'
 
 function CreateSession() {
-  const navigate = useNavigate()
+  const { organization } = useProfile()
   const [selectedTemplate, setSelectedTemplate] = useState('')
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true)
   const accountType = 'employee' // Hardcoded account type
   const [isCreatingCall, setIsCreatingCall] = useState(false)
   const [isCallActive, setIsCallActive] = useState(false)
-  const [callStatus, setCallStatus] = useState('')
+  const [callConnected, setCallConnected] = useState(false)
   const [vapiPublicKey, setVapiPublicKey] = useState<string>('')
   const [transcript, setTranscript] = useState<Array<{speaker: string, text: string, timestamp: Date}>>([])
-  const [transcriptBuffer, setTranscriptBuffer] = useState<{[key: string]: string}>({})
+  const [scriptText, setScriptText] = useState<string>('')
+  const { isOpen, onOpen, onClose } = useDisclosure()
   const vapiRef = useRef<any>(null)
   const transcriptTimeoutRef = useRef<{[key: string]: NodeJS.Timeout}>({})
+  
+  // Modal dragging and resizing state
+  const [modalPosition, setModalPosition] = useState({ x: 20, y: 120 })
+  const [modalSize, setModalSize] = useState({ width: 550, height: 650 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [isResizing, setIsResizing] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 })
+  const modalRef = useRef<HTMLDivElement>(null)
+
+  // Load script when selection changes
+  useEffect(() => {
+    if (!selectedTemplate) {
+      setScriptText('')
+      return
+    }
+
+    const template = templates.find(t => t.id.toString() === selectedTemplate)
+    if (!template) {
+      setScriptText('')
+      return
+    }
+
+    // Use the template script directly
+    setScriptText(template.script || '')
+  }, [selectedTemplate, templates])
 
   const createAssistantAndStartCall = async () => {
     if (!vapiPublicKey) {
@@ -43,6 +72,11 @@ function CreateSession() {
     setIsCreatingCall(true)
     
     try {
+      // Get the selected template
+      const template = templates.find(t => t.id.toString() === selectedTemplate)
+      // Use the template script directly
+      const scriptContent = scriptText || template?.script || ''
+      
       // Update VAPI assistant with new persona/settings
       const response = await fetch('/api/assistants', {
         method: 'POST',
@@ -50,8 +84,9 @@ function CreateSession() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          template: selectedTemplate,
+          templateId: selectedTemplate,
           accountType,
+          scriptContent: scriptContent // Send the script content (from PDF or manual)
         }),
       })
 
@@ -69,7 +104,9 @@ function CreateSession() {
         // Set up event listeners
         vapiRef.current.on('call-start', () => {
           console.log('Call started')
+          setIsCreatingCall(false)
           setIsCallActive(true)
+          setCallConnected(true)
           setTranscript([])
           setTranscriptBuffer({})
           // Clear any existing timeouts
@@ -79,7 +116,9 @@ function CreateSession() {
 
         vapiRef.current.on('call-end', () => {
           console.log('Call ended')
+          setIsCreatingCall(false)
           setIsCallActive(false)
+          setCallConnected(false)
           // Flush any remaining buffered transcript
           setTranscriptBuffer(prev => {
             Object.entries(prev).forEach(([speaker, text]) => {
@@ -134,7 +173,9 @@ function CreateSession() {
 
         vapiRef.current.on('error', (error: any) => {
           console.error('VAPI error:', error)
+          setIsCreatingCall(false)
           setIsCallActive(false)
+          setCallConnected(false)
         })
       }
 
@@ -156,6 +197,82 @@ function CreateSession() {
     }
   }
 
+  // Modal drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true)
+    setDragStart({
+      x: e.clientX - modalPosition.x,
+      y: e.clientY - modalPosition.y
+    })
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      const newX = e.clientX - dragStart.x
+      const newY = e.clientY - dragStart.y
+      
+      // Constrain position to prevent dragging outside screen boundaries
+      const constrainedX = Math.max(0, Math.min(newX, window.innerWidth - modalSize.width))
+      const constrainedY = Math.max(88, Math.min(newY, window.innerHeight - modalSize.height)) // 88px header, prevent bottom overflow
+      
+      setModalPosition({
+        x: constrainedX,
+        y: constrainedY
+      })
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+    setIsResizing(false)
+  }
+
+  // Resize handlers
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setIsResizing(true)
+    setResizeStart({
+      x: e.clientX,
+      y: e.clientY,
+      width: modalSize.width,
+      height: modalSize.height
+    })
+  }
+
+  const handleResizeMouseMove = (e: MouseEvent) => {
+    if (isResizing) {
+      const deltaX = e.clientX - resizeStart.x
+      const deltaY = e.clientY - resizeStart.y
+      setModalSize({
+        width: Math.max(400, resizeStart.width + deltaX),
+        height: Math.max(300, resizeStart.height + deltaY)
+      })
+    }
+  }
+
+  // Add global mouse event listeners for dragging and resizing
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isDragging, dragStart])
+
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleResizeMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        document.removeEventListener('mousemove', handleResizeMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isResizing, resizeStart])
+
   // Fetch VAPI public key on component mount
   useEffect(() => {
     const fetchConfig = async () => {
@@ -169,6 +286,33 @@ function CreateSession() {
     }
     fetchConfig()
   }, [])
+
+  // Fetch templates from Supabase filtered by organization
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        setIsLoadingTemplates(true)
+        const { data, error } = await supabase
+          .from('templates')
+          .select('*')
+          .eq('org', organization?.id || -1)
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          console.error('Error fetching templates:', error)
+          return
+        }
+
+        setTemplates(data || [])
+      } catch (error) {
+        console.error('Error fetching templates:', error)
+      } finally {
+        setIsLoadingTemplates(false)
+      }
+    }
+
+    fetchTemplates()
+  }, [organization?.id])
 
   // Cleanup on component unmount
   useEffect(() => {
@@ -214,6 +358,94 @@ function CreateSession() {
     }
   ]
 
+  // Vague script representations for frontend display (more immersive)
+  const templateScriptPreviews: Record<string, string> = {
+    'skeptical-cfo': `# Sample Business Insurance Script (HARD - General Flow)
+
+**Opening:**
+Agent: Establish credibility, mention company/expansion, position as coverage gap expert
+Customer: Asks who this is, says they're busy
+
+**Handle objections:**
+Agent: If getting lots of calls - acknowledge and use humor to defuse
+Customer: Admits at least you're honest, asks what you want
+
+**Find motivation:**
+Agent: Ask about exit strategy - where would they go if sold business?
+Customer: Says maybe retire to Florida or something, asks why
+
+Agent: Probe timeline for exit
+Customer: Says few years maybe, asks where this is going
+
+Agent: Create urgency with dramatic pause/reaction`,
+
+    'busy-entrepreneur': `# Sample Life Insurance Script (MEDIUM - Some Guidance)
+
+**Opening:**
+Agent: Hi [name], I help business owners protect families. Quick minute?
+Customer: Says they're swamped, asks what this is about
+
+**Build urgency:**
+Agent: Point out most entrepreneurs haven't updated life insurance since starting business
+Customer: Mentions existing business coverage, says they're really busy
+
+**Address the gap:**
+Agent: Explain business coverage doesn't transfer to family - ask how long family could maintain lifestyle
+Customer: Admits maybe six months, asks why you're asking this
+
+**Present solution:**
+Agent: Compare cost to monthly car payment - substantial coverage for less
+Customer: Says sounds too good to be true
+
+**Close:**
+Agent: Offer to run quick numbers
+Customer: Says they guess so but don't have much time`,
+
+    'concerned-parent': `# Sample Health Insurance Script (EASY - More Guidance)
+
+**Opening:**
+Agent: Hi, I'm [name] with [company]. I help families get better health coverage.
+Customer: Polite but mentions dinner time, asks if this is sales call
+
+**Find their pain:**
+Agent: Ask about current plan covering family needs - specialists, prescriptions, etc.
+Customer: Admits current plan has high out-of-pocket costs, coverage issues
+
+**Present solution:**
+Agent: Offer family-focused coverage designed for children's needs
+Customer: Interested but asks "what's the catch?"
+
+**Handle objections:**
+Agent: Explain it's better plan design, marketplace plans for families
+Customer: Defers to spouse, asks about cost
+
+**Move forward:**
+Agent: Offer to run quick comparison with current plan
+Customer: Agrees but mentions being quick due to kids`,
+    
+    'price-shopper': `# Sample Auto Insurance Script (EXPERT - Minimal Guidance)
+
+**Opening:**
+Agent: Position as helping overpaying drivers save money
+Customer: Says another insurance call, doubts you can beat what they pay
+
+**Qualify:**
+Agent: Get their current rate
+Customer: Says like $180 for two cars, already shopped around
+
+**Present value:**
+Agent: Show significantly lower rates for same coverage
+Customer: Says cheap insurance means crappy service
+
+**Handle service objections:**
+Agent: Address service concerns with company ratings
+Customer: Asks what you're not telling them, what's the fine print
+
+**Close with guarantee:**
+Agent: Offer money-back guarantee or no-obligation comparison
+Customer: Says they guess but won't sign anything today`
+  }
+
   const bg = useColorModeValue('gray.50', 'gray.900')
   const cardBg = useColorModeValue('white', 'gray.800')
   const borderColor = useColorModeValue('gray.200', 'gray.700')
@@ -257,28 +489,49 @@ function CreateSession() {
                       {!selectedTemplate && <Text as="span" color="red.500" ml={1}>*</Text>}
                     </FormLabel>
                     <VStack spacing={3} align="stretch">
-                      {trainingTemplates.map((template) => (
+                      {isLoadingTemplates ? (
+                        <Box p={4} textAlign="center">
+                          <Text color={useColorModeValue('gray.500', 'gray.400')}>
+                            Loading templates...
+                          </Text>
+                        </Box>
+                      ) : templates.length === 0 ? (
+                        <Box p={4} textAlign="center">
+                          <Text color={useColorModeValue('gray.500', 'gray.400')}>
+                            No templates found. Create some in the Admin tab!
+                          </Text>
+                        </Box>
+                      ) : (
+                        templates.map((template) => (
                         <Box
                           key={template.id}
                           p={4}
                           border="2px solid"
-                          borderColor={selectedTemplate === template.id ? "blue.400" : useColorModeValue('gray.200', 'gray.600')}
+                            borderColor={selectedTemplate === template.id.toString() ? "blue.400" : useColorModeValue('gray.200', 'gray.600')}
                           borderRadius="lg"
                           cursor="pointer"
-                          onClick={() => setSelectedTemplate(template.id)}
-                          bg={selectedTemplate === template.id ? useColorModeValue('blue.50', 'blue.900') : useColorModeValue('white', 'gray.700')}
+                            onClick={() => setSelectedTemplate(template.id.toString())}
+                            bg={selectedTemplate === template.id.toString() ? useColorModeValue('blue.50', 'blue.900') : useColorModeValue('white', 'gray.700')}
                           _hover={{
-                            borderColor: selectedTemplate === template.id ? "blue.500" : useColorModeValue('gray.300', 'gray.500'),
-                            bg: selectedTemplate === template.id ? useColorModeValue('blue.100', 'blue.800') : useColorModeValue('gray.50', 'gray.600')
+                              borderColor: selectedTemplate === template.id.toString() ? "blue.500" : useColorModeValue('gray.300', 'gray.500'),
+                              bg: selectedTemplate === template.id.toString() ? useColorModeValue('blue.100', 'blue.800') : useColorModeValue('gray.50', 'gray.600')
                           }}
                           transition="all 0.2s"
                         >
                           <VStack align="start" spacing={2}>
                             <HStack justify="space-between" w="full">
                               <Heading size="sm" color={useColorModeValue('gray.900', 'white')}>
-                                {template.name}
+                                  {template.title}
                               </Heading>
-                              <Badge colorScheme={template.difficulty === 'Easy' ? 'green' : template.difficulty === 'Medium' ? 'yellow' : template.difficulty === 'Hard' ? 'orange' : 'red'} variant="subtle">
+                                <Badge 
+                                  colorScheme={
+                                    template.difficulty === 'easy' ? 'green' : 
+                                    template.difficulty === 'medium' ? 'yellow' : 
+                                    template.difficulty === 'hard' ? 'orange' : 'red'
+                                  } 
+                                  variant="subtle"
+                                  textTransform="capitalize"
+                                >
                                 {template.difficulty}
                               </Badge>
                             </HStack>
@@ -286,16 +539,17 @@ function CreateSession() {
                               {template.description}
                             </Text>
                             <HStack spacing={2}>
-                              <Badge size="sm" colorScheme="blue" variant="outline">
-                                {template.insuranceType}
+                                <Badge size="sm" colorScheme="blue" variant="outline" textTransform="capitalize">
+                                  {template.type}
                               </Badge>
                               <Badge size="sm" colorScheme="gray" variant="outline">
-                                {template.scenario}
+                                  {new Date(template.created_at).toLocaleDateString()}
                               </Badge>
                             </HStack>
                           </VStack>
                         </Box>
-                      ))}
+                        ))
+                      )}
                     </VStack>
                   </FormControl>
                 </VStack>
@@ -340,6 +594,39 @@ function CreateSession() {
 
         {/* Right Side - Call Button and Transcript */}
         <Panel defaultSize={75} minSize={40}>
+          <Box position="relative" h="full">
+            {/* Script Button */}
+            {selectedTemplate && (
+              <IconButton
+                aria-label={isOpen ? "Close script" : "View script"}
+                icon={<Icon as={FileText} />}
+                position="absolute"
+                top={4}
+                right={4}
+                zIndex={10}
+                size="md"
+                colorScheme="blue"
+                variant={isOpen ? "outline" : "solid"}
+                borderRadius="full"
+                bg={isOpen ? useColorModeValue('white', 'gray.800') : undefined}
+                borderColor={isOpen ? "blue.400" : undefined}
+                _hover={{
+                  bg: isOpen ? useColorModeValue('blue.50', 'blue.900') : undefined
+                }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (isOpen) {
+                    onClose()
+                  } else {
+                    console.log('Opening modal for template:', selectedTemplate)
+                    const template = templates.find(t => t.id.toString() === selectedTemplate)
+                    console.log('Template script preview:', template?.script ? template.script.substring(0, 100) + '...' : 'No script found')
+                  onOpen()
+                  }
+                }}
+                boxShadow="lg"
+              />
+            )}
           <PanelGroup direction="vertical">
             {/* Call Button Area */}
             <Panel 
@@ -438,7 +725,7 @@ function CreateSession() {
                     color={useColorModeValue('gray.700', 'gray.300')}
                     textAlign="center"
                   >
-                    {isCreatingCall ? "Ringing..." : isCallActive ? "Click anywhere to end call" : "Click anywhere to start call"}
+                    {isCreatingCall ? "Ringing..." : (callConnected ? "Click anywhere to end call" : "Click anywhere to start call")}
                   </Text>
                 </VStack>
               </Box>
@@ -514,17 +801,14 @@ function CreateSession() {
                   >
                     Clear
                   </Button>
-                )}
-              </Flex>
-              
-              <Box flex={1} p={2} overflowY="auto" minH={0}>
+            )}
+          </Flex>
+                
+                <Box flex={1} overflowY="auto" p={4}>
                   {transcript.length === 0 ? (
-                          <VStack spacing={2} py={4} textAlign="center" justify="center" h="full">
-                            <Icon as={PhoneCall} boxSize={8} color={useColorModeValue('gray.400', 'gray.500')} />
-                            <Text color={useColorModeValue('gray.500', 'gray.500')} fontSize="sm" noOfLines={2}>
-                              {isCallActive ? "Conversation transcript will appear here..." : "Start a training session to see the live transcript"}
-                            </Text>
-                          </VStack>
+                    <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} textAlign="center" mt={8}>
+                  {isCallActive ? "Conversation transcript will appear here..." : "Start a training session to see the live transcript"}
+                </Text>  
                         ) : (
                           <VStack align="stretch" spacing={4}>
                             {[...transcript].reverse().map((entry, index) => (
@@ -564,8 +848,169 @@ function CreateSession() {
               </Box>
             </Panel>
           </PanelGroup>
+          </Box>
         </Panel>
       </PanelGroup>
+
+      {/* Script Modal */}
+      {isOpen && (
+        <Box
+          ref={modalRef}
+          position="fixed"
+          left={`${modalPosition.x}px`}
+          top={`${modalPosition.y}px`}
+          w={`${modalSize.width}px`}
+          h={`${modalSize.height}px`}
+          bg={useColorModeValue('white', 'gray.800')}
+          borderRadius="2xl"
+          boxShadow="2xl"
+          border="1px solid"
+          borderColor={useColorModeValue('gray.200', 'gray.700')}
+          zIndex="100"
+          overflow="hidden"
+          display="flex"
+          flexDirection="column"
+          cursor={isDragging ? 'grabbing' : 'default'}
+        >
+          <Box 
+            pb={4} 
+            borderBottom="1px solid" 
+            borderColor={useColorModeValue('gray.200', 'gray.700')}
+            bg={useColorModeValue('gray.50', 'gray.750')}
+            borderTopRadius="2xl"
+            p={4}
+            position="relative"
+            cursor="grab"
+            onMouseDown={handleMouseDown}
+            _active={{ cursor: 'grabbing' }}
+            userSelect="none"
+          >
+            <HStack spacing={4} flex="1">
+              <Box 
+                p={3} 
+                bg={useColorModeValue('blue.50', 'blue.900')} 
+                borderRadius="xl"
+                border="1px solid"
+                borderColor={useColorModeValue('blue.200', 'blue.700')}
+              >
+                <Icon as={FileText} color="blue.500" boxSize={6} />
+              </Box>
+              <VStack align="start" spacing={1} flex="1">
+                <Text fontSize="xl" fontWeight="bold" color={useColorModeValue('gray.900', 'white')}>
+                  Sample Script Preview
+                </Text>
+                <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+                  {trainingTemplates.find(t => t.id === selectedTemplate)?.name} Training
+                </Text>
+              </VStack>
+              <IconButton
+                aria-label="Close script"
+                icon={<Text fontSize="lg" lineHeight="1">×</Text>}
+                size="sm"
+                variant="ghost"
+                color={useColorModeValue('gray.600', 'gray.400')}
+                _hover={{ 
+                  bg: useColorModeValue('gray.200', 'gray.600'),
+                  color: useColorModeValue('gray.800', 'gray.200')
+                }}
+                borderRadius="md"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClose()
+                }}
+              />
+            </HStack>
+          </Box>
+          <Box p={4} overflowY="auto" flex="1">
+            <Box
+              bg={useColorModeValue('white', 'gray.900')}
+              p={6}
+              borderRadius="xl"
+              border="2px solid"
+              borderColor={useColorModeValue('gray.200', 'gray.600')}
+              h="calc(100% - 20px)"
+              overflowY="auto"
+              position="relative"
+              sx={{
+                '&::-webkit-scrollbar': {
+                  width: '8px',
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: useColorModeValue('gray.100', 'gray.700'),
+                  borderRadius: '10px',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: useColorModeValue('gray.400', 'gray.500'),
+                  borderRadius: '10px',
+                },
+              }}
+            >
+              {selectedTemplate && scriptText ? (
+                <Box fontFamily="monospace" fontSize="sm" whiteSpace="pre-wrap" lineHeight="1.6">
+                  {scriptText.split('\n').map((line, index) => {
+                    // Check if it's a speaker line (Seller:, Buyer:, Agent:, Customer:, etc.)
+                    const speakerMatch = line.match(/^(Seller|Buyer|Agent|Customer|Client):\s*(.*)/)
+                    
+                    if (speakerMatch) {
+                      const [, speaker, text] = speakerMatch
+                      return (
+                        <Box key={index} mb={2}>
+                          <Text as="span" fontWeight="bold" color="blue.500">
+                            {speaker}:
+                          </Text>
+                          <Text as="span" ml={2}>
+                            {text}
+                          </Text>
+                        </Box>
+                      )
+                    }
+                    
+                    // Everything else is just plain text
+                    return (
+                      <Text key={index} mb={line.trim() ? 1 : 2}>
+                        {line}
+                      </Text>
+                    )
+                  })}
+                </Box>
+              ) : (
+                <Text color={useColorModeValue('gray.500', 'gray.400')} textAlign="center" py={8}>
+                  Select a template to view the script preview.
+              </Text>
+              )}
+            </Box>
+            
+          </Box>
+          
+          {/* Resize Handle */}
+          <Box
+            position="absolute"
+            bottom="0"
+            right="0"
+            w="20px"
+            h="20px"
+            cursor="nw-resize"
+            onMouseDown={handleResizeMouseDown}
+            _hover={{
+              bg: useColorModeValue('gray.200', 'gray.600')
+            }}
+            borderBottomRightRadius="2xl"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Box
+              w="12px"
+              h="12px"
+              opacity={0.4}
+              sx={{
+                background: `linear-gradient(-45deg, transparent 30%, ${useColorModeValue('#666', '#ccc')} 30%, ${useColorModeValue('#666', '#ccc')} 35%, transparent 35%, transparent 65%, ${useColorModeValue('#666', '#ccc')} 65%, ${useColorModeValue('#666', '#ccc')} 70%, transparent 70%)`,
+                backgroundSize: '4px 4px'
+              }}
+            />
+          </Box>
+        </Box>
+      )}
     </Box>
   )
 } 

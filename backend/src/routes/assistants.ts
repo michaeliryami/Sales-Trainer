@@ -1,28 +1,34 @@
 import { Router } from 'express'
 import { vapiService, CreateAssistantRequest } from '../services/vapi'
+import { supabase } from '../config/supabase'
 
 const router = Router()
 
 // POST /api/assistants - Create a new VAPI assistant
 router.post('/', async (req, res): Promise<void> => {
   try {
-    const { template, accountType }: CreateAssistantRequest = req.body
+    const { templateId, accountType, scriptContent } = req.body
 
     // Validate required fields
-    if (!template || !accountType) {
+    if (!templateId || !accountType) {
       res.status(400).json({
         error: 'Missing required fields',
-        required: ['template', 'accountType']
+        required: ['templateId', 'accountType']
       })
       return
     }
 
-    // Validate template
-    const validTemplates = ['skeptical-cfo', 'busy-entrepreneur', 'concerned-parent', 'price-shopper']
-    if (!validTemplates.includes(template)) {
-      res.status(400).json({
-        error: 'Invalid template',
-        validOptions: validTemplates
+    // Fetch template from Supabase
+    const { data: template, error } = await supabase
+      .from('templates')
+      .select('*')
+      .eq('id', templateId)
+      .single()
+
+    if (error || !template) {
+      res.status(404).json({
+        error: 'Template not found',
+        templateId
       })
       return
     }
@@ -37,17 +43,20 @@ router.post('/', async (req, res): Promise<void> => {
       return
     }
 
-    console.log('Updating VAPI assistant with template:', { template, accountType })
+    console.log('Updating VAPI assistant with template:', { templateId, template: template.title, accountType })
 
-    const assistant = await vapiService.updateAssistant({
-      template,
+    // If scriptContent is provided, use it to override the template script
+    const templateWithScript = scriptContent ? { ...template, script: scriptContent } : template
+
+    const assistant = await vapiService.updateAssistantWithTemplate({
+      template: templateWithScript,
       accountType
     })
 
     res.status(200).json({
       success: true,
       assistant,
-      message: `Assistant updated successfully with ${template} template`
+      message: `Assistant updated successfully with ${template.title} template`
     })
 
   } catch (error) {

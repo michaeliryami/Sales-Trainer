@@ -1,4 +1,9 @@
+import { Template } from '../config/supabase';
 export interface CreateAssistantRequest {
+    template: string;
+    accountType: string;
+}
+export interface TemplateConfig {
     persona: string;
     difficulty: string;
     insuranceType: string;
@@ -14,20 +19,28 @@ export interface VapiAssistant {
             content: string;
         }>;
     };
-    voice: {
+    voice?: {
         provider: string;
         voiceId: string;
     };
     firstMessage?: string;
 }
 export declare class VapiService {
-    private readonly apiKey;
     private readonly baseUrl;
     constructor();
+    private getApiKey;
     private getHeaders;
+    private generateSystemPromptFromTemplate;
     private generateSystemPrompt;
-    createAssistant(request: CreateAssistantRequest): Promise<VapiAssistant>;
+    private getTemplateConfig;
+    private getTemplateScript;
+    updateAssistantWithTemplate(data: {
+        template: Template;
+        accountType: string;
+    }): Promise<VapiAssistant>;
+    updateAssistant(request: CreateAssistantRequest): Promise<VapiAssistant>;
     private generateFirstMessage;
+    createWebCall(assistantId: string): Promise<any>;
     createCall(assistantId: string, phoneNumber?: string): Promise<any>;
 }
 export declare const vapiService: VapiService;

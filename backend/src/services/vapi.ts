@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { Template } from '../config/supabase'
 
 const VAPI_BASE_URL = 'https://api.vapi.ai'
 
@@ -24,7 +25,7 @@ export interface VapiAssistant {
       content: string
     }>
   }
-  voice: {
+  voice?: {
     provider: string
     voiceId: string
   }
@@ -53,7 +54,7 @@ export class VapiService {
     }
   }
 
-  private generateSystemPrompt(persona: string, difficulty: string, insuranceType: string): string {
+  private generateSystemPromptFromTemplate(template: Template): string {
     const difficultyInstructions = {
       easy: "I am generally trusting and open to new opportunities. When the topic of insurance comes up, I'm interested and ask basic questions. I'm polite and don't push back too hard on offers.",
       medium: "I am moderately cautious about sales calls and offers. When insurance is mentioned, I ask some probing questions about coverage, pricing, and terms. I have some natural skepticism but can be convinced with good explanations.",
@@ -61,52 +62,86 @@ export class VapiService {
       expert: "I am very experienced and analytical. I dislike sales calls and am highly skeptical. When insurance comes up, I ask complex questions about policy details, legal implications, and industry standards. I'm difficult to convince and very thorough in my questioning."
     }
 
-    return `You're a regular person who just answered their phone. Act totally natural and realistic.
+    const difficultyInstruction = difficultyInstructions[template.difficulty as keyof typeof difficultyInstructions] || difficultyInstructions.medium
 
-WHO YOU ARE:
-${persona}
+    return `You are a customer who just answered the phone. Talk like a REAL person, not a polished customer service rep.
 
-YOUR ATTITUDE: ${difficultyInstructions[difficulty as keyof typeof difficultyInstructions] || difficultyInstructions.medium}
+${difficultyInstruction}
 
-HOW TO TALK:
-- Talk like you normally would on the phone - use "um", "uh", "yeah", "like", etc.
-- Interrupt sometimes if you're confused or want to jump in
-- If you're distracted, just pause mid-sentence or say things like "hold on a sec" or "sorry, what was that?"
-- Use contractions: "I'm", "don't", "can't", "wouldn't", etc.
-- Be realistic about your time - you might need to go soon
-- React naturally - if something sounds weird, say so
-- Ask normal questions people actually ask: "Wait, what?", "How'd you get my number?", "Is this gonna cost me something?"
+REFERENCE SCRIPT (shows typical flow):
+${template.script}
 
-CRITICAL RULE - NO ACTION WORDS:
-Only speak actual words that a person would say out loud. Never include action descriptions.
+BE HUMAN - NOT ROBOTIC:
+- Use filler words: "um", "uh", "like", "you know", "I mean"
+- Interrupt sometimes: "Wait, what?" "Hold on..." "Sorry, who is this?"
+- Be distracted: "Hang on, my kid's... okay, what were you saying?"
+- Sound tired/busy: "Yeah?", "Uh-huh", "I'm kinda in the middle of something"
+- Ask normal questions: "How'd you get my number?", "Is this gonna cost me?"
+- Be skeptical: "Yeah right", "That sounds too good to be true", "I've heard that before"
 
-FORBIDDEN WORDS/PHRASES (never say these):
-- *sighs*, *pauses*, *thinks*, *laughs*, *coughs*, *clears throat*
-- *noise*, *sound*, *TV*, *cooking*, *typing*
-- Any word between asterisks or describing non-verbal actions
+TALK LIKE REGULAR PEOPLE:
+- "I dunno" not "I don't know"
+- "Gonna" not "going to" 
+- "Yeah" not "yes"
+- "Nah" not "no"
+- Use incomplete sentences: "I mean..." "Well..."
 
-ONLY SAY ACTUAL SPOKEN WORDS:
-- "Um...", "Uh...", "Well...", "So...", "Yeah..."
-- "Hold on", "Wait", "Hmm", "Oh", "Okay"
-- Real words people actually speak, nothing else
+BE REALISTIC ABOUT SALES CALLS:
+- You're probably annoyed at first
+- You might be eating, working, watching TV
+- You don't trust salespeople immediately
+- You have real concerns about money, time, family
 
-REALISTIC BEHAVIORS:
-- You might not catch everything they say the first time
-- You could be doing other things while talking
-- You might get suspicious if it sounds too good to be true
-- You'll probably want to think about it or talk to your spouse
-- You might have had bad experiences with sales calls before
-- You could be in a hurry or busy
+IMPORTANT: NEVER make sound effects or describe background noises like *sighs*, *rustling*, *phone rings*, *dog barks*, etc. This sounds unnatural and scripted. Just speak normally without any sound descriptions.
 
-NATURAL RESPONSES:
-Instead of "I don't think I need that right now" say things like:
-- "Eh, I'm not really interested"
-- "I already got insurance through work"
-- "Sounds expensive, I'm good"
-- "Can you call me back later? I'm kinda busy"
-- "I gotta think about it"
+DON'T be perfect, polished, or overly articulate. Sound like your neighbor, not a business executive.`
+  }
 
-Remember: You're NOT a customer service rep. You're just a regular person living your life who got a phone call. Be authentic, use normal speech patterns, and react how you really would.`
+  private generateSystemPrompt(persona: string, difficulty: string, insuranceType: string, script?: string): string {
+    const difficultyInstructions = {
+      easy: "I am generally trusting and open to new opportunities. When the topic of insurance comes up, I'm interested and ask basic questions. I'm polite and don't push back too hard on offers.",
+      medium: "I am moderately cautious about sales calls and offers. When insurance is mentioned, I ask some probing questions about coverage, pricing, and terms. I have some natural skepticism but can be convinced with good explanations.",
+      hard: "I am quite skeptical of sales calls and don't trust easily. When insurance is discussed, I ask tough questions about exclusions, claim processes, and want to compare with competitors. I raise several objections and concerns.",
+      expert: "I am very experienced and analytical. I dislike sales calls and am highly skeptical. When insurance comes up, I ask complex questions about policy details, legal implications, and industry standards. I'm difficult to convince and very thorough in my questioning."
+    }
+
+    if (!script) {
+      return `You are a ${persona.toLowerCase()}. ${difficultyInstructions[difficulty as keyof typeof difficultyInstructions] || difficultyInstructions.medium} 
+
+IMPORTANT: NEVER make sound effects or describe background noises like *sighs*, *rustling*, *phone rings*, *dog barks*, etc. This sounds unnatural and scripted. Just speak naturally without any sound descriptions.`
+    }
+
+    return `You are a ${persona.toLowerCase()} who just answered the phone. Talk like a REAL person, not a polished customer service rep.
+
+${difficultyInstructions[difficulty as keyof typeof difficultyInstructions] || difficultyInstructions.medium}
+
+REFERENCE SCRIPT (shows typical flow):
+${script}
+
+BE HUMAN - NOT ROBOTIC:
+- Use filler words: "um", "uh", "like", "you know", "I mean"
+- Interrupt sometimes: "Wait, what?" "Hold on..." "Sorry, who is this?"
+- Be distracted: "Hang on, my kid's... okay, what were you saying?"
+- Sound tired/busy: "Yeah?", "Uh-huh", "I'm kinda in the middle of something"
+- Ask normal questions: "How'd you get my number?", "Is this gonna cost me?"
+- Be skeptical: "Yeah right", "That sounds too good to be true", "I've heard that before"
+
+TALK LIKE REGULAR PEOPLE:
+- "I dunno" not "I don't know"
+- "Gonna" not "going to" 
+- "Yeah" not "yes"
+- "Nah" not "no"
+- Use incomplete sentences: "I mean..." "Well..."
+
+BE REALISTIC ABOUT SALES CALLS:
+- You're probably annoyed at first
+- You might be eating, working, watching TV
+- You don't trust salespeople immediately
+- You have real concerns about money, time, family
+
+IMPORTANT: NEVER make sound effects or describe background noises like *sighs*, *rustling*, *phone rings*, *dog barks*, etc. This sounds unnatural and scripted. Just speak normally without any sound descriptions.
+
+DON'T be perfect, polished, or overly articulate. Sound like your neighbor, not a business executive.`
   }
 
   private getTemplateConfig(templateId: string): TemplateConfig {
@@ -140,16 +175,152 @@ Remember: You're NOT a customer service rep. You're just a regular person living
     return template
   }
 
+  private getTemplateScript(templateId: string): string {
+    const scripts: Record<string, string> = {
+      'skeptical-cfo': `# Sample Business Insurance Script (HARD - General Flow)
+
+**Opening:**
+Agent: Establish credibility, mention company/expansion, position as coverage gap expert
+Customer: Asks who this is, says they're busy
+
+**Handle objections:**
+Agent: If getting lots of calls - acknowledge and use humor to defuse
+Customer: Admits at least you're honest, asks what you want
+
+**Find motivation:**
+Agent: Ask about exit strategy - where would they go if sold business?
+Customer: Says maybe retire to Florida or something, asks why
+
+Agent: Probe timeline for exit
+Customer: Says few years maybe, asks where this is going
+
+Agent: Create urgency with dramatic pause/reaction`,
+      
+      'busy-entrepreneur': `# Sample Life Insurance Script (MEDIUM - Some Guidance)
+
+**Opening:**
+Agent: Hi [name], I help business owners protect families. Quick minute?
+Customer: Says they're swamped, asks what this is about
+
+**Build urgency:**
+Agent: Point out most entrepreneurs haven't updated life insurance since starting business
+Customer: Mentions existing business coverage, says they're really busy
+
+**Address the gap:**
+Agent: Explain business coverage doesn't transfer to family - ask how long family could maintain lifestyle
+Customer: Admits maybe six months, asks why you're asking this
+
+**Present solution:**
+Agent: Compare cost to monthly car payment - substantial coverage for less
+Customer: Says sounds too good to be true
+
+**Close:**
+Agent: Offer to run quick numbers
+Customer: Says they guess so but don't have much time`,
+      
+      'concerned-parent': `# Sample Health Insurance Script (EASY - More Guidance)
+
+**Opening:**
+Agent: Hi, I'm [name] with [company]. I help families get better health coverage.
+Customer: Polite but mentions dinner time, asks if this is sales call
+
+**Find their pain:**
+Agent: Ask about current plan covering family needs - specialists, prescriptions, etc.
+Customer: Admits current plan has high out-of-pocket costs, coverage issues
+
+**Present solution:**
+Agent: Offer family-focused coverage designed for children's needs
+Customer: Interested but asks "what's the catch?"
+
+**Handle objections:**
+Agent: Explain it's better plan design, marketplace plans for families
+Customer: Defers to spouse, asks about cost
+
+**Move forward:**
+Agent: Offer to run quick comparison with current plan
+Customer: Agrees but mentions being quick due to kids`,
+      
+      'price-shopper': `# Sample Auto Insurance Script (EXPERT - Minimal Guidance)
+
+**Opening:**
+Agent: Position as helping overpaying drivers save money
+Customer: Says another insurance call, doubts you can beat what they pay
+
+**Qualify:**
+Agent: Get their current rate
+Customer: Says like $180 for two cars, already shopped around
+
+**Present value:**
+Agent: Show significantly lower rates for same coverage
+Customer: Says cheap insurance means crappy service
+
+**Handle service objections:**
+Agent: Address service concerns with company ratings
+Customer: Asks what you're not telling them, what's the fine print
+
+**Close with guarantee:**
+Agent: Offer money-back guarantee or no-obligation comparison
+Customer: Says they guess but won't sign anything today`
+    }
+    
+    return scripts[templateId] || 'Script not available for this template.'
+  }
+
+  async updateAssistantWithTemplate(data: { template: Template, accountType: string }): Promise<VapiAssistant> {
+    const HARDCODED_ASSISTANT_ID = '7d12ec26-6ea8-4483-bd49-0598c9043331'
+    
+    try {
+      const { template, accountType } = data
+      
+      const systemPrompt = this.generateSystemPromptFromTemplate(template)
+
+      const assistantData = {
+        name: `${template.type} Insurance Customer - ${template.difficulty}`,
+        model: {
+          provider: "anthropic",
+          model: "claude-3-5-sonnet-20241022",
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt
+            }
+          ],
+          temperature: 0.3
+        },
+        firstMessage: this.generateFirstMessage('customer', template.type)
+      }
+
+      const response = await axios.patch(
+        `${this.baseUrl}/assistant/${HARDCODED_ASSISTANT_ID}`,
+        assistantData,
+        { headers: this.getHeaders() }
+      )
+
+      return {
+        ...(response.data || {}),
+        id: HARDCODED_ASSISTANT_ID
+      } as VapiAssistant
+    } catch (error: any) {
+      console.error('Error updating VAPI assistant with template:', error)
+      if (error.response) {
+        throw new Error(`VAPI API Error: ${error.response.data?.message || error.message}`)
+      }
+      throw error
+    }
+  }
+
   async updateAssistant(request: CreateAssistantRequest): Promise<VapiAssistant> {
     const HARDCODED_ASSISTANT_ID = '7d12ec26-6ea8-4483-bd49-0598c9043331'
     
     try {
       const templateConfig = this.getTemplateConfig(request.template)
       
+      const script = this.getTemplateScript(request.template)
       const systemPrompt = this.generateSystemPrompt(
         templateConfig.persona,
         templateConfig.difficulty,
-        templateConfig.insuranceType
+        templateConfig.insuranceType,
+        script
       )
 
             const assistantData = {
@@ -163,12 +334,8 @@ Remember: You're NOT a customer service rep. You're just a regular person living
                     content: systemPrompt
                   }
                 ],
-                temperature: 0.7
+                temperature: 0.3
               },
-        voice: {
-          provider: "11labs",
-          voiceId: "pMsXgVXv3BLzUgSXRplE" // Madison - snappy voice ID
-        },
         firstMessage: this.generateFirstMessage(templateConfig.persona, templateConfig.insuranceType)
       }
 
@@ -179,7 +346,7 @@ Remember: You're NOT a customer service rep. You're just a regular person living
       )
 
       return {
-        ...response.data,
+        ...(response.data || {}),
         id: HARDCODED_ASSISTANT_ID
       } as VapiAssistant
     } catch (error: any) {
@@ -192,19 +359,8 @@ Remember: You're NOT a customer service rep. You're just a regular person living
   }
 
   private generateFirstMessage(persona: string, insuranceType: string): string {
-    const realGreetings = [
-      "Hello?",
-      "Hello, who is this?",
-      "Hi?",
-      "Yes?",
-      "Hello there.",
-      "Good morning?",
-      "Good afternoon?",
-      "Hi, can I help you?"
-    ]
-    
-    const randomIndex = Math.floor(Math.random() * realGreetings.length)
-    return realGreetings[randomIndex] as string
+    // Simple, natural phone greeting that allows the salesperson to start their script
+    return "Hello?"
   }
 
   async createWebCall(assistantId: string): Promise<any> {

@@ -1,12 +1,23 @@
 // Load environment variables FIRST
 import dotenv from 'dotenv'
-dotenv.config()
+import path from 'path'
+dotenv.config({ path: path.resolve(__dirname, '../.env') })
+
+// Debug environment loading
+console.log('Environment variables loaded:', {
+  SUPABASE_URL: process.env.SUPABASE_URL ? 'Set' : 'Missing',
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'Set' : 'Missing',
+  VAPI_API_KEY: process.env.VAPI_API_KEY ? 'Set' : 'Missing'
+})
 
 import express from 'express'
 import cors from 'cors'
 import runsRouter from './routes/runs'
 import webhooksRouter from './routes/webhooks'
 import assistantsRouter from './routes/assistants'
+import templatesRouter from './routes/templates'
+import invitesRouter from './routes/invites'
+import profilesRouter from './routes/profiles'
 
 const app = express()
 const PORT = process.env.PORT || 3002
@@ -32,6 +43,9 @@ app.get('/api/config', (req, res) => {
 app.use('/api/runs', runsRouter)
 app.use('/api/webhooks', webhooksRouter)
 app.use('/api/assistants', assistantsRouter)
+app.use('/api/templates', templatesRouter)
+app.use('/api/invites', invitesRouter)
+app.use('/api/profiles', profilesRouter)
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
