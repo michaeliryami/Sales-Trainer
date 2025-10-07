@@ -108,3 +108,24 @@ router.post('/:id/call', async (req, res): Promise<void> => {
 })
 
 export default router
+
+// GET /api/assistants/call/:callId - Fetch VAPI call details (including transcript)
+router.get('/call/:callId', async (req, res): Promise<void> => {
+  try {
+    const { callId } = req.params
+
+    if (!callId) {
+      res.status(400).json({ error: 'callId is required' })
+      return
+    }
+
+    const call = await vapiService.getCall(callId)
+    res.status(200).json({ success: true, call })
+  } catch (error) {
+    console.error('Error in GET /api/assistants/call/:callId:', error)
+    res.status(500).json({
+      error: 'Failed to fetch call details',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})

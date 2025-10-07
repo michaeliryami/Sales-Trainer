@@ -9,7 +9,6 @@ import {
   Icon,
   IconButton,
   useColorModeValue,
-  Badge,
   Menu,
   MenuButton,
   MenuList,
@@ -17,7 +16,7 @@ import {
   MenuDivider,
 } from '@chakra-ui/react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Database, Sun, Moon, Zap, Settings, BarChart3, Building2, LogOut, User } from 'lucide-react'
+import { Database, Sun, Moon, Zap, Settings, BarChart3, Building2, LogOut, User, FileCheck, ClipboardList } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
@@ -40,15 +39,25 @@ function Header() {
 
   // Filter nav items based on user role
   const allNavItems = [
-    { name: 'Training', path: '/create-session', icon: Zap },
+    // Employee items - show "Assignments" but link to create-session
+    { name: 'Assignments', path: '/create-session', icon: ClipboardList, employeeOnly: true },
+    // Admin items
+    { name: 'Playground', path: '/create-session', icon: Zap, adminOnly: true },
+    { name: 'Rubrics', path: '/rubrics', icon: FileCheck, adminOnly: true },
+    { name: 'Assignments', path: '/assignments', icon: ClipboardList, adminOnly: true },
     { name: 'Templates', path: '/admin', icon: Settings, adminOnly: true },
     { name: 'Organization', path: '/organization', icon: Building2, adminOnly: true },
-    { name: 'Analytics', path: '/analytics', icon: BarChart3 },
   ]
 
-  const navItems = allNavItems.filter(item => 
-    !item.adminOnly || userRole.isAdmin
-  )
+  const navItems = allNavItems.filter(item => {
+    if (item.adminOnly) {
+      return userRole.isAdmin
+    }
+    if (item.employeeOnly) {
+      return !userRole.isAdmin
+    }
+    return false // Don't show items that are neither adminOnly nor employeeOnly
+  })
 
   const isActive = (path: string) => location.pathname === path
 
@@ -70,34 +79,13 @@ function Header() {
       >
         {/* Logo/Brand */}
         <HStack spacing={3}>
-          <Box
-            w={10}
-            h={10}
-            bg={brandColor}
-            borderRadius="lg"
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
+          <Text 
+            fontSize="xl" 
+            fontWeight="bold" 
+            color={useColorModeValue('gray.900', 'white')}
           >
-            <Icon as={Zap} color="white" boxSize={6} />
-          </Box>
-          <Box>
-            <Text 
-              fontSize="xl" 
-              fontWeight="bold" 
-              color={useColorModeValue('gray.900', 'white')}
-            >
-              Sales Trainer
-            </Text>
-            <Badge 
-              colorScheme="brand" 
-              variant="subtle" 
-              fontSize="xs"
-              px={2}
-            >
-              BETA
-            </Badge>
-          </Box>
+            clozone.ai
+          </Text>
         </HStack>
 
         {/* Navigation and Controls */}

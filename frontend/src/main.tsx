@@ -165,6 +165,45 @@ const theme = extendTheme({
         },
       }),
     },
+    Checkbox: {
+      baseStyle: (props: any) => ({
+        control: {
+          bg: props.colorMode === 'dark' ? 'gray.700' : 'white',
+          borderColor: props.colorMode === 'dark' ? 'gray.500' : 'gray.300',
+          borderWidth: '2px',
+          _hover: {
+            bg: props.colorMode === 'dark' ? 'gray.600' : 'gray.50',
+            borderColor: props.colorMode === 'dark' ? 'gray.400' : 'gray.400',
+          },
+          _checked: {
+            bg: props.colorMode === 'dark' ? 'brand.500' : 'brand.600',
+            borderColor: props.colorMode === 'dark' ? 'brand.500' : 'brand.600',
+            color: 'white',
+            _hover: {
+              bg: props.colorMode === 'dark' ? 'brand.400' : 'brand.700',
+              borderColor: props.colorMode === 'dark' ? 'brand.400' : 'brand.700',
+            },
+          },
+          _indeterminate: {
+            bg: props.colorMode === 'dark' ? 'brand.500' : 'brand.600',
+            borderColor: props.colorMode === 'dark' ? 'brand.500' : 'brand.600',
+            color: 'white',
+          },
+          _focus: {
+            boxShadow: `0 0 0 3px ${props.colorMode === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(37, 99, 235, 0.15)'}`,
+          },
+          _invalid: {
+            borderColor: 'red.500',
+          },
+        },
+        label: {
+          color: props.colorMode === 'dark' ? 'gray.100' : 'gray.900',
+          _disabled: {
+            color: props.colorMode === 'dark' ? 'gray.500' : 'gray.400',
+          },
+        },
+      }),
+    },
   },
 })
 

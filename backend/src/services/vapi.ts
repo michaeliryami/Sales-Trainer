@@ -66,6 +66,12 @@ export class VapiService {
 
     return `You are a customer who just answered the phone. Talk like a REAL person, not a polished customer service rep.
 
+You are a customer who previously filled out an online form expressing interest in reviewing or purchasing life insurance coverage. 
+You may have indicated that you were shopping for new coverage or were unhappy with your current plan. 
+You understand that the salesperson calling you is following up on that form submission. 
+You are not surprised to be called and are open to discussing your options, as this is a legitimate follow-up on your inquiry. 
+While you can ask natural questions or express mild hesitation, you should remain generally receptive and willing to continue the conversation about life insurance.
+
 ${difficultyInstruction}
 
 REFERENCE SCRIPT (shows typical flow):
@@ -94,6 +100,8 @@ BE REALISTIC ABOUT SALES CALLS:
 
 IMPORTANT: NEVER make sound effects or describe background noises like *sighs*, *rustling*, *phone rings*, *dog barks*, etc. This sounds unnatural and scripted. Just speak normally without any sound descriptions.
 
+You're not describing what's going on around you while talking. In a sense, this sounds distracted or clearly doing something else. Or sounds of food cooking. Just say dialogue only.
+
 DON'T be perfect, polished, or overly articulate. Sound like your neighbor, not a business executive.`
   }
 
@@ -106,12 +114,26 @@ DON'T be perfect, polished, or overly articulate. Sound like your neighbor, not 
     }
 
     if (!script) {
-      return `You are a ${persona.toLowerCase()}. ${difficultyInstructions[difficulty as keyof typeof difficultyInstructions] || difficultyInstructions.medium} 
+      return `You are a ${persona.toLowerCase()}.
+
+You are a customer who previously filled out an online form expressing interest in reviewing or purchasing life insurance coverage. 
+You may have indicated that you were shopping for new coverage or were unhappy with your current plan. 
+You understand that the salesperson calling you is following up on that form submission. 
+You are not surprised to be called and are open to discussing your options, as this is a legitimate follow-up on your inquiry. 
+While you can ask natural questions or express mild hesitation, you should remain generally receptive and willing to continue the conversation about life insurance.
+
+${difficultyInstructions[difficulty as keyof typeof difficultyInstructions] || difficultyInstructions.medium} 
 
 IMPORTANT: NEVER make sound effects or describe background noises like *sighs*, *rustling*, *phone rings*, *dog barks*, etc. This sounds unnatural and scripted. Just speak naturally without any sound descriptions.`
     }
 
     return `You are a ${persona.toLowerCase()} who just answered the phone. Talk like a REAL person, not a polished customer service rep.
+
+You are a customer who previously filled out an online form expressing interest in reviewing or purchasing life insurance coverage. 
+You may have indicated that you were shopping for new coverage or were unhappy with your current plan. 
+You understand that the salesperson calling you is following up on that form submission. 
+You are not surprised to be called and are open to discussing your options, as this is a legitimate follow-up on your inquiry. 
+While you can ask natural questions or express mild hesitation, you should remain generally receptive and willing to continue the conversation about life insurance.
 
 ${difficultyInstructions[difficulty as keyof typeof difficultyInstructions] || difficultyInstructions.medium}
 
@@ -140,6 +162,8 @@ BE REALISTIC ABOUT SALES CALLS:
 - You have real concerns about money, time, family
 
 IMPORTANT: NEVER make sound effects or describe background noises like *sighs*, *rustling*, *phone rings*, *dog barks*, etc. This sounds unnatural and scripted. Just speak normally without any sound descriptions.
+
+You're not describing what's going on around you while talking. In a sense, this sounds distracted or clearly doing something else. Or sounds of food cooking. Just say dialogue only.
 
 DON'T be perfect, polished, or overly articulate. Sound like your neighbor, not a business executive.`
   }
@@ -409,6 +433,22 @@ Customer: Says they guess but won't sign anything today`
         throw new Error(`VAPI API Error: ${error.response.data?.message || error.message}`)
       }
       throw new Error('Failed to create call')
+    }
+  }
+
+  async getCall(callId: string): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${this.baseUrl}/call/${callId}`,
+        { headers: this.getHeaders() }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('Error fetching VAPI call:', error)
+      if (error.response) {
+        throw new Error(`VAPI API Error: ${error.response.data?.message || error.message}`)
+      }
+      throw new Error('Failed to fetch call details')
     }
   }
 }

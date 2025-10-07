@@ -21,8 +21,6 @@ import {
   Alert,
   AlertIcon,
   Input,
-  InputGroup,
-  InputLeftElement,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -44,12 +42,15 @@ import { supabase } from '../config/supabase'
 import { Profile } from '../types/database'
 
 const Organization: React.FC = () => {
-  const { profile, organization, userRole, loading: profileLoading } = useProfile()
+  const { profile, organization, userRole, loading: profileLoading, refreshOrganization } = useProfile()
   const [orgUsers, setOrgUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [pendingInvites, setPendingInvites] = useState<string[]>([])
   const [acceptedInvites, setAcceptedInvites] = useState<string[]>([])
+  const [isEditingOrgName, setIsEditingOrgName] = useState(false)
+  const [newOrgName, setNewOrgName] = useState('')
+  const [savingOrgName, setSavingOrgName] = useState(false)
   
   // Invite modal state
   const { isOpen: isInviteOpen, onOpen: onInviteOpen, onClose: onInviteClose } = useDisclosure()
@@ -59,9 +60,11 @@ const Organization: React.FC = () => {
   
   const toast = useToast()
   
-  const bg = useColorModeValue('gray.50', 'gray.900')
-  const cardBg = useColorModeValue('white', 'gray.800')
-  const borderColor = useColorModeValue('gray.200', 'gray.600')
+  const bg = useColorModeValue('gray.25', 'gray.925')
+  const cardBg = useColorModeValue('white', 'gray.850')
+  const borderColor = useColorModeValue('gray.100', 'gray.750')
+  const headerBg = useColorModeValue('gray.50/80', 'gray.800/80')
+  const accentColor = useColorModeValue('blue.500', 'blue.400')
 
   const fetchOrganizationUsers = async () => {
     if (!organization) return
@@ -191,7 +194,7 @@ const Organization: React.FC = () => {
     return 'Member'
   }
 
-  const getUserStatus = (user: Profile) => {
+  const getUserStatus = () => {
     // Active users don't need a status badge
     return null
   }
@@ -343,41 +346,70 @@ const Organization: React.FC = () => {
             overflow="hidden" 
             display="flex" 
             flexDirection="column"
+            borderRadius="xl"
+            borderTopRightRadius="0"
+            borderBottomRightRadius="0"
           >
             {/* Left Panel Header */}
-            <Flex p={4} borderBottom="1px" borderColor={borderColor} justify="space-between" align="center" bg={cardBg}>
-              <Box flex={1}>
-                <HStack justify="space-between" align="center" mb={1}>
-                  <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
+            <Box 
+              bg={headerBg}
+              backdropFilter="blur(10px)"
+              borderBottom="1px"
+              borderColor={borderColor}
+              px={6}
+              py={5}
+            >
+              <Flex justify="space-between" align="center">
+                <VStack align="start" spacing={1} flex={1}>
+                  <Heading 
+                    size="lg" 
+                    color={useColorModeValue('gray.900', 'white')}
+                    fontWeight="600"
+                    letterSpacing="-0.02em"
+                  >
                     Team Members
                   </Heading>
-                </HStack>
-                <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
-                  Manage team members and their permissions
-                </Text>
-              </Box>
-                     {userRole.isAdmin && (
-                       <Button
-                         leftIcon={<Icon as={UserPlus} />}
-                         colorScheme="blue"
-                         size="sm"
-                         onClick={onInviteOpen}
-                       >
-                         Invite User
-                       </Button>
-                     )}
-            </Flex>
+                  <Text 
+                    fontSize="sm" 
+                    color={useColorModeValue('gray.500', 'gray.400')}
+                    fontWeight="400"
+                  >
+                    Manage team members and their permissions
+                  </Text>
+                </VStack>
+                {userRole.isAdmin && (
+                  <Button
+                    leftIcon={<Icon as={UserPlus} boxSize="4" />}
+                    bg="linear-gradient(135deg, #3b82f6, #2563eb)"
+                    color="white"
+                    size="sm"
+                    onClick={onInviteOpen}
+                    _hover={{
+                      bg: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                      transform: 'translateY(-1px)',
+                      shadow: 'lg'
+                    }}
+                    borderRadius="xl"
+                    fontWeight="600"
+                    px={4}
+                    shadow="sm"
+                  >
+                    Invite User
+                  </Button>
+                )}
+              </Flex>
+            </Box>
             
             {/* Left Panel Content */}
-            <Box flex={1} overflowY="auto" p={4}>
+            <Box flex={1} overflowY="auto" p={6}>
               {error && (
-                <Alert status="error" mb={4}>
+                <Alert status="error" mb={4} borderRadius="xl">
                   <AlertIcon />
                   {error}
                 </Alert>
               )}
               
-              <VStack spacing={3} align="stretch">
+              <VStack spacing={4} align="stretch">
                 {loading ? (
                   <Box display="flex" justifyContent="center" py={8}>
                     <Spinner color="blue.500" />
@@ -405,7 +437,7 @@ const Organization: React.FC = () => {
                       display_name: user.display_name || 'Unnamed User',
                       email: user.email,
                       role: getUserRole(user),
-                      status: getUserStatus(user),
+                      status: getUserStatus(),
                       user: user
                     })),
                     // Pending invites (no profile exists yet)
@@ -431,29 +463,32 @@ const Organization: React.FC = () => {
                   ].map((item) => (
                     <Card 
                       key={item.id}
-                      bg={useColorModeValue('white', 'gray.700')}
+                      bg={cardBg}
                       border="1px solid"
-                      borderColor={useColorModeValue('gray.200', 'gray.600')}
+                      borderColor={borderColor}
+                      borderRadius="2xl"
                       _hover={{
-                        borderColor: useColorModeValue('gray.300', 'gray.500'),
-                        shadow: 'md'
+                        borderColor: useColorModeValue('gray.300', 'gray.600'),
+                        shadow: 'lg',
+                        transform: 'translateY(-1px)'
                       }}
-                      transition="all 0.2s"
+                      transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
                       size="sm"
+                      shadow="sm"
                     >
-                      <CardBody p={3}>
+                      <CardBody p={5}>
                         <Flex justify="space-between" align="center">
                           <Box flex={1}>
-                            <HStack spacing={2} mb={1}>
-                              <Icon as={item.type === 'user' ? Users : Mail} boxSize={4} color={useColorModeValue('gray.500', 'gray.400')} />
-                              <Text fontSize="sm" fontWeight="semibold" color={useColorModeValue('gray.900', 'white')}>
+                            <HStack spacing={3} mb={2}>
+                              <Icon as={item.type === 'user' ? Users : Mail} boxSize={4} color={accentColor} />
+                              <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
                                 {item.display_name}
                               </Text>
                             </HStack>
                             
-                            <HStack spacing={2} mb={2}>
+                            <HStack spacing={2} mb={3}>
                               <Icon as={Mail} boxSize={3} color={useColorModeValue('gray.400', 'gray.500')} />
-                              <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>
+                              <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
                                 {item.email}
                               </Text>
                             </HStack>
@@ -463,6 +498,10 @@ const Organization: React.FC = () => {
                                 colorScheme={item.role === 'Admin' ? 'red' : 'blue'} 
                                 variant="subtle"
                                 size="sm"
+                                borderRadius="full"
+                                px={3}
+                                py={1}
+                                fontWeight="500"
                               >
                                 <HStack spacing={1}>
                                   <Icon as={Shield} boxSize={2} />
@@ -474,6 +513,10 @@ const Organization: React.FC = () => {
                                   colorScheme="yellow"
                                   variant="solid"
                                   size="sm"
+                                  borderRadius="full"
+                                  px={3}
+                                  py={1}
+                                  fontWeight="500"
                                 >
                                   Pending
                                 </Badge>
@@ -543,11 +586,15 @@ const Organization: React.FC = () => {
         {/* Resize Handle */}
         <PanelResizeHandle>
           <Box 
-            w="2px" 
+            w="1px" 
             h="full" 
             bg={borderColor}
-            _hover={{ bg: useColorModeValue('gray.400', 'gray.500'), w: "4px" }}
-            transition="all 0.2s"
+            _hover={{ 
+              bg: accentColor,
+              w: "3px",
+              shadow: 'lg'
+            }}
+            transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
             cursor="col-resize"
             position="relative"
           >
@@ -556,30 +603,25 @@ const Organization: React.FC = () => {
               top="50%"
               left="50%"
               transform="translate(-50%, -50%)"
-              w="20px"
-              h="40px"
-              bg={useColorModeValue('gray.300', 'gray.600')}
-              borderRadius="full"
-              opacity={0}
-              _hover={{ opacity: 1 }}
-              transition="opacity 0.2s"
+              w="24px"
+              h="48px"
+              bg={cardBg}
+              border="1px solid"
+              borderColor={borderColor}
+              borderRadius="xl"
               display="flex"
               alignItems="center"
               justifyContent="center"
+              opacity={0}
+              _hover={{ opacity: 1, shadow: 'md' }}
+              transition="all 0.3s"
+              backdropFilter="blur(10px)"
             >
-              <Box
-                w="3px"
-                h="16px"
-                bg={useColorModeValue('gray.500', 'gray.400')}
-                borderRadius="full"
-                mr="2px"
-              />
-              <Box
-                w="3px"
-                h="16px"
-                bg={useColorModeValue('gray.500', 'gray.400')}
-                borderRadius="full"
-              />
+              <VStack spacing="2px">
+                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
+                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
+                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
+              </VStack>
             </Box>
           </Box>
         </PanelResizeHandle>
@@ -589,31 +631,56 @@ const Organization: React.FC = () => {
           defaultSize={50} 
           minSize={35}
         >
-          <Box bg={cardBg} h="full" overflow="hidden" display="flex" flexDirection="column">
+          <Box 
+            bg={cardBg} 
+            h="full" 
+            overflow="hidden" 
+            display="flex" 
+            flexDirection="column"
+            borderRadius="xl"
+            borderTopLeftRadius="0"
+            borderBottomLeftRadius="0"
+          >
             {/* Right Panel Header */}
-            <Flex p={4} borderBottom="1px" borderColor={borderColor} justify="space-between" align="center" bg={cardBg}>
-              <Box flex={1}>
-                <HStack justify="space-between" align="center" mb={1}>
-                  <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
-                    Organization Overview
-                  </Heading>
-                </HStack>
-                <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+            <Box 
+              bg={headerBg}
+              backdropFilter="blur(10px)"
+              borderBottom="1px"
+              borderColor={borderColor}
+              px={6}
+              py={5}
+            >
+              <VStack align="start" spacing={1}>
+                <Heading 
+                  size="lg" 
+                  color={useColorModeValue('gray.900', 'white')}
+                  fontWeight="600"
+                  letterSpacing="-0.02em"
+                >
+                  Organization Overview
+                </Heading>
+                <Text 
+                  fontSize="sm" 
+                  color={useColorModeValue('gray.500', 'gray.400')}
+                  fontWeight="400"
+                >
                   Team statistics and organizational settings
                 </Text>
-              </Box>
-            </Flex>
+              </VStack>
+            </Box>
             
             {/* Right Panel Content */}
-            <Box flex={1} overflowY="auto" p={4}>
+            <Box flex={1} overflowY="auto" p={6}>
               <VStack spacing={6} align="stretch">
                 {/* Team Statistics */}
                 <Card 
-                  bg={useColorModeValue('white', 'gray.800')} 
+                  bg={cardBg}
                   border="1px solid" 
-                  borderColor={useColorModeValue('gray.200', 'gray.600')}
-                  borderRadius="lg"
-                  boxShadow="sm"
+                  borderColor={borderColor}
+                  borderRadius="2xl"
+                  shadow="md"
+                  _hover={{ shadow: 'lg' }}
+                  transition="all 0.3s"
                 >
                   <CardBody p={6}>
                     <Heading size="sm" color={useColorModeValue('gray.900', 'white')} mb={4}>
@@ -630,29 +697,29 @@ const Organization: React.FC = () => {
                         </Text>
                       </Box>
                       
-                      <Box textAlign="center" p={3} bg="orange.50" borderRadius="md">
-                        <Text fontSize="2xl" fontWeight="bold" color="orange.600">
+                      <Box textAlign="center" p={3} bg={useColorModeValue('gray.50', 'gray.700')} borderRadius="md">
+                        <Text fontSize="2xl" fontWeight="bold" color={useColorModeValue('gray.900', 'white')}>
                           {pendingInvites.length}
                         </Text>
-                        <Text fontSize="xs" color="orange.600">
+                        <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.300')}>
                           Pending
                         </Text>
                       </Box>
                       
-                      <Box textAlign="center" p={3} bg="red.50" borderRadius="md">
-                        <Text fontSize="2xl" fontWeight="bold" color="red.600">
+                      <Box textAlign="center" p={3} bg={useColorModeValue('gray.50', 'gray.700')} borderRadius="md">
+                        <Text fontSize="2xl" fontWeight="bold" color={useColorModeValue('gray.900', 'white')}>
                           {orgUsers.filter(user => getUserRole(user) === 'Admin').length}
                         </Text>
-                        <Text fontSize="xs" color="red.600">
+                        <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.300')}>
                           Admins
                         </Text>
                       </Box>
                       
-                      <Box textAlign="center" p={3} bg="blue.50" borderRadius="md">
-                        <Text fontSize="2xl" fontWeight="bold" color="blue.600">
+                      <Box textAlign="center" p={3} bg={useColorModeValue('gray.50', 'gray.700')} borderRadius="md">
+                        <Text fontSize="2xl" fontWeight="bold" color={useColorModeValue('gray.900', 'white')}>
                           {orgUsers.filter(user => getUserRole(user) === 'Member').length}
                         </Text>
-                        <Text fontSize="xs" color="blue.600">
+                        <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.300')}>
                           Members
                         </Text>
                       </Box>
@@ -661,45 +728,123 @@ const Organization: React.FC = () => {
                 </Card>
 
                 {/* Organization Settings */}
-                <Card bg={useColorModeValue('white', 'gray.700')} border="1px solid" borderColor={borderColor}>
-                  <CardBody p={4}>
-                    <Heading size="sm" color={useColorModeValue('gray.900', 'white')} mb={4}>
+                <Card 
+                  bg={cardBg}
+                  border="1px solid" 
+                  borderColor={borderColor}
+                  borderRadius="2xl"
+                  shadow="md"
+                  _hover={{ shadow: 'lg' }}
+                  transition="all 0.3s"
+                >
+                  <CardBody p={6}>
+                    <Heading 
+                      size="md" 
+                      color={useColorModeValue('gray.900', 'white')} 
+                      mb={4}
+                      fontWeight="600"
+                      letterSpacing="-0.01em"
+                    >
                       Organization Settings
                     </Heading>
                     
-                    <VStack spacing={3} align="stretch">
-                      <HStack justify="space-between" align="center" p={3} bg={useColorModeValue('gray.50', 'gray.800')} borderRadius="md">
-                        <Box>
-                          <Text fontSize="sm" fontWeight="semibold" color={useColorModeValue('gray.900', 'white')}>
-                            Organization Name
-                          </Text>
-                          <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>
-                            {organization?.name || 'Unknown Organization'}
-                          </Text>
-                        </Box>
-                        {userRole.isAdmin && (
-                          <Button size="xs" variant="outline">
-                            Edit
-                          </Button>
-                        )}
-                      </HStack>
+                    <VStack spacing={4} align="stretch">
+                      <Box p={4} bg={useColorModeValue('gray.50/50', 'gray.800/50')} borderRadius="xl" border="1px solid" borderColor={borderColor}>
+                        <HStack justify="space-between" align="center">
+                          <Box flex={1}>
+                            <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
+                              Organization Name
+                            </Text>
+                            {isEditingOrgName ? (
+                              <HStack mt={2} spacing={2} align="center">
+                                <Input 
+                                  size="sm" 
+                                  value={newOrgName}
+                                  onChange={(e) => setNewOrgName(e.target.value)}
+                                  bg={useColorModeValue('white', 'gray.850')}
+                                  borderColor={borderColor}
+                                  borderRadius="lg"
+                                  maxW="360px"
+                                />
+                                <Button 
+                                  size="sm" 
+                                  colorScheme="brand" 
+                                  isLoading={savingOrgName}
+                                  onClick={async () => {
+                                    if (!organization) return
+                                    try {
+                                      setSavingOrgName(true)
+                                      const { error } = await supabase
+                                        .from('organizations')
+                                        .update({ name: newOrgName })
+                                        .eq('id', organization.id)
+                                      if (error) throw error
+                                      await refreshOrganization()
+                                      setIsEditingOrgName(false)
+                                      toast({ title: 'Organization name updated', status: 'success' })
+                                    } catch (err) {
+                                      console.error('Error updating org name:', err)
+                                      toast({ title: 'Failed to update name', status: 'error' })
+                                    } finally {
+                                      setSavingOrgName(false)
+                                    }
+                                  }}
+                                >
+                                  Save
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => setIsEditingOrgName(false)}
+                                >
+                                  Cancel
+                                </Button>
+                              </HStack>
+                            ) : (
+                              <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                                {organization?.name || 'Unknown Organization'}
+                              </Text>
+                            )}
+                          </Box>
+                          {userRole.isAdmin && !isEditingOrgName && (
+                            <Button 
+                              size="xs" 
+                              variant="outline" 
+                              borderRadius="lg"
+                              _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }}
+                              onClick={() => {
+                                setNewOrgName(organization?.name || '')
+                                setIsEditingOrgName(true)
+                              }}
+                            >
+                              Edit
+                            </Button>
+                          )}
+                        </HStack>
+                      </Box>
                       
-                      <HStack justify="space-between" align="center" p={3} bg={useColorModeValue('gray.50', 'gray.800')} borderRadius="md">
-                        <Box>
-                          <Text fontSize="sm" fontWeight="semibold" color={useColorModeValue('gray.900', 'white')}>
-                            Billing Plan
-                          </Text>
-                          <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>
-                            Professional - $99/month
-                          </Text>
-                        </Box>
-                        {userRole.isAdmin && (
-                          <Button size="xs" variant="outline">
-                            Manage
-                          </Button>
-                        )}
-                      </HStack>
-
+                      <Box p={4} bg={useColorModeValue('gray.50/50', 'gray.800/50')} borderRadius="xl" border="1px solid" borderColor={borderColor}>
+                        <HStack justify="space-between" align="center">
+                          <Box>
+                            <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
+                              Billing Plan
+                            </Text>
+                            <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                              Professional - $99/month
+                            </Text>
+                          </Box>
+                          {userRole.isAdmin && (
+                            <Button 
+                              size="xs" 
+                              variant="outline"
+                              borderRadius="lg"
+                              _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }}
+                            >
+                              Manage
+                            </Button>
+                          )}
+                        </HStack>
+                      </Box>
                     </VStack>
                   </CardBody>
                 </Card>

@@ -42,6 +42,7 @@ export declare class VapiService {
     private generateFirstMessage;
     createWebCall(assistantId: string): Promise<any>;
     createCall(assistantId: string, phoneNumber?: string): Promise<any>;
+    getCall(callId: string): Promise<any>;
 }
 export declare const vapiService: VapiService;
 //# sourceMappingURL=vapi.d.ts.map

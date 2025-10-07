@@ -8,6 +8,7 @@ import {
   HStack,
   Text,
 } from '@chakra-ui/react'
+import ModernDivider from './ModernDivider'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Palette, Users, Settings, Menu, X } from 'lucide-react'
 import { useState } from 'react'
@@ -51,10 +52,12 @@ function Sidebar() {
       w={isCollapsed ? "80px" : "240px"}
       bg="gray.800"
       shadow="xl"
-      borderRight="1px"
-      borderColor="gray.700"
       transition="width 0.3s ease"
+      position="relative"
     >
+      <Box position="absolute" right={-3} top={0} bottom={0} w="6px" pointerEvents="none">
+        <ModernDivider orientation="vertical" length="100%" fade="soft" />
+      </Box>
       <VStack h="full" spacing={0} align="stretch">
         {/* Header */}
         <Box px={4} py={4} display="flex" alignItems="center" justifyContent="space-between">

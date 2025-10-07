@@ -7,35 +7,69 @@ import {
   Button,
   Icon,
   Flex,
-  FormControl,
-  FormLabel,
   Badge,
+  Card,
+  CardBody,
   useColorModeValue,
   useDisclosure,
   IconButton,
 } from '@chakra-ui/react'
 import React, { useState, useRef, useEffect } from 'react'
-import { FileText } from 'lucide-react'
+import { FileText, MessageSquare } from 'lucide-react'
 import Vapi from '@vapi-ai/web'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import ReactMarkdown from 'react-markdown'
 import { supabase, Template } from '../config/supabase'
 import { useProfile } from '../contexts/ProfileContext'
 
+interface Assignment {
+  id: number
+  title: string
+  description: string
+  template: number // template ID
+  rubric: number // rubric ID
+  assigned: string // JSON string of user IDs
+  due: string
+  created_at: string
+}
+
+interface Rubric {
+  id: number
+  title: string
+  grading: any[]
+  created_at: string
+}
+
 function CreateSession() {
-  const { organization } = useProfile()
+  const { organization, profile, userRole } = useProfile()
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [templates, setTemplates] = useState<Template[]>([])
-  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true)
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
+  
+  // Assignment-related state for employees
+  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(false)
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null)
+  const [rubrics, setRubrics] = useState<Rubric[]>([])
   const accountType = 'employee' // Hardcoded account type
   const [isCreatingCall, setIsCreatingCall] = useState(false)
   const [isCallActive, setIsCallActive] = useState(false)
-  const [callConnected, setCallConnected] = useState(false)
   const [vapiPublicKey, setVapiPublicKey] = useState<string>('')
   const [transcript, setTranscript] = useState<Array<{speaker: string, text: string, timestamp: Date}>>([])
+  const [fullTranscriptChunks, setFullTranscriptChunks] = useState<Array<{
+    speaker: string, 
+    text: string, 
+    timestamp: Date,
+    messageId?: string,
+    confidence?: number,
+    duration?: number
+  }>>([])
   const [scriptText, setScriptText] = useState<string>('')
+  const [activeCallId, setActiveCallId] = useState<string | null>(null)
+  const [isExportingPDF, setIsExportingPDF] = useState(false)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const vapiRef = useRef<any>(null)
-  const transcriptTimeoutRef = useRef<{[key: string]: NodeJS.Timeout}>({})
+  const transcriptEndRef = useRef<HTMLDivElement>(null)
   
   // Modal dragging and resizing state
   const [modalPosition, setModalPosition] = useState({ x: 20, y: 120 })
@@ -46,18 +80,81 @@ function CreateSession() {
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 })
   const modalRef = useRef<HTMLDivElement>(null)
 
-  // Load script when selection changes
-  useEffect(() => {
-    if (!selectedTemplate) {
-      setScriptText('')
-      return
+  // Helper to merge overlapping transcript chunks from the same speaker
+  const mergeWithOverlap = (previousText: string, incomingText: string): string => {
+    const prev = String(previousText || '').trim()
+    const curr = String(incomingText || '').trim()
+    if (!prev) return curr
+    if (!curr) return prev
+
+    const normalizeWhitespace = (s: string) => s.replace(/\s+/g, ' ').trim()
+    const stripPunct = (s: string) => s.replace(/[\u2018\u2019\u201C\u201D]/g, '"').replace(/[^\p{L}\p{N}\s']/gu, ' ')
+    const normalizeToken = (t: string) => {
+      let x = t.toLowerCase().replace(/[^\p{L}\p{N}']/gu, '')
+      // simple stemming for common English suffixes
+      if (x.length > 4) x = x.replace(/(ing|ed|ly)$/,'')
+      if (x.length > 3) x = x.replace(/(s)$/,'')
+      return x
+    }
+    const tokenize = (s: string) => normalizeWhitespace(stripPunct(s)).split(' ').filter(Boolean)
+
+    const prevLC = prev.toLowerCase()
+    const currLC = curr.toLowerCase()
+
+    // Direct containment rules first
+    if (currLC.includes(prevLC)) return curr
+    if (prevLC.includes(currLC)) return prev
+    if (currLC.startsWith(prevLC)) return curr
+
+    // Token-based fuzzy overlap
+    const prevTokens = tokenize(prev)
+    const currTokens = tokenize(curr)
+    const maxOverlapTokens = Math.min(20, prevTokens.length, currTokens.length)
+    const minOverlapTokens = 3
+
+    const equalsToken = (a: string, b: string) => normalizeToken(a) === normalizeToken(b)
+
+    // Try largest overlap first
+    for (let k = maxOverlapTokens; k >= minOverlapTokens; k--) {
+      let match = true
+      for (let i = 0; i < k; i++) {
+        const a = prevTokens[prevTokens.length - k + i]
+        const b = currTokens[i]
+        if (!equalsToken(a, b)) { match = false; break }
+      }
+      if (match) {
+        // Append only the non-overlapping tail of current tokens
+        const tail = currTokens.slice(k)
+        const appended = tail.join(' ')
+        return appended ? (prev + ' ' + appended) : prev
+      }
     }
 
-    const template = templates.find(t => t.id.toString() === selectedTemplate)
-    if (!template) {
-      setScriptText('')
-      return
+    // If no clear token overlap, fall back to character overlap to avoid obvious dupes
+    const maxCheck = Math.min(prevLC.length, currLC.length, 200)
+    const minOverlapChars = 6
+    for (let len = maxCheck; len >= minOverlapChars; len--) {
+      if (prevLC.endsWith(currLC.substring(0, len))) {
+        return prev + curr.substring(len)
+      }
     }
+
+    // Last resort: append with a space
+    return prev + ' ' + curr
+  }
+
+  // Load script when selection changes
+  useEffect(() => {
+      if (!selectedTemplate) {
+      setScriptText('')
+        return
+      }
+
+      const template = templates.find(t => t.id.toString() === selectedTemplate)
+      if (!template) {
+      setScriptText('')
+        return
+      }
 
     // Use the template script directly
     setScriptText(template.script || '')
@@ -102,72 +199,133 @@ function CreateSession() {
         vapiRef.current = new Vapi(vapiPublicKey) // Use dynamic public key
         
         // Set up event listeners
-        vapiRef.current.on('call-start', () => {
-          console.log('Call started')
+        vapiRef.current.on('call-start', (info: any) => {
+          console.log('Call started', info)
           setIsCreatingCall(false)
           setIsCallActive(true)
-          setCallConnected(true)
           setTranscript([])
-          setTranscriptBuffer({})
-          // Clear any existing timeouts
-          Object.values(transcriptTimeoutRef.current).forEach(timeout => clearTimeout(timeout))
-          transcriptTimeoutRef.current = {}
+          setFullTranscriptChunks([])
+          try {
+            const id = info?.id || info?.callId || info?.call?.id || null
+            if (id) setActiveCallId(String(id))
+          } catch (e) {
+            console.warn('Unable to read call id from call-start payload')
+          }
         })
 
-        vapiRef.current.on('call-end', () => {
+        vapiRef.current.on('call-end', async () => {
           console.log('Call ended')
           setIsCreatingCall(false)
           setIsCallActive(false)
-          setCallConnected(false)
-          // Flush any remaining buffered transcript
-          setTranscriptBuffer(prev => {
-            Object.entries(prev).forEach(([speaker, text]) => {
-              if (text && text.trim()) {
-                setTranscript(prevTranscript => [...prevTranscript, {
-                  speaker,
-                  text,
-                  timestamp: new Date()
-                }])
+          // Try to fetch finalized transcript from backend using call id
+          if (activeCallId) {
+            try {
+              const res = await fetch(`/api/assistants/call/${activeCallId}`)
+              if (res.ok) {
+                const data = await res.json()
+                const call = data?.call || {}
+
+                const merged: Array<{speaker: string, text: string, timestamp: Date}> = []
+
+                const addSegment = (speaker: string, text: string, ts?: string | number | Date) => {
+                  if (!text) return
+                  const timestamp = ts ? new Date(ts) : new Date()
+                  const last = merged[merged.length - 1]
+                  if (last && last.speaker === speaker) {
+                    last.text = mergeWithOverlap(last.text, text)
+                    last.timestamp = timestamp
+                  } else {
+                    merged.push({ speaker, text, timestamp })
+                  }
+                }
+
+                // Common shapes we might receive; handle defensively
+                if (Array.isArray(call?.transcript)) {
+                  for (const entry of call.transcript) {
+                    const role = entry?.role || entry?.speaker || entry?.author
+                    const text = entry?.text || entry?.transcript || entry?.content
+                    const speaker = role === 'assistant' ? 'AI Customer' : 'You'
+                    addSegment(speaker, String(text || ''))
+                  }
+                } else if (Array.isArray(call?.messages)) {
+                  for (const msg of call.messages) {
+                    const role = msg?.role || msg?.speaker || msg?.author
+                    const content = msg?.content || msg?.text || msg?.transcript
+                    if (typeof content === 'string') {
+                      const speaker = role === 'assistant' ? 'AI Customer' : 'You'
+                      addSegment(speaker, content)
+                    } else if (Array.isArray(content)) {
+                      // Some providers return content as array of blocks
+                      const textBlocks = content.map((c: any) => c?.text || c?.content || '').filter(Boolean).join(' ')
+                      const speaker = role === 'assistant' ? 'AI Customer' : 'You'
+                      addSegment(speaker, textBlocks)
+                    }
+                  }
+                } else if (typeof call?.transcript === 'string') {
+                  // Single combined transcript string, attribute to unknown
+                  addSegment('You', String(call.transcript))
+                }
+
+                if (merged.length > 0) {
+                  setTranscript(merged)
+                }
+              } else {
+                console.warn('Failed to fetch finalized call transcript', await res.text())
               }
-            })
-            return {}
-          })
-          // Clear timeouts
-          Object.values(transcriptTimeoutRef.current).forEach(timeout => clearTimeout(timeout))
-          transcriptTimeoutRef.current = {}
+            } catch (err) {
+              console.warn('Error fetching finalized transcript:', err)
+            }
+          }
+          setActiveCallId(null)
         })
 
         vapiRef.current.on('message', (message: any) => {
           if (message.type === 'transcript') {
             const speaker = message.role === 'assistant' ? 'AI Customer' : 'You'
-            
-            // Buffer the transcript text for this speaker
-            setTranscriptBuffer(prev => ({
-              ...prev,
-              [speaker]: message.transcript
-            }))
-            
-            // Clear existing timeout for this speaker
-            if (transcriptTimeoutRef.current[speaker]) {
-              clearTimeout(transcriptTimeoutRef.current[speaker])
-            }
-            
-            // Set a timeout to add the buffered text to transcript after a pause
-            transcriptTimeoutRef.current[speaker] = setTimeout(() => {
-              setTranscriptBuffer(prev => {
-                const currentText = prev[speaker]
-                if (currentText && currentText.trim()) {
-                  setTranscript(prevTranscript => [...prevTranscript, {
-                    speaker,
-                    text: currentText,
-                    timestamp: new Date()
-                  }])
+            const timestamp = new Date()
+
+            // Store every chunk in fullTranscriptChunks for PDF export
+            setFullTranscriptChunks(prevChunks => [
+              ...prevChunks,
+              {
+                speaker,
+                text: String(message.transcript || ''),
+                timestamp,
+                messageId: message.id || `msg_${Date.now()}_${Math.random()}`,
+                confidence: message.confidence,
+                duration: message.duration
+              }
+            ])
+
+            // Continue with existing display logic for merged transcript
+            setTranscript(prevTranscript => {
+              const lastEntry = prevTranscript[prevTranscript.length - 1]
+
+              if (lastEntry && lastEntry.speaker === speaker) {
+                const newText = String(message.transcript || '')
+                const prevText = String(lastEntry.text || '')
+
+                const mergedText = mergeWithOverlap(prevText, newText)
+
+                if (mergedText === prevText) {
+                  return prevTranscript
                 }
-                const { [speaker]: removed, ...rest } = prev
-                return rest
-              })
-              delete transcriptTimeoutRef.current[speaker]
-            }, 2000) // Wait 2 seconds after last update before showing
+
+                const updatedTranscript = [...prevTranscript]
+                updatedTranscript[updatedTranscript.length - 1] = {
+                  ...lastEntry,
+                  text: mergedText,
+                  timestamp: new Date()
+                }
+                return updatedTranscript
+              }
+
+              // Different speaker or first message
+              return [
+                ...prevTranscript,
+                { speaker, text: message.transcript, timestamp: new Date() }
+              ]
+            })
           }
         })
 
@@ -175,7 +333,6 @@ function CreateSession() {
           console.error('VAPI error:', error)
           setIsCreatingCall(false)
           setIsCallActive(false)
-          setCallConnected(false)
         })
       }
 
@@ -194,6 +351,59 @@ function CreateSession() {
     if (vapiRef.current && isCallActive) {
       vapiRef.current.stop()
       setIsCallActive(false)
+    }
+  }
+
+  const exportTranscriptToPDF = async () => {
+    if (fullTranscriptChunks.length === 0) {
+      alert('No transcript data to export')
+      return
+    }
+
+    setIsExportingPDF(true)
+    
+    try {
+      const template = templates.find(t => t.id.toString() === selectedTemplate)
+      const exportData = {
+        callId: activeCallId,
+        templateTitle: template?.title || 'Training Session',
+        templateDescription: template?.description || '',
+        startTime: fullTranscriptChunks[0]?.timestamp,
+        endTime: fullTranscriptChunks[fullTranscriptChunks.length - 1]?.timestamp,
+        duration: fullTranscriptChunks.length > 0 ? 
+          Math.round((fullTranscriptChunks[fullTranscriptChunks.length - 1].timestamp.getTime() - fullTranscriptChunks[0].timestamp.getTime()) / 1000) : 0,
+        chunks: fullTranscriptChunks,
+        script: scriptText
+      }
+
+      const response = await fetch('/api/export/transcript-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(exportData)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to export transcript')
+      }
+
+      // Get the PDF blob and trigger download
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `training-session-${template?.title?.replace(/[^a-zA-Z0-9]/g, '-') || 'transcript'}-${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+    } catch (error) {
+      console.error('Error exporting transcript:', error)
+      alert('Failed to export transcript. Please try again.')
+    } finally {
+      setIsExportingPDF(false)
     }
   }
 
@@ -287,15 +497,24 @@ function CreateSession() {
     fetchConfig()
   }, [])
 
-  // Fetch templates from Supabase filtered by organization
+  // Fetch data based on user role
   useEffect(() => {
+    // Don't fetch if we don't have the required data yet
+    if (!organization?.id || !profile?.id) {
+      console.log('Skipping fetch - missing organization or profile')
+      return
+    }
+
     const fetchTemplates = async () => {
       try {
         setIsLoadingTemplates(true)
+        console.log('Fetching templates for organization:', organization?.id)
+        console.log('User role isAdmin:', userRole.isAdmin)
+        
         const { data, error } = await supabase
           .from('templates')
           .select('*')
-          .eq('org', organization?.id || -1)
+          .eq('org', organization?.id)
           .order('created_at', { ascending: false })
 
         if (error) {
@@ -303,6 +522,7 @@ function CreateSession() {
           return
         }
 
+        console.log('Templates fetched:', data?.length || 0, 'templates found')
         setTemplates(data || [])
       } catch (error) {
         console.error('Error fetching templates:', error)
@@ -311,8 +531,79 @@ function CreateSession() {
       }
     }
 
-    fetchTemplates()
-  }, [organization?.id])
+    const fetchAssignments = async () => {
+      try {
+        setIsLoadingAssignments(true)
+        const { data, error } = await supabase
+          .from('assignments')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          console.error('Error fetching assignments:', error)
+          return
+        }
+
+        // Filter assignments that include this user
+        const myAssignments = (data || []).filter(assignment => {
+          try {
+            const assignedUsers = JSON.parse(assignment.assigned || '[]')
+            return assignedUsers.includes(profile?.id)
+          } catch (error) {
+            console.warn('Error parsing assigned users:', error)
+            return false
+          }
+        })
+
+        setAssignments(myAssignments)
+        
+        // Also fetch templates and rubrics to use with assignments
+        await fetchTemplates()
+        await fetchRubrics()
+      } catch (error) {
+        console.error('Error fetching assignments:', error)
+      } finally {
+        setIsLoadingAssignments(false)
+      }
+    }
+
+    const fetchRubrics = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('rubrics')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          console.error('Error fetching rubrics:', error)
+          return
+        }
+
+        setRubrics(data || [])
+      } catch (error) {
+        console.error('Error fetching rubrics:', error)
+      }
+    }
+
+    console.log('CreateSession useEffect - Organization ID:', organization?.id)
+    console.log('CreateSession useEffect - Profile ID:', profile?.id)
+    console.log('CreateSession useEffect - User Role isAdmin:', userRole.isAdmin)
+    
+    if (userRole.isAdmin) {
+      console.log('Admin detected - fetching templates')
+      fetchTemplates()
+    } else {
+      console.log('Employee detected - fetching assignments')
+      fetchAssignments()
+    }
+  }, [organization?.id, profile?.id, userRole.isAdmin])
+
+  // Auto-scroll transcript to bottom when new messages arrive
+  useEffect(() => {
+    if (transcriptEndRef.current) {
+      transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [transcript])
 
   // Cleanup on component unmount
   useEffect(() => {
@@ -323,235 +614,530 @@ function CreateSession() {
     }
   }, [isCallActive])
 
-  const trainingTemplates = [
-    {
-      id: 'skeptical-cfo',
-      name: 'Skeptical CFO',
-      difficulty: 'Hard',
-      insuranceType: 'Business',
-      scenario: 'Cost-focused',
-      description: 'A data-driven CFO who questions every expense and demands ROI proof for business insurance decisions.'
-    },
-    {
-      id: 'busy-entrepreneur',
-      name: 'Busy Entrepreneur', 
-      difficulty: 'Medium',
-      insuranceType: 'Life',
-      scenario: 'Time-pressed',
-      description: 'A successful business owner with limited time who needs quick, clear explanations for life insurance.'
-    },
-    {
-      id: 'concerned-parent',
-      name: 'Concerned Parent',
-      difficulty: 'Easy',
-      insuranceType: 'Health',
-      scenario: 'Family-focused',
-      description: 'A caring parent looking for comprehensive health insurance coverage for their growing family.'
-    },
-    {
-      id: 'price-shopper',
-      name: 'Price Shopper',
-      difficulty: 'Expert',
-      insuranceType: 'Auto',
-      scenario: 'Budget-conscious',
-      description: 'An extremely price-sensitive customer who compares every detail and pushes back on premium costs.'
-    }
-  ]
 
-  // Vague script representations for frontend display (more immersive)
-  const templateScriptPreviews: Record<string, string> = {
-    'skeptical-cfo': `# Sample Business Insurance Script (HARD - General Flow)
+  // Template script previews removed - using direct template script content
 
-**Opening:**
-Agent: Establish credibility, mention company/expansion, position as coverage gap expert
-Customer: Asks who this is, says they're busy
-
-**Handle objections:**
-Agent: If getting lots of calls - acknowledge and use humor to defuse
-Customer: Admits at least you're honest, asks what you want
-
-**Find motivation:**
-Agent: Ask about exit strategy - where would they go if sold business?
-Customer: Says maybe retire to Florida or something, asks why
-
-Agent: Probe timeline for exit
-Customer: Says few years maybe, asks where this is going
-
-Agent: Create urgency with dramatic pause/reaction`,
-
-    'busy-entrepreneur': `# Sample Life Insurance Script (MEDIUM - Some Guidance)
-
-**Opening:**
-Agent: Hi [name], I help business owners protect families. Quick minute?
-Customer: Says they're swamped, asks what this is about
-
-**Build urgency:**
-Agent: Point out most entrepreneurs haven't updated life insurance since starting business
-Customer: Mentions existing business coverage, says they're really busy
-
-**Address the gap:**
-Agent: Explain business coverage doesn't transfer to family - ask how long family could maintain lifestyle
-Customer: Admits maybe six months, asks why you're asking this
-
-**Present solution:**
-Agent: Compare cost to monthly car payment - substantial coverage for less
-Customer: Says sounds too good to be true
-
-**Close:**
-Agent: Offer to run quick numbers
-Customer: Says they guess so but don't have much time`,
-
-    'concerned-parent': `# Sample Health Insurance Script (EASY - More Guidance)
-
-**Opening:**
-Agent: Hi, I'm [name] with [company]. I help families get better health coverage.
-Customer: Polite but mentions dinner time, asks if this is sales call
-
-**Find their pain:**
-Agent: Ask about current plan covering family needs - specialists, prescriptions, etc.
-Customer: Admits current plan has high out-of-pocket costs, coverage issues
-
-**Present solution:**
-Agent: Offer family-focused coverage designed for children's needs
-Customer: Interested but asks "what's the catch?"
-
-**Handle objections:**
-Agent: Explain it's better plan design, marketplace plans for families
-Customer: Defers to spouse, asks about cost
-
-**Move forward:**
-Agent: Offer to run quick comparison with current plan
-Customer: Agrees but mentions being quick due to kids`,
-    
-    'price-shopper': `# Sample Auto Insurance Script (EXPERT - Minimal Guidance)
-
-**Opening:**
-Agent: Position as helping overpaying drivers save money
-Customer: Says another insurance call, doubts you can beat what they pay
-
-**Qualify:**
-Agent: Get their current rate
-Customer: Says like $180 for two cars, already shopped around
-
-**Present value:**
-Agent: Show significantly lower rates for same coverage
-Customer: Says cheap insurance means crappy service
-
-**Handle service objections:**
-Agent: Address service concerns with company ratings
-Customer: Asks what you're not telling them, what's the fine print
-
-**Close with guarantee:**
-Agent: Offer money-back guarantee or no-obligation comparison
-Customer: Says they guess but won't sign anything today`
-  }
-
-  const bg = useColorModeValue('gray.50', 'gray.900')
-  const cardBg = useColorModeValue('white', 'gray.800')
-  const borderColor = useColorModeValue('gray.200', 'gray.700')
+  const bg = useColorModeValue('gray.25', 'gray.925')
+  const cardBg = useColorModeValue('white', 'gray.850')
+  const borderColor = useColorModeValue('gray.100', 'gray.750')
+  const headerBg = useColorModeValue('gray.50/80', 'gray.800/80')
+  const accentColor = useColorModeValue('blue.500', 'blue.400')
+  
+  // Pre-define all color mode values to avoid conditional hook calls
+  const textPrimary = useColorModeValue('gray.900', 'white')
+  const textSecondary = useColorModeValue('gray.500', 'gray.400')
+  const textTertiary = useColorModeValue('gray.600', 'gray.400')
+  const textMuted = useColorModeValue('gray.400', 'gray.500')
+  const hoverBorder = useColorModeValue('gray.300', 'gray.600')
+  const hoverBgSelected = useColorModeValue('blue.50/70', 'blue.900/30')
+  const hoverBgUnselected = useColorModeValue('gray.50/50', 'gray.700')
+  const assignmentDetailsBg = useColorModeValue('blue.50', 'blue.900/20')
+  const assignmentDetailsBorder = useColorModeValue('blue.200', 'blue.700')
+  const rubricItemBg = useColorModeValue('white', 'gray.800')
+  const rubricItemBorder = useColorModeValue('gray.200', 'gray.600')
+  const totalPointsBorder = useColorModeValue('gray.200', 'gray.600')
 
   return (
     <Box bg={bg} h="calc(100vh - 88px)" overflow="hidden">
       <PanelGroup direction="horizontal">
-        {/* Left Sidebar - Training Configuration */}
+          {/* Left Panel - Template/Assignment Selection with Call Controls */}
         <Panel 
-          defaultSize={25} 
-          minSize={15}
-          maxSize={45}
-        >
-          <Box bg={cardBg} h="full" borderRight="1px" borderColor={borderColor} overflow="hidden" display="flex" flexDirection="column">
-            {/* Sidebar Header */}
-            <Flex p={4} borderBottom="1px" borderColor={borderColor} justify="space-between" align="center" bg={cardBg}>
-              <Box flex={1}>
-                <HStack justify="space-between" align="center" mb={1}>
-                  <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
-                    Training Setup
+            defaultSize={50} 
+            minSize={30}
+            maxSize={70}
+          >
+            <Box bg={cardBg} h="full" borderRight="1px" borderColor={borderColor} overflow="hidden" display="flex" flexDirection="column" borderRadius="xl" borderTopRightRadius="0" borderBottomRightRadius="0">
+              {/* Header */}
+              <Box 
+                bg={headerBg}
+                backdropFilter="blur(10px)"
+                borderBottom="1px"
+                borderColor={borderColor}
+                px={6}
+                py={5}
+              >
+                <VStack align="start" spacing={1}>
+                  <Heading 
+                    size="lg" 
+                    color={textPrimary}
+                    fontWeight="600"
+                    letterSpacing="-0.02em"
+                  >
+                    {userRole.isAdmin ? 'Templates' : 'Assignments'}
                   </Heading>
-                </HStack>
-                <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
-                  Configure your personalized sales training session with AI
+                  <Text 
+                    fontSize="sm" 
+                    color={textSecondary}
+                    fontWeight="400"
+                  >
+                    {isCallActive ? "🟢 Training session active" : userRole.isAdmin ? "Choose a template to begin" : "Select an assignment to practice"}
                 </Text>
+                </VStack>
               </Box>
-            </Flex>
             
-            {/* Sidebar Content */}
-            <Box flex={1} overflowY="auto" p={4}>
+              {/* Content - Templates for Admin, Assignments for Employees */}
+              <Box flex={1} overflowY="auto" p={6}>
                 <VStack spacing={4} align="stretch">
-                  {/* Training Templates */}
-                  <FormControl>
-                    <FormLabel 
-                      fontSize="sm" 
-                      color={useColorModeValue('gray.700', 'gray.300')} 
-                      fontWeight="semibold"
-                      mb={3}
-                    >
-                      Training Template
-                      {!selectedTemplate && <Text as="span" color="red.500" ml={1}>*</Text>}
-                    </FormLabel>
-                    <VStack spacing={3} align="stretch">
-                      {isLoadingTemplates ? (
-                        <Box p={4} textAlign="center">
-                          <Text color={useColorModeValue('gray.500', 'gray.400')}>
-                            Loading templates...
-                          </Text>
-                        </Box>
-                      ) : templates.length === 0 ? (
-                        <Box p={4} textAlign="center">
-                          <Text color={useColorModeValue('gray.500', 'gray.400')}>
-                            No templates found. Create some in the Admin tab!
-                          </Text>
-                        </Box>
-                      ) : (
-                        templates.map((template) => (
-                        <Box
-                          key={template.id}
-                          p={4}
-                          border="2px solid"
-                            borderColor={selectedTemplate === template.id.toString() ? "blue.400" : useColorModeValue('gray.200', 'gray.600')}
-                          borderRadius="lg"
-                          cursor="pointer"
-                            onClick={() => setSelectedTemplate(template.id.toString())}
-                            bg={selectedTemplate === template.id.toString() ? useColorModeValue('blue.50', 'blue.900') : useColorModeValue('white', 'gray.700')}
-                          _hover={{
-                              borderColor: selectedTemplate === template.id.toString() ? "blue.500" : useColorModeValue('gray.300', 'gray.500'),
-                              bg: selectedTemplate === template.id.toString() ? useColorModeValue('blue.100', 'blue.800') : useColorModeValue('gray.50', 'gray.600')
-                          }}
-                          transition="all 0.2s"
+                  <Box>
+                    {userRole.isAdmin ? (
+                      // Admin Template Selection
+                      <>
+                        <Text 
+                          fontSize="xs" 
+                          color={textMuted} 
+                          fontWeight="500"
+                          textTransform="uppercase"
+                          letterSpacing="0.05em"
+                          mb={4}
                         >
-                          <VStack align="start" spacing={2}>
-                            <HStack justify="space-between" w="full">
-                              <Heading size="sm" color={useColorModeValue('gray.900', 'white')}>
-                                  {template.title}
-                              </Heading>
-                                <Badge 
-                                  colorScheme={
-                                    template.difficulty === 'easy' ? 'green' : 
-                                    template.difficulty === 'medium' ? 'yellow' : 
-                                    template.difficulty === 'hard' ? 'orange' : 'red'
-                                  } 
-                                  variant="subtle"
-                                  textTransform="capitalize"
+                          Available Templates {!selectedTemplate && <Text as="span" color="red.400" ml={1}>•</Text>}
+                        </Text>
+                        <VStack spacing={3} align="stretch">
+                          {isLoadingTemplates ? (
+                            <Box p={4} textAlign="center">
+                              <Text color={textSecondary}>
+                                Loading templates...
+                              </Text>
+                            </Box>
+                          ) : templates.length === 0 ? (
+                            <Box p={4} textAlign="center">
+                              <Text color={textSecondary}>
+                                No templates found. Create some in the Templates tab!
+                              </Text>
+                            </Box>
+                          ) : (
+                            templates.map((template) => (
+                            <Card
+                              key={template.id}
+                              bg={cardBg}
+                              border="1px solid"
+                              borderColor={selectedTemplate === template.id.toString() ? accentColor : borderColor}
+                              borderRadius="2xl"
+                              cursor="pointer"
+                                onClick={() => setSelectedTemplate(template.id.toString())}
+                              _hover={{
+                                borderColor: selectedTemplate === template.id.toString() ? accentColor : hoverBorder,
+                                bg: selectedTemplate === template.id.toString() ? hoverBgSelected : hoverBgUnselected,
+                                transform: 'translateY(-1px)',
+                                shadow: selectedTemplate === template.id.toString() ? 'lg' : 'md'
+                              }}
+                              transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+                              position="relative"
+                              overflow="hidden"
+                              shadow={selectedTemplate === template.id.toString() ? 'md' : 'sm'}
+                            >
+                              {/* Selected indicator */}
+                              {selectedTemplate === template.id.toString() && (
+                                <Box
+                                  position="absolute"
+                                  top="0"
+                                  right="0"
+                                  w="0"
+                                  h="0"
+                                  borderStyle="solid"
+                                  borderWidth="0 20px 20px 0"
+                                  borderColor={`transparent ${accentColor} transparent transparent`}
                                 >
-                                {template.difficulty}
-                              </Badge>
-                            </HStack>
-                            <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>
-                              {template.description}
-                            </Text>
-                            <HStack spacing={2}>
-                                <Badge size="sm" colorScheme="blue" variant="outline" textTransform="capitalize">
-                                  {template.type}
-                              </Badge>
-                              <Badge size="sm" colorScheme="gray" variant="outline">
-                                  {new Date(template.created_at).toLocaleDateString()}
-                              </Badge>
-                            </HStack>
+                                  <Box
+                                    position="absolute"
+                                    top="2px"
+                                    right="-14px"
+                                    color="white"
+                                    fontSize="10px"
+                                  >
+                                    ✓
+                                  </Box>
+                                </Box>
+                              )}
+                              
+                              <CardBody p={5}>
+                                <VStack align="start" spacing={3}>
+                                  <HStack justify="space-between" w="full" align="start">
+                                    <VStack align="start" spacing={1} flex="1">
+                                      <Heading 
+                                        size="md" 
+                                        color={textPrimary}
+                                        fontWeight="600"
+                                        letterSpacing="-0.01em"
+                                      >
+                                      {template.title}
+                                  </Heading>
+                                      <Text fontSize="sm" color={textSecondary} lineHeight="1.4">
+                                        {template.description}
+                                      </Text>
+                                    </VStack>
+                                    <Badge 
+                                      colorScheme={
+                                        template.difficulty === 'easy' ? 'green' : 
+                                        template.difficulty === 'medium' ? 'yellow' : 
+                                        template.difficulty === 'hard' ? 'orange' : 'red'
+                                      } 
+                                      variant="subtle"
+                                      textTransform="capitalize"
+                                      fontSize="xs"
+                                      px={2}
+                                      py={1}
+                                      borderRadius="full"
+                                      fontWeight="500"
+                                    >
+                                    {template.difficulty}
+                                  </Badge>
+                                </HStack>
+                                  
+                                  <HStack spacing={2} w="full">
+                                    <Badge 
+                                      size="sm" 
+                                      colorScheme="blue" 
+                                      variant="outline" 
+                                      textTransform="capitalize"
+                                      borderRadius="full"
+                                      fontSize="xs"
+                                    >
+                                      {template.type}
+                                  </Badge>
+                                    <Badge 
+                                      size="sm" 
+                                      colorScheme="gray" 
+                                      variant="outline"
+                                      borderRadius="full"
+                                      fontSize="xs"
+                                    >
+                                      {new Date(template.created_at).toLocaleDateString()}
+                                  </Badge>
+                                </HStack>
+                              </VStack>
+                              </CardBody>
+                            </Card>
+                            ))
+                          )}
+                        </VStack>
+                      </>
+                    ) : (
+                      // Employee Assignment Selection
+                      <>
+                        <Text 
+                          fontSize="xs" 
+                          color={textMuted} 
+                          fontWeight="500"
+                          textTransform="uppercase"
+                          letterSpacing="0.05em"
+                          mb={4}
+                        >
+                          My Assignments {!selectedAssignment && <Text as="span" color="red.400" ml={1}>•</Text>}
+                        </Text>
+                        <VStack spacing={3} align="stretch">
+                          {isLoadingAssignments ? (
+                            <Box p={4} textAlign="center">
+                              <Text color={textSecondary}>
+                                Loading assignments...
+                              </Text>
+                            </Box>
+                          ) : assignments.length === 0 ? (
+                            <Box p={4} textAlign="center">
+                              <Text color={textSecondary}>
+                                No assignments yet. Your trainer will assign practice sessions soon!
+                              </Text>
+                            </Box>
+                          ) : (
+                            assignments.map((assignment) => {
+                              const assignmentTemplate = templates.find(t => t.id === assignment.template)
+                              const isSelected = selectedAssignment?.id === assignment.id
+                              
+                              return (
+                                <Card
+                                  key={assignment.id}
+                                  bg={cardBg}
+                                  border="1px solid"
+                                  borderColor={isSelected ? accentColor : borderColor}
+                                  borderRadius="2xl"
+                                  cursor="pointer"
+                                  onClick={() => {
+                                    setSelectedAssignment(assignment)
+                                    if (assignmentTemplate) {
+                                      setSelectedTemplate(assignmentTemplate.id.toString())
+                                    }
+                                  }}
+                                  _hover={{
+                                    borderColor: isSelected ? accentColor : hoverBorder,
+                                    bg: isSelected ? hoverBgSelected : hoverBgUnselected,
+                                    transform: 'translateY(-1px)',
+                                    shadow: isSelected ? 'lg' : 'md'
+                                  }}
+                                  transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+                                  position="relative"
+                                  overflow="hidden"
+                                  shadow={isSelected ? 'md' : 'sm'}
+                                >
+                                  {/* Selected indicator */}
+                                  {isSelected && (
+                                    <Box
+                                      position="absolute"
+                                      top="0"
+                                      right="0"
+                                      w="0"
+                                      h="0"
+                                      borderStyle="solid"
+                                      borderWidth="0 20px 20px 0"
+                                      borderColor={`transparent ${accentColor} transparent transparent`}
+                                    >
+                                      <Box
+                                        position="absolute"
+                                        top="2px"
+                                        right="-14px"
+                                        color="white"
+                                        fontSize="10px"
+                                      >
+                                        ✓
+                                      </Box>
+                                    </Box>
+                                  )}
+                                  
+                                  <CardBody p={5}>
+                                    <VStack align="start" spacing={3}>
+                                      <HStack justify="space-between" w="full" align="start">
+                                        <VStack align="start" spacing={1} flex="1">
+                                          <Heading 
+                                            size="md" 
+                                            color={textPrimary}
+                                            fontWeight="600"
+                                            letterSpacing="-0.01em"
+                                          >
+                                            {assignment.title}
+                                          </Heading>
+                                          <Text fontSize="sm" color={textSecondary} lineHeight="1.4">
+                                            {assignment.description}
+                                          </Text>
+                                        </VStack>
+                                        {assignmentTemplate && (
+                                          <Badge 
+                                            colorScheme={
+                                              assignmentTemplate.difficulty === 'easy' ? 'green' : 
+                                              assignmentTemplate.difficulty === 'medium' ? 'yellow' : 
+                                              assignmentTemplate.difficulty === 'hard' ? 'orange' : 'red'
+                                            } 
+                                            variant="subtle"
+                                            textTransform="capitalize"
+                                            fontSize="xs"
+                                            px={2}
+                                            py={1}
+                                            borderRadius="full"
+                                            fontWeight="500"
+                                          >
+                                            {assignmentTemplate.difficulty}
+                                          </Badge>
+                                        )}
+                                      </HStack>
+                                      
+                                      <HStack spacing={2} w="full">
+                                        {assignmentTemplate && (
+                                          <Badge 
+                                            size="sm" 
+                                            colorScheme="purple" 
+                                            variant="outline" 
+                                            textTransform="capitalize"
+                                            borderRadius="full"
+                                            fontSize="xs"
+                                          >
+                                            {assignmentTemplate.title}
+                                          </Badge>
+                                        )}
+                                        {assignment.due && (
+                                          <Badge 
+                                            size="sm" 
+                                            colorScheme="orange" 
+                                            variant="outline"
+                                            borderRadius="full"
+                                            fontSize="xs"
+                                          >
+                                            Due: {new Date(assignment.due).toLocaleDateString()}
+                                          </Badge>
+                                        )}
+                                      </HStack>
+                                    </VStack>
+                                  </CardBody>
+                                </Card>
+                              )
+                            })
+                          )}
+                        </VStack>
+                      </>
+                    )}
+                  </Box>
+                  
+                  {/* Assignment Details for Employees */}
+                  {!userRole.isAdmin && selectedAssignment && (
+                    <Box>
+                      <Text 
+                        fontSize="xs" 
+                        color={useColorModeValue('gray.400', 'gray.500')} 
+                        fontWeight="500"
+                        textTransform="uppercase"
+                        letterSpacing="0.05em"
+                        mb={4}
+                      >
+                        Assignment Details
+                      </Text>
+                      <Card 
+                        bg={assignmentDetailsBg}
+                        border="1px solid"
+                        borderColor={assignmentDetailsBorder}
+                        borderRadius="xl"
+                      >
+                        <CardBody p={4}>
+                          <VStack align="stretch" spacing={3}>
+                            <Box>
+                              <Text fontSize="xs" color={textSecondary} fontWeight="600" mb={1}>
+                                ASSIGNMENT
+                              </Text>
+                              <Text fontSize="sm" fontWeight="600" color={textPrimary}>
+                                {selectedAssignment.title}
+                              </Text>
+                              {selectedAssignment.description && (
+                                <Text fontSize="xs" color={textTertiary} mt={1}>
+                                  {selectedAssignment.description}
+                                </Text>
+                              )}
+                            </Box>
+                            
+                            {(() => {
+                              const assignmentTemplate = templates.find(t => t.id === selectedAssignment.template)
+                              return assignmentTemplate ? (
+                                <Box>
+                                  <Text fontSize="xs" color={textSecondary} fontWeight="600" mb={1}>
+                                    TEMPLATE
+                                  </Text>
+                                  <Text fontSize="sm" fontWeight="500" color={textPrimary}>
+                                    {assignmentTemplate.title}
+                                  </Text>
+                                  <Text fontSize="xs" color={textTertiary} mt={1}>
+                                    {assignmentTemplate.description}
+                                  </Text>
+                                  <HStack spacing={2} mt={2}>
+                                    <Badge 
+                                      colorScheme={
+                                        assignmentTemplate.difficulty === 'easy' ? 'green' : 
+                                        assignmentTemplate.difficulty === 'medium' ? 'yellow' : 
+                                        assignmentTemplate.difficulty === 'hard' ? 'orange' : 'red'
+                                      } 
+                                      variant="subtle"
+                                      textTransform="capitalize"
+                                      fontSize="xs"
+                                      px={2}
+                                      py={1}
+                                      borderRadius="full"
+                                      fontWeight="500"
+                                    >
+                                      {assignmentTemplate.difficulty}
+                                    </Badge>
+                                    <Badge 
+                                      colorScheme="blue" 
+                                      variant="outline" 
+                                      textTransform="capitalize"
+                                      fontSize="xs"
+                                      px={2}
+                                      py={1}
+                                      borderRadius="full"
+                                      fontWeight="500"
+                                    >
+                                      {assignmentTemplate.type}
+                                    </Badge>
+                                  </HStack>
+                                </Box>
+                              ) : null
+                            })()}
+                            
+                            {(() => {
+                              const assignmentRubric = rubrics.find(r => r.id === selectedAssignment.rubric)
+                              return assignmentRubric ? (
+                                <Box>
+                                  <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')} fontWeight="600" mb={2}>
+                                    RUBRIC
+                                  </Text>
+                                  <Text fontSize="sm" fontWeight="500" color={useColorModeValue('gray.900', 'white')} mb={3}>
+                                    {assignmentRubric.title}
+                                  </Text>
+                                  
+                                  {/* Rubric Items */}
+                                  <VStack spacing={3} align="stretch">
+                                    {assignmentRubric.grading?.map((item: any, index: number) => (
+                                      <Box 
+                                        key={index}
+                                        p={3}
+                                        bg={rubricItemBg}
+                                        border="1px solid"
+                                        borderColor={rubricItemBorder}
+                                        borderRadius="lg"
+                                      >
+                                        <HStack justify="space-between" align="start" mb={2}>
+                                          <Text fontSize="sm" fontWeight="600" color={textPrimary}>
+                                            {item.title}
+                                          </Text>
+                                          <Badge 
+                                            colorScheme="blue" 
+                                            variant="solid"
+                                            fontSize="xs"
+                                            px={2}
+                                            py={1}
+                                            borderRadius="full"
+                                            fontWeight="600"
+                                          >
+                                            {item.maxPoints || 0} pts
+                                          </Badge>
+                                        </HStack>
+                                        {item.description && (
+                                          <Text fontSize="xs" color={textTertiary} lineHeight="1.4">
+                                            {item.description}
+                                          </Text>
+                                        )}
+                                      </Box>
+                                    )) || (
+                                      <Text fontSize="xs" color={textSecondary} fontStyle="italic">
+                                        No rubric items defined
+                                      </Text>
+                                    )}
+                                  </VStack>
+                                  
+                                  {/* Total Points */}
+                                  <HStack justify="space-between" align="center" mt={3} pt={3} borderTop="1px solid" borderColor={totalPointsBorder}>
+                                    <Text fontSize="sm" fontWeight="600" color={textPrimary}>
+                                      Total Points:
+                                    </Text>
+                                    <Badge 
+                                      colorScheme="green" 
+                                      variant="solid" 
+                                      fontSize="sm"
+                                      px={3}
+                                      py={1}
+                                      borderRadius="full"
+                                      fontWeight="600"
+                                    >
+                                      {assignmentRubric.grading?.reduce((sum: number, item: any) => sum + (item.maxPoints || 0), 0) || 0} points
+                                    </Badge>
+                                  </HStack>
+                                </Box>
+                              ) : null
+                            })()}
+                            
+                            {selectedAssignment.due && (
+                              <Box>
+                                <Text fontSize="xs" color={textSecondary} fontWeight="600" mb={1}>
+                                  DUE DATE
+                                </Text>
+                                <Text fontSize="sm" fontWeight="500" color={useColorModeValue('gray.900', 'white')}>
+                                  {new Date(selectedAssignment.due).toLocaleDateString('en-US', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}
+                                </Text>
+                              </Box>
+                            )}
                           </VStack>
-                        </Box>
-                        ))
-                      )}
-                    </VStack>
-                  </FormControl>
+                        </CardBody>
+                      </Card>
+                    </Box>
+                  )}
                 </VStack>
               </Box>
           </Box>
@@ -560,11 +1146,15 @@ Customer: Says they guess but won't sign anything today`
         {/* Resize Handle */}
         <PanelResizeHandle>
           <Box 
-            w="2px" 
+              w="1px" 
             h="full" 
             bg={borderColor}
-            _hover={{ bg: useColorModeValue('gray.400', 'gray.500'), w: "4px" }}
-            transition="all 0.2s"
+              _hover={{ 
+                bg: accentColor,
+                w: "3px",
+                shadow: 'lg'
+              }}
+              transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
             cursor="col-resize"
             position="relative"
           >
@@ -573,45 +1163,80 @@ Customer: Says they guess but won't sign anything today`
               top="50%"
               left="50%"
               transform="translate(-50%, -50%)"
-              w="20px"
-              h="40px"
+                w="24px"
+                h="48px"
               bg={cardBg}
               border="1px solid"
               borderColor={borderColor}
-              borderRadius="md"
+                borderRadius="xl"
               display="flex"
               alignItems="center"
               justifyContent="center"
               opacity={0}
-              _hover={{ opacity: 1 }}
-              transition="opacity 0.2s"
-            >
-              <Box w="2px" h="20px" bg={borderColor} mx="1px" />
-              <Box w="2px" h="20px" bg={borderColor} mx="1px" />
+                _hover={{ opacity: 1, shadow: 'md' }}
+                transition="all 0.3s"
+                backdropFilter="blur(10px)"
+              >
+                <VStack spacing="2px">
+                  <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
+                  <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
+                  <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
+                </VStack>
             </Box>
           </Box>
         </PanelResizeHandle>
 
-        {/* Right Side - Call Button and Transcript */}
-        <Panel defaultSize={75} minSize={40}>
-          <Box position="relative" h="full">
+          {/* Right Panel - Live Transcript */}
+          <Panel defaultSize={50} minSize={30} maxSize={70}>
+            <Box 
+              bg={cardBg}
+              h="full"
+              display="flex"
+              flexDirection="column"
+              borderRadius="xl"
+              borderTopLeftRadius="0"
+              borderBottomLeftRadius="0"
+            >
+                <Flex 
+                bg={headerBg}
+                backdropFilter="blur(10px)"
+                borderBottom="1px"
+                borderColor={borderColor}
+                px={6}
+                py={5}
+                justify="space-between"
+                align="center"
+              >
+                <VStack align="start" spacing={1} flex={1}>
+                  <Heading 
+                    size="lg" 
+                    color={textPrimary}
+                    fontWeight="600"
+                    letterSpacing="-0.02em"
+                  >
+                    Live Transcript
+                  </Heading>
+                  <Text 
+                    fontSize="sm" 
+                    color={textSecondary}
+                    fontWeight="400"
+                  >
+                    AI-powered conversation analysis
+                  </Text>
+                </VStack>
+                
+                <HStack spacing={3} flexShrink={0}>
             {/* Script Button */}
             {selectedTemplate && (
-              <IconButton
-                aria-label={isOpen ? "Close script" : "View script"}
-                icon={<Icon as={FileText} />}
-                position="absolute"
-                top={4}
-                right={4}
-                zIndex={10}
-                size="md"
-                colorScheme="blue"
-                variant={isOpen ? "outline" : "solid"}
-                borderRadius="full"
-                bg={isOpen ? useColorModeValue('white', 'gray.800') : undefined}
-                borderColor={isOpen ? "blue.400" : undefined}
+                    <Button
+                      leftIcon={<Icon as={FileText} boxSize="4" />}
+                      size="sm"
+                      variant="ghost"
+                      color={useColorModeValue('gray.600', 'gray.400')}
+                      bg={isOpen ? useColorModeValue('blue.50', 'blue.900/30') : 'transparent'}
                 _hover={{
-                  bg: isOpen ? useColorModeValue('blue.50', 'blue.900') : undefined
+                        bg: useColorModeValue('gray.100/70', 'gray.700/70'),
+                        color: useColorModeValue('gray.800', 'gray.200')
                 }}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -619,235 +1244,179 @@ Customer: Says they guess but won't sign anything today`
                     onClose()
                   } else {
                     console.log('Opening modal for template:', selectedTemplate)
-                    const template = templates.find(t => t.id.toString() === selectedTemplate)
-                    console.log('Template script preview:', template?.script ? template.script.substring(0, 100) + '...' : 'No script found')
+                          const template = templates.find(t => t.id.toString() === selectedTemplate)
+                          console.log('Template script preview:', template?.script ? template.script.substring(0, 100) + '...' : 'No script found')
                   onOpen()
                   }
                 }}
-                boxShadow="lg"
-              />
-            )}
-          <PanelGroup direction="vertical">
-            {/* Call Button Area */}
-            <Panel 
-              defaultSize={65}
-              minSize={30}
-            >
-              <Box 
-                bg={cardBg}
-                h="full"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                p={2}
-                overflow="hidden"
-              >
-              <Box 
-                w="full" 
-                h="full" 
-                display="flex" 
-                flexDirection="column" 
-                alignItems="center" 
-                justifyContent="center"
-                cursor={(!selectedTemplate || !vapiPublicKey) && !isCallActive ? "not-allowed" : "pointer"}
-                onClick={isCallActive ? endCall : ((!selectedTemplate || !vapiPublicKey) ? undefined : createAssistantAndStartCall)}
-                opacity={(!selectedTemplate || !vapiPublicKey) && !isCallActive ? 0.6 : 1}
-                transition="none"
-                sx={{
-                  filter: (!selectedTemplate || !vapiPublicKey) 
-                    ? "drop-shadow(0 0 25px rgba(147, 197, 253, 0.7)) drop-shadow(0 0 50px rgba(147, 197, 253, 0.4))"
-                    : "drop-shadow(0 0 30px rgba(147, 197, 253, 0.9)) drop-shadow(0 0 60px rgba(147, 197, 253, 0.5))",
-                  '&:hover': {
-                    filter: (!selectedTemplate || !vapiPublicKey) 
-                      ? "drop-shadow(0 0 25px rgba(147, 197, 253, 0.7)) drop-shadow(0 0 50px rgba(147, 197, 253, 0.4))"
-                      : "drop-shadow(0 0 35px rgba(147, 197, 253, 1)) drop-shadow(0 0 70px rgba(147, 197, 253, 0.6)"
-                  }
-                }}
-              >
-                <VStack spacing={[4, 6, 8]}>
-                  {/* Sound Wave Visualization */}
-                  <HStack spacing={[2, 3, 4]} alignItems="center" h={["120px", "160px", "200px"]}>
-                    {[30, 60, 20, 80, 40, 100, 70, 90, 50, 100, 80, 60, 90, 40, 70, 30, 50, 80, 20, 60, 40].map((height, index) => (
-                      <Box
-                        key={index}
-                        w={["2px", "3px", "4px"]}
-                        h={`${height}%`}
-                        bg="blue.300"
-                        borderRadius="full"
-                        transition="none"
-                        animation={isCallActive 
-                          ? `soundWave${index % 3} 4s ease-in-out infinite` 
-                          : (selectedTemplate ? `idleWave${index % 3} 3s ease-in-out infinite` : undefined)
-                        }
-                        sx={{
-                          '@keyframes soundWave0': {
-                            '0%': { height: `${height}%` },
-                            '25%': { height: `${Math.min(height * 1.3, 100)}%` },
-                            '50%': { height: `${Math.min(height * 0.8, 100)}%` },
-                            '75%': { height: `${Math.min(height * 1.4, 100)}%` },
-                            '100%': { height: `${height}%` }
-                          },
-                          '@keyframes soundWave1': {
-                            '0%': { height: `${height}%` },
-                            '20%': { height: `${Math.min(height * 0.7, 100)}%` },
-                            '40%': { height: `${Math.min(height * 1.5, 100)}%` },
-                            '60%': { height: `${Math.min(height * 0.9, 100)}%` },
-                            '80%': { height: `${Math.min(height * 1.2, 100)}%` },
-                            '100%': { height: `${height}%` }
-                          },
-                          '@keyframes soundWave2': {
-                            '0%': { height: `${height}%` },
-                            '30%': { height: `${Math.min(height * 1.4, 100)}%` },
-                            '45%': { height: `${Math.min(height * 0.75, 100)}%` },
-                            '70%': { height: `${Math.min(height * 1.6, 100)}%` },
-                            '85%': { height: `${Math.min(height * 0.95, 100)}%` },
-                            '100%': { height: `${height}%` }
-                          },
-                          '@keyframes idleWave0': {
-                            '0%, 100%': { height: `${height}%` },
-                            '50%': { height: `${Math.min(height * 1.05, 100)}%` }
-                          },
-                          '@keyframes idleWave1': {
-                            '0%, 100%': { height: `${height}%` },
-                            '50%': { height: `${Math.min(height * 1.03, 100)}%` }
-                          },
-                          '@keyframes idleWave2': {
-                            '0%, 100%': { height: `${height}%` },
-                            '50%': { height: `${Math.min(height * 1.07, 100)}%` }
-                          }
-                        }}
-                      />
-                    ))}
-                  </HStack>
-                  <Text 
-                    fontSize={["md", "lg", "xl"]} 
-                    fontWeight="medium" 
-                    color={useColorModeValue('gray.700', 'gray.300')}
-                    textAlign="center"
-                  >
-                    {isCreatingCall ? "Ringing..." : (callConnected ? "Click anywhere to end call" : "Click anywhere to start call")}
-                  </Text>
-                </VStack>
-              </Box>
-              </Box>
-            </Panel>
-
-            {/* Transcript Resize Handle */}
-            <PanelResizeHandle>
-                <Box 
-                  h="2px" 
-                  w="full" 
-                  bg={borderColor}
-                  _hover={{ bg: useColorModeValue('gray.400', 'gray.500'), h: "4px" }}
-                  transition="all 0.2s"
-                  cursor="row-resize"
+                      borderRadius="xl"
+                      fontWeight="500"
+                      px={4}
+                      transition="all 0.3s"
+                    >
+                      Script
+                    </Button>
+                  )}
+                  
+                  {/* Call Button */}
+                  <Button
+                    size="sm"
+                    onClick={isCallActive ? endCall : createAssistantAndStartCall}
+                    isLoading={isCreatingCall}
+                    loadingText="Starting..."
+                    isDisabled={
+                      !vapiPublicKey || 
+                      (userRole.isAdmin ? !selectedTemplate : !selectedAssignment)
+                    }
+                    bg={isCallActive 
+                      ? 'linear-gradient(135deg, #ef4444, #dc2626)' 
+                      : 'linear-gradient(135deg, #3b82f6, #2563eb)'
+                    }
+                    color="white"
+                    _hover={{
+                      transform: 'translateY(-2px)',
+                      shadow: '2xl',
+                      bg: isCallActive 
+                        ? 'linear-gradient(135deg, #dc2626, #b91c1c)' 
+                        : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                      _before: {
+                        left: '100%'
+                      }
+                    }}
+                    _active={{
+                      transform: 'translateY(-1px)',
+                      shadow: 'lg'
+                    }}
+                    borderRadius="xl"
+                    fontWeight="600"
+                    px={6}
+                    shadow="lg"
+                    transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
                   position="relative"
-                >
-                  <Box
-                    position="absolute"
-                    top="50%"
-                    left="50%"
-                    transform="translate(-50%, -50%)"
-                    w="40px"
-                    h="20px"
-                    bg={cardBg}
-                    border="1px solid"
-                    borderColor={borderColor}
-                    borderRadius="md"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    opacity={0}
-                    _hover={{ opacity: 1 }}
-                    transition="opacity 0.2s"
+                    overflow="hidden"
+                    _before={{
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: '-100%',
+                      width: '100%',
+                      height: '100%',
+                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                      transition: 'left 0.5s'
+                    }}
                   >
-                    <Box w="20px" h="2px" bg={borderColor} my="1px" />
-                    <Box w="20px" h="2px" bg={borderColor} my="1px" />
-                  </Box>
-                </Box>
-              </PanelResizeHandle>
-
-            {/* Live Transcript */}
-            <Panel 
-              defaultSize={35}
-              minSize={8}
-              maxSize={50}
-            >
-              <Box 
-                bg={cardBg}
-                h="full"
-                display="flex"
-                flexDirection="column"
-              >
-              <Flex p={3} borderBottom="1px" borderColor={borderColor} justify="space-between" align="center" minH="60px">
-                <Box flex={1} minW={0}>
-                  <HStack spacing={2}>
-                    <Heading size="sm" color={useColorModeValue('gray.900', 'white')} noOfLines={1}>
-                      Live Transcript
-                    </Heading>
-                    <Badge colorScheme="green" variant="subtle" fontSize="xs">Real-time</Badge>
-                  </HStack>
-                  <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} mt={1} noOfLines={1}>
-                    AI-powered conversation analysis and feedback
-                  </Text>
-                </Box>
+                    {isCallActive ? "End Call" : "Start Training"}
+                  </Button>
+                  
+                  {/* Export PDF Button */}
+                  {!isCallActive && fullTranscriptChunks.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      colorScheme="green"
+                      onClick={exportTranscriptToPDF}
+                      isLoading={isExportingPDF}
+                      loadingText="Exporting..."
+                      flexShrink={0}
+                      borderRadius="xl"
+                      fontWeight="500"
+                    >
+                      Export PDF
+                    </Button>
+                  )}
+                  
+                  {/* Clear Button */}
                 {transcript.length > 0 && (
                   <Button
                     size="xs"
-                    variant="outline"
+                      variant="ghost"
                     colorScheme="red"
-                    onClick={() => setTranscript([])}
+                    onClick={() => {
+                      setTranscript([])
+                      setFullTranscriptChunks([])
+                    }}
                     flexShrink={0}
+                      borderRadius="lg"
+                      fontWeight="500"
                   >
                     Clear
                   </Button>
             )}
+                </HStack>
           </Flex>
                 
-                <Box flex={1} overflowY="auto" p={4}>
+                <Box flex={1} overflowY="auto" p={6}>
                   {transcript.length === 0 ? (
-                    <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} textAlign="center" mt={8}>
-                  {isCallActive ? "Conversation transcript will appear here..." : "Start a training session to see the live transcript"}
+                    <VStack spacing={4} justify="center" h="full" color={useColorModeValue('gray.400', 'gray.500')}>
+                      <Flex
+                        w="16"
+                        h="16"
+                        borderRadius="full"
+                        bg={useColorModeValue('gray.100', 'gray.700')}
+                        align="center"
+                        justify="center"
+                      >
+                        <Icon as={MessageSquare} boxSize={7} color={useColorModeValue('gray.500', 'gray.400')} />
+                      </Flex>
+                      <VStack spacing={1} textAlign="center">
+                        <Text fontSize="sm" fontWeight="500">
+                          {isCallActive ? "Listening for conversation..." : "Ready to train"}
                 </Text>  
+                        <Text fontSize="xs">
+                          {isCallActive ? "Your transcript will appear here" : "Start a training session to see the live transcript"}
+                        </Text>
+                      </VStack>
+                    </VStack>
                         ) : (
                           <VStack align="stretch" spacing={4}>
-                            {[...transcript].reverse().map((entry, index) => (
+                            {/* One block per speaker segment */}
+                            {transcript.map((segment, index) => (
                               <Box key={index}>
-                                <HStack spacing={2} mb={2}>
+                                <HStack spacing={3} mb={3} align="center">
                                   <Badge 
-                                    colorScheme={entry.speaker === 'You' ? "blue" : "green"} 
-                                    variant="subtle"
+                                    colorScheme={segment.speaker === 'You' ? "blue" : "green"}
+                                    variant="solid"
                                     fontSize="xs"
+                                    px="3"
+                                    py="1"
+                                    borderRadius="full"
+                                    fontWeight="600"
                                   >
-                                    {entry.speaker}
+                                    {segment.speaker}
                                   </Badge>
-                                  <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.500')}>
-                                    {entry.timestamp.toLocaleTimeString()}
+                                  <Text fontSize="xs" color={useColorModeValue('gray.400', 'gray.500')} fontWeight="500">
+                                    {segment.timestamp.toLocaleTimeString()}
                                   </Text>
                                 </HStack>
                                 <Box 
-                                  bg={useColorModeValue('gray.50', 'gray.700')}
-                                  p={4}
-                                  borderRadius="lg"
-                                  borderLeft="4px solid"
-                                  borderLeftColor={entry.speaker === 'You' ? "blue.400" : "green.400"}
+                                  bg={segment.speaker === 'You' 
+                                    ? useColorModeValue('blue.50/50', 'blue.900/20') 
+                                    : useColorModeValue('green.50/50', 'green.900/20')
+                                  }
+                                  p={5}
+                                  borderRadius="2xl"
+                                  border="1px solid"
+                                  borderColor={segment.speaker === 'You' 
+                                    ? useColorModeValue('blue.100', 'blue.800/50') 
+                                    : useColorModeValue('green.100', 'green.800/50')
+                                  }
+                                  position="relative"
                                 >
                                   <Text 
                                     fontSize="sm" 
-                                    color={useColorModeValue('gray.800', 'gray.200')}
+                                    color={useColorModeValue('gray.700', 'gray.200')}
                                     lineHeight="1.6"
+                                    fontWeight="400"
                                   >
-                                    {entry.text}
+                                    {segment.text}
                                   </Text>
                                 </Box>
                               </Box>
                             ))}
+                            <div ref={transcriptEndRef} />
                           </VStack>
                         )}
                 </Box>
-              </Box>
-            </Panel>
-          </PanelGroup>
           </Box>
         </Panel>
       </PanelGroup>
@@ -861,117 +1430,160 @@ Customer: Says they guess but won't sign anything today`
           top={`${modalPosition.y}px`}
           w={`${modalSize.width}px`}
           h={`${modalSize.height}px`}
-          bg={useColorModeValue('white', 'gray.800')}
-          borderRadius="2xl"
-          boxShadow="2xl"
+          bg={useColorModeValue('white', 'gray.850')}
+          borderRadius="3xl"
+          boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.25)"
           border="1px solid"
-          borderColor={useColorModeValue('gray.200', 'gray.700')}
+          borderColor={useColorModeValue('gray.100', 'gray.700')}
           zIndex="100"
           overflow="hidden"
           display="flex"
           flexDirection="column"
           cursor={isDragging ? 'grabbing' : 'default'}
+          backdropFilter="blur(20px)"
         >
           <Box 
-            pb={4} 
             borderBottom="1px solid" 
-            borderColor={useColorModeValue('gray.200', 'gray.700')}
-            bg={useColorModeValue('gray.50', 'gray.750')}
-            borderTopRadius="2xl"
-            p={4}
+            borderColor={useColorModeValue('gray.100', 'gray.700')}
+            bg={headerBg}
+            backdropFilter="blur(20px)"
+            borderTopRadius="3xl"
+            p={6}
             position="relative"
             cursor="grab"
             onMouseDown={handleMouseDown}
             _active={{ cursor: 'grabbing' }}
             userSelect="none"
           >
-            <HStack spacing={4} flex="1">
+            <HStack spacing={5} flex="1">
               <Box 
-                p={3} 
-                bg={useColorModeValue('blue.50', 'blue.900')} 
-                borderRadius="xl"
+                p={4} 
+                bg={useColorModeValue('blue.50/70', 'blue.900/30')} 
+                borderRadius="2xl"
                 border="1px solid"
-                borderColor={useColorModeValue('blue.200', 'blue.700')}
+                borderColor={useColorModeValue('blue.100', 'blue.800/50')}
               >
-                <Icon as={FileText} color="blue.500" boxSize={6} />
+                <Icon as={FileText} color={accentColor} boxSize={7} />
               </Box>
-              <VStack align="start" spacing={1} flex="1">
-                <Text fontSize="xl" fontWeight="bold" color={useColorModeValue('gray.900', 'white')}>
-                  Sample Script Preview
+              <VStack align="start" spacing={2} flex="1">
+                <Text fontSize="xl" fontWeight="700" color={useColorModeValue('gray.900', 'white')} letterSpacing="-0.02em">
+                  Script Preview
                 </Text>
-                <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
-                  {trainingTemplates.find(t => t.id === selectedTemplate)?.name} Training
+                <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')} fontWeight="500">
+                  {templates.find(t => t.id.toString() === selectedTemplate)?.title || 'Training Script'}
                 </Text>
               </VStack>
               <IconButton
                 aria-label="Close script"
-                icon={<Text fontSize="lg" lineHeight="1">×</Text>}
-                size="sm"
+                icon={<Text fontSize="xl" lineHeight="1">×</Text>}
+                size="md"
                 variant="ghost"
-                color={useColorModeValue('gray.600', 'gray.400')}
+                color={useColorModeValue('gray.500', 'gray.400')}
                 _hover={{ 
-                  bg: useColorModeValue('gray.200', 'gray.600'),
-                  color: useColorModeValue('gray.800', 'gray.200')
+                  bg: useColorModeValue('gray.100', 'gray.700'),
+                  color: useColorModeValue('gray.700', 'gray.200'),
+                  transform: 'scale(1.1)'
                 }}
-                borderRadius="md"
+                borderRadius="xl"
                 onClick={(e) => {
                   e.stopPropagation()
                   onClose()
                 }}
+                transition="all 0.2s"
               />
             </HStack>
           </Box>
-          <Box p={4} overflowY="auto" flex="1">
+          <Box p={6} overflowY="auto" flex="1">
             <Box
-              bg={useColorModeValue('white', 'gray.900')}
-              p={6}
-              borderRadius="xl"
-              border="2px solid"
-              borderColor={useColorModeValue('gray.200', 'gray.600')}
-              h="calc(100% - 20px)"
+              bg={cardBg}
+              p={8}
+              borderRadius="3xl"
+              border="1px solid"
+              borderColor={borderColor}
+              h="calc(100% - 24px)"
               overflowY="auto"
               position="relative"
+              shadow="inner"
               sx={{
-                '&::-webkit-scrollbar': {
-                  width: '8px',
-                },
-                '&::-webkit-scrollbar-track': {
-                  background: useColorModeValue('gray.100', 'gray.700'),
-                  borderRadius: '10px',
-                },
-                '&::-webkit-scrollbar-thumb': {
-                  background: useColorModeValue('gray.400', 'gray.500'),
-                  borderRadius: '10px',
+                // Hide scrollbar while preserving scroll functionality
+                scrollbarWidth: 'none',        // Firefox
+                msOverflowStyle: 'none',       // IE/Edge
+                '&::-webkit-scrollbar': {      // Chrome/Safari
+                  display: 'none',
+                  width: '0px',
+                  height: '0px',
                 },
               }}
             >
               {selectedTemplate && scriptText ? (
-                <Box fontFamily="monospace" fontSize="sm" whiteSpace="pre-wrap" lineHeight="1.6">
-                  {scriptText.split('\n').map((line, index) => {
-                    // Check if it's a speaker line (Seller:, Buyer:, Agent:, Customer:, etc.)
-                    const speakerMatch = line.match(/^(Seller|Buyer|Agent|Customer|Client):\s*(.*)/)
-                    
-                    if (speakerMatch) {
-                      const [, speaker, text] = speakerMatch
-                      return (
-                        <Box key={index} mb={2}>
-                          <Text as="span" fontWeight="bold" color="blue.500">
-                            {speaker}:
-                          </Text>
-                          <Text as="span" ml={2}>
-                            {text}
-                          </Text>
-                        </Box>
-                      )
+                <Box 
+                  sx={{
+                    '& h1': {
+                      fontSize: 'xl',
+                      fontWeight: 'bold',
+                      color: useColorModeValue('gray.800', 'white'),
+                      mb: 4,
+                      borderBottom: '2px solid',
+                      borderColor: useColorModeValue('gray.200', 'gray.600'),
+                      pb: 2
+                    },
+                    '& h2': {
+                      fontSize: 'lg',
+                      fontWeight: 'semibold',
+                      color: useColorModeValue('blue.600', 'blue.300'),
+                      mt: 6,
+                      mb: 3
+                    },
+                    '& h3': {
+                      fontSize: 'md',
+                      fontWeight: 'semibold',
+                      color: useColorModeValue('gray.700', 'gray.300'),
+                      mt: 4,
+                      mb: 2
+                    },
+                    '& p': {
+                      mb: 3,
+                      lineHeight: '1.6'
+                    },
+                    '& strong': {
+                      fontWeight: 'bold',
+                      color: useColorModeValue('gray.800', 'white')
+                    },
+                    '& ul, & ol': {
+                      pl: 4,
+                      mb: 3
+                    },
+                    '& li': {
+                      mb: 1
                     }
-                    
-                    // Everything else is just plain text
-                    return (
-                      <Text key={index} mb={line.trim() ? 1 : 2}>
-                        {line}
-                      </Text>
-                    )
-                  })}
+                  }}
+                >
+                  <ReactMarkdown
+                    components={{
+                      p: ({ children }) => {
+                        const text = children?.toString() || ''
+                        // Check if it's a speaker line (Seller:, Buyer:, Agent:, Customer:, etc.)
+                        const speakerMatch = text.match(/^(Seller|Buyer|Agent|Customer|Client):\s*(.*)/)
+                        
+                        if (speakerMatch) {
+                          return (
+                            <Box mb={2}>
+                              <Text as="span" fontWeight="bold" color="blue.500">
+                                {speakerMatch[1]}:
+                            </Text>
+                              <Text as="span" ml={2}>
+                                {speakerMatch[2]}
+                              </Text>
+                            </Box>
+                          )
+                        }
+
+                        return <Text mb={3} lineHeight="1.6">{children}</Text>
+                      }
+                    }}
+                  >
+                    {scriptText}
+                  </ReactMarkdown>
                 </Box>
               ) : (
                 <Text color={useColorModeValue('gray.500', 'gray.400')} textAlign="center" py={8}>

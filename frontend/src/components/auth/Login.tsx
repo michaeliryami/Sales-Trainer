@@ -15,11 +15,11 @@ import {
   useColorModeValue,
   Card,
   CardBody,
-  Divider,
   Icon,
   InputGroup,
   InputLeftElement
 } from '@chakra-ui/react'
+import ModernDivider from '../ModernDivider'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -78,142 +78,218 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
   }
 
   return (
-    <Card bg={cardBg} border="1px solid" borderColor={borderColor} shadow="lg" maxW="400px" w="full">
-      <CardBody p={8}>
-        <VStack spacing={6} align="stretch">
-          {/* Header */}
-          <Box textAlign="center">
-            <Heading size="lg" color={useColorModeValue('gray.900', 'white')} mb={2}>
-              Welcome Back
-            </Heading>
-            <Text color={useColorModeValue('gray.600', 'gray.400')}>
-              Sign in to your Sales Trainer account
-            </Text>
-          </Box>
+    <Box w="full">
+      <VStack spacing={8} align="stretch">
+        {/* Header */}
+        <Box textAlign="center">
+          <Heading 
+            size="2xl" 
+            color={useColorModeValue('gray.900', 'white')} 
+            mb={3}
+            fontWeight="700"
+            letterSpacing="-0.02em"
+          >
+            Welcome Back
+          </Heading>
+          <Text 
+            color={useColorModeValue('gray.600', 'gray.400')} 
+            fontSize="lg"
+            fontWeight="400"
+          >
+            Sign in to continue your training journey
+          </Text>
+        </Box>
 
-          {/* Error Alert */}
-          {error && (
-            <Alert status="error" borderRadius="md">
-              <AlertIcon />
-              {error}
-            </Alert>
-          )}
+        {/* Login Card */}
+        <Card 
+          bg={cardBg} 
+          border="1px solid" 
+          borderColor={borderColor} 
+          shadow="2xl" 
+          borderRadius="2xl"
+          overflow="hidden"
+        >
+          <CardBody p={8}>
+            <VStack spacing={6} align="stretch">
+              {/* Error Alert */}
+              {error && (
+                <Alert 
+                  status="error" 
+                  borderRadius="xl"
+                  bg={useColorModeValue('red.50', 'red.900/20')}
+                  border="1px solid"
+                  borderColor={useColorModeValue('red.200', 'red.700')}
+                >
+                  <AlertIcon />
+                  <Text fontSize="sm">{error}</Text>
+                </Alert>
+              )}
 
-          {/* Login Form */}
-          <form onSubmit={handleSubmit}>
-            <VStack spacing={4}>
-              <FormControl isRequired>
-                <FormLabel color={useColorModeValue('gray.700', 'gray.300')}>
-                  Email Address
-                </FormLabel>
-                <InputGroup>
-                  <InputLeftElement>
-                    <Icon as={Mail} color={useColorModeValue('gray.400', 'gray.500')} />
-                  </InputLeftElement>
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    bg={useColorModeValue('white', 'gray.700')}
-                    border="1px solid"
-                    borderColor={useColorModeValue('gray.300', 'gray.600')}
-                    _hover={{
-                      borderColor: useColorModeValue('gray.400', 'gray.500')
-                    }}
-                    _focus={{
-                      borderColor: 'blue.500',
-                      boxShadow: '0 0 0 1px blue.500'
-                    }}
-                  />
-                </InputGroup>
-              </FormControl>
+              {/* Login Form */}
+              <form onSubmit={handleSubmit}>
+                <VStack spacing={5}>
+                  <FormControl isRequired>
+                    <FormLabel 
+                      color={useColorModeValue('gray.700', 'gray.300')}
+                      fontSize="sm"
+                      fontWeight="600"
+                      mb={2}
+                    >
+                      Email Address
+                    </FormLabel>
+                    <InputGroup size="lg">
+                      <InputLeftElement>
+                        <Icon as={Mail} color={useColorModeValue('gray.400', 'gray.500')} boxSize={5} />
+                      </InputLeftElement>
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Enter your email"
+                        bg={useColorModeValue('gray.50', 'gray.700')}
+                        border="2px solid"
+                        borderColor={useColorModeValue('gray.200', 'gray.600')}
+                        borderRadius="xl"
+                        fontSize="md"
+                        _hover={{
+                          borderColor: useColorModeValue('blue.300', 'blue.500'),
+                          bg: useColorModeValue('white', 'gray.600')
+                        }}
+                        _focus={{
+                          borderColor: 'blue.500',
+                          boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+                          bg: useColorModeValue('white', 'gray.600')
+                        }}
+                        _placeholder={{
+                          color: useColorModeValue('gray.400', 'gray.500')
+                        }}
+                      />
+                    </InputGroup>
+                  </FormControl>
 
-              <FormControl isRequired>
-                <FormLabel color={useColorModeValue('gray.700', 'gray.300')}>
-                  Password
-                </FormLabel>
-                <InputGroup>
-                  <InputLeftElement>
-                    <Icon as={Lock} color={useColorModeValue('gray.400', 'gray.500')} />
-                  </InputLeftElement>
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    bg={useColorModeValue('white', 'gray.700')}
-                    border="1px solid"
-                    borderColor={useColorModeValue('gray.300', 'gray.600')}
-                    _hover={{
-                      borderColor: useColorModeValue('gray.400', 'gray.500')
-                    }}
-                    _focus={{
-                      borderColor: 'blue.500',
-                      boxShadow: '0 0 0 1px blue.500'
-                    }}
-                  />
+                  <FormControl isRequired>
+                    <FormLabel 
+                      color={useColorModeValue('gray.700', 'gray.300')}
+                      fontSize="sm"
+                      fontWeight="600"
+                      mb={2}
+                    >
+                      Password
+                    </FormLabel>
+                    <InputGroup size="lg">
+                      <InputLeftElement>
+                        <Icon as={Lock} color={useColorModeValue('gray.400', 'gray.500')} boxSize={5} />
+                      </InputLeftElement>
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter your password"
+                        bg={useColorModeValue('gray.50', 'gray.700')}
+                        border="2px solid"
+                        borderColor={useColorModeValue('gray.200', 'gray.600')}
+                        borderRadius="xl"
+                        fontSize="md"
+                        _hover={{
+                          borderColor: useColorModeValue('blue.300', 'blue.500'),
+                          bg: useColorModeValue('white', 'gray.600')
+                        }}
+                        _focus={{
+                          borderColor: 'blue.500',
+                          boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+                          bg: useColorModeValue('white', 'gray.600')
+                        }}
+                        _placeholder={{
+                          color: useColorModeValue('gray.400', 'gray.500')
+                        }}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        position="absolute"
+                        right={3}
+                        top="50%"
+                        transform="translateY(-50%)"
+                        onClick={() => setShowPassword(!showPassword)}
+                        zIndex={2}
+                        borderRadius="lg"
+                        _hover={{
+                          bg: useColorModeValue('gray.100', 'gray.600')
+                        }}
+                      >
+                        <Icon as={showPassword ? EyeOff : Eye} boxSize={4} />
+                      </Button>
+                    </InputGroup>
+                  </FormControl>
+
+                  {/* Forgot Password Link */}
+                  <Box w="full" textAlign="right">
+                    <Link
+                      color="blue.500"
+                      onClick={onForgotPassword}
+                      cursor="pointer"
+                      fontSize="sm"
+                      fontWeight="500"
+                      _hover={{ 
+                        textDecoration: 'underline',
+                        color: 'blue.600'
+                      }}
+                    >
+                      Forgot password?
+                    </Link>
+                  </Box>
+
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    position="absolute"
-                    right={2}
-                    top="50%"
-                    transform="translateY(-50%)"
-                    onClick={() => setShowPassword(!showPassword)}
-                    zIndex={2}
+                    type="submit"
+                    size="lg"
+                    w="full"
+                    h={12}
+                    isLoading={loading}
+                    loadingText="Signing in..."
+                    bg="linear-gradient(135deg, #3b82f6, #2563eb)"
+                    color="white"
+                    borderRadius="xl"
+                    fontSize="md"
+                    fontWeight="600"
+                    _hover={{
+                      bg: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                      transform: 'translateY(-1px)',
+                      shadow: 'xl'
+                    }}
+                    _active={{
+                      transform: 'translateY(0)',
+                      shadow: 'lg'
+                    }}
+                    transition="all 0.2s"
                   >
-                    <Icon as={showPassword ? EyeOff : Eye} boxSize={4} />
+                    Sign In
                   </Button>
-                </InputGroup>
-              </FormControl>
-
-              <Button
-                type="submit"
-                colorScheme="blue"
-                size="lg"
-                w="full"
-                isLoading={loading}
-                loadingText="Signing in..."
-              >
-                Sign In
-              </Button>
+                </VStack>
+              </form>
             </VStack>
-          </form>
+          </CardBody>
+        </Card>
 
-          {/* Forgot Password Link */}
-          <Box textAlign="center">
+        {/* Sign Up Link */}
+        <Box textAlign="center" py={4}>
+          <Text color={useColorModeValue('gray.600', 'gray.400')} fontSize="md">
+            Don't have an account?{' '}
             <Link
               color="blue.500"
-              onClick={onForgotPassword}
+              onClick={onToggleMode}
               cursor="pointer"
-              _hover={{ textDecoration: 'underline' }}
+              fontWeight="600"
+              _hover={{ 
+                textDecoration: 'underline',
+                color: 'blue.600'
+              }}
             >
-              Forgot your password?
+              Sign up for free
             </Link>
-          </Box>
-
-
-          <Divider />
-
-          {/* Sign Up Link */}
-          <Box textAlign="center">
-            <Text color={useColorModeValue('gray.600', 'gray.400')}>
-              Don't have an account?{' '}
-              <Link
-                color="blue.500"
-                onClick={onToggleMode}
-                cursor="pointer"
-                fontWeight="semibold"
-                _hover={{ textDecoration: 'underline' }}
-              >
-                Sign up
-              </Link>
-            </Text>
-          </Box>
-        </VStack>
-      </CardBody>
-    </Card>
+          </Text>
+        </Box>
+      </VStack>
+    </Box>
   )
 }
 

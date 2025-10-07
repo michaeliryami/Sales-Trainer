@@ -15,12 +15,12 @@ import {
   useColorModeValue,
   Card,
   CardBody,
-  Divider,
   Icon,
   InputGroup,
   InputLeftElement,
   Progress
 } from '@chakra-ui/react'
+import ModernDivider from '../ModernDivider'
 import { Mail, Lock, Eye, EyeOff, User, XCircle, CheckCircle, MailCheck } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -371,7 +371,7 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
             </VStack>
           </form>
 
-          <Divider />
+          <ModernDivider inset />
 
           {/* Sign In Link */}
           <Box textAlign="center">

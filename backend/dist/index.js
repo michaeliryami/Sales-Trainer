@@ -9,7 +9,8 @@ dotenv_1.default.config({ path: path_1.default.resolve(__dirname, '../.env') });
 console.log('Environment variables loaded:', {
     SUPABASE_URL: process.env.SUPABASE_URL ? 'Set' : 'Missing',
     SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'Set' : 'Missing',
-    VAPI_API_KEY: process.env.VAPI_API_KEY ? 'Set' : 'Missing'
+    VAPI_API_KEY: process.env.VAPI_API_KEY ? 'Set' : 'Missing',
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'Set' : 'Missing'
 });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
@@ -19,6 +20,8 @@ const assistants_1 = __importDefault(require("./routes/assistants"));
 const templates_1 = __importDefault(require("./routes/templates"));
 const invites_1 = __importDefault(require("./routes/invites"));
 const profiles_1 = __importDefault(require("./routes/profiles"));
+const ai_1 = __importDefault(require("./routes/ai"));
+const export_1 = __importDefault(require("./routes/export"));
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3002;
 app.use((0, cors_1.default)());
@@ -38,6 +41,8 @@ app.use('/api/assistants', assistants_1.default);
 app.use('/api/templates', templates_1.default);
 app.use('/api/invites', invites_1.default);
 app.use('/api/profiles', profiles_1.default);
+app.use('/api/ai', ai_1.default);
+app.use('/api/export', export_1.default);
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ error: 'Something went wrong!' });

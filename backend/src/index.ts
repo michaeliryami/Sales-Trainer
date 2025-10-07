@@ -7,7 +7,8 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') })
 console.log('Environment variables loaded:', {
   SUPABASE_URL: process.env.SUPABASE_URL ? 'Set' : 'Missing',
   SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'Set' : 'Missing',
-  VAPI_API_KEY: process.env.VAPI_API_KEY ? 'Set' : 'Missing'
+  VAPI_API_KEY: process.env.VAPI_API_KEY ? 'Set' : 'Missing',
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'Set' : 'Missing'
 })
 
 import express from 'express'
@@ -18,6 +19,8 @@ import assistantsRouter from './routes/assistants'
 import templatesRouter from './routes/templates'
 import invitesRouter from './routes/invites'
 import profilesRouter from './routes/profiles'
+import aiRouter from './routes/ai'
+import exportRouter from './routes/export'
 
 const app = express()
 const PORT = process.env.PORT || 3002
@@ -46,6 +49,8 @@ app.use('/api/assistants', assistantsRouter)
 app.use('/api/templates', templatesRouter)
 app.use('/api/invites', invitesRouter)
 app.use('/api/profiles', profilesRouter)
+app.use('/api/ai', aiRouter)
+app.use('/api/export', exportRouter)
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

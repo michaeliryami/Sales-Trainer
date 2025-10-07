@@ -87,4 +87,22 @@ router.post('/:id/call', async (req, res) => {
     }
 });
 exports.default = router;
+router.get('/call/:callId', async (req, res) => {
+    try {
+        const { callId } = req.params;
+        if (!callId) {
+            res.status(400).json({ error: 'callId is required' });
+            return;
+        }
+        const call = await vapi_1.vapiService.getCall(callId);
+        res.status(200).json({ success: true, call });
+    }
+    catch (error) {
+        console.error('Error in GET /api/assistants/call/:callId:', error);
+        res.status(500).json({
+            error: 'Failed to fetch call details',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
 //# sourceMappingURL=assistants.js.map
