@@ -813,45 +813,73 @@ function CreateSession() {
   const totalPointsBorder = useColorModeValue('gray.200', 'gray.600')
 
   return (
-    <Box bg={bg} h="calc(100vh - 88px)" overflow="hidden">
-      <PanelGroup direction="horizontal">
-          {/* Left Panel - Template/Assignment Selection with Call Controls */}
-        <Panel 
-            defaultSize={50} 
-            minSize={30}
-            maxSize={70}
-          >
-            <Box bg={cardBg} h="full" borderRight="1px" borderColor={borderColor} overflow="hidden" display="flex" flexDirection="column" borderRadius="xl" borderTopRightRadius="0" borderBottomRightRadius="0">
-              {/* Header */}
-              <Box 
-                bg={headerBg}
-                backdropFilter="blur(10px)"
-                borderBottom="1px"
-                borderColor={borderColor}
-                px={6}
-                py={5}
-              >
-                <VStack align="start" spacing={1}>
-                  <Heading 
-                    size="lg" 
-                    color={textPrimary}
-                    fontWeight="600"
-                    letterSpacing="-0.02em"
-                  >
-                    {userRole.isAdmin ? 'Templates' : 'Assignments'}
-                  </Heading>
-                  <Text 
-                    fontSize="sm" 
-                    color={textSecondary}
-                    fontWeight="400"
-                  >
-                    {isCallActive ? "🟢 Training session active" : userRole.isAdmin ? "Choose a template to begin" : "Select an assignment to practice"}
-                </Text>
-                </VStack>
-              </Box>
-            
-              {/* Content - Templates for Admin, Assignments for Employees */}
-              <Box flex={1} overflowY="auto" p={6}>
+    <Box bg={bg} minH="calc(100vh - 88px)" p={8}>
+      <VStack spacing={6} align="stretch" maxW="1600px" mx="auto">
+        {/* Header Section */}
+        <HStack justify="space-between" align="start">
+          <VStack align="start" spacing={2}>
+            <Heading 
+              size="2xl" 
+              color={textPrimary}
+              fontWeight="700"
+              letterSpacing="-0.03em"
+            >
+              {userRole.isAdmin ? 'Practice Playground' : 'My Assignments'}
+            </Heading>
+            <Text 
+              fontSize="md" 
+              color={textSecondary}
+              fontWeight="400"
+            >
+              {isCallActive ? "🟢 Training session in progress" : userRole.isAdmin ? "Select a template and start practicing" : "Complete your assigned training sessions"}
+            </Text>
+          </VStack>
+
+          {/* Call Control Button */}
+          {selectedTemplate || selectedAssignment ? (
+            <Button
+              size="lg"
+              colorScheme={isCallActive ? "red" : "blue"}
+              onClick={isCallActive ? () => vapiRef.current?.stop() : createAssistantAndStartCall}
+              isLoading={isCreatingCall}
+              leftIcon={<Icon as={isCallActive ? MessageSquare : FileText} />}
+              px={8}
+              py={6}
+              fontSize="md"
+              fontWeight="600"
+              borderRadius="xl"
+              shadow="lg"
+              _hover={{
+                transform: 'translateY(-2px)',
+                shadow: '2xl'
+              }}
+              transition="all 0.3s"
+            >
+              {isCallActive ? 'End Practice' : 'Start Practice Call'}
+            </Button>
+          ) : null}
+        </HStack>
+
+        {/* Main Content Grid */}
+        <Box 
+          bg={cardBg} 
+          borderRadius="2xl" 
+          border="1px" 
+          borderColor={borderColor}
+          shadow="xl"
+          overflow="hidden"
+        >
+          <Flex direction={{ base: 'column', xl: 'row' }} minH="70vh">
+            {/* Templates/Assignments Section */}
+            <Box 
+              flex="1" 
+              borderRight={{ xl: "1px" }} 
+              borderBottom={{ base: "1px", xl: "none" }}
+              borderColor={borderColor}
+              p={8}
+              overflowY="auto"
+              maxH="70vh"
+            >
                 <VStack spacing={4} align="stretch">
                   <Box>
                     {userRole.isAdmin ? (

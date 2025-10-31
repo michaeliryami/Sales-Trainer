@@ -250,7 +250,17 @@ Customer: Says they guess but won't sign anything today`
         const HARDCODED_ASSISTANT_ID = '7d12ec26-6ea8-4483-bd49-0598c9043331';
         try {
             const { template, accountType } = data;
+            console.log('📝 Updating VAPI assistant with template:', {
+                title: template.title,
+                difficulty: template.difficulty,
+                scriptLength: template.script?.length || 0,
+                hasScript: !!template.script
+            });
             const systemPrompt = this.generateSystemPromptFromTemplate(template);
+            console.log('✅ System prompt generated:', {
+                promptLength: systemPrompt.length,
+                includesScript: systemPrompt.includes('REFERENCE SCRIPT')
+            });
             const assistantData = {
                 name: `${template.type} Insurance Customer - ${template.difficulty}`,
                 model: {

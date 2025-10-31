@@ -21,6 +21,7 @@ import invitesRouter from './routes/invites'
 import profilesRouter from './routes/profiles'
 import aiRouter from './routes/ai'
 import exportRouter from './routes/export'
+import analyticsRouter from './routes/analytics'
 
 const app = express()
 const PORT = process.env.PORT || 3002
@@ -51,6 +52,7 @@ app.use('/api/invites', invitesRouter)
 app.use('/api/profiles', profilesRouter)
 app.use('/api/ai', aiRouter)
 app.use('/api/export', exportRouter)
+app.use('/api/analytics', analyticsRouter)
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

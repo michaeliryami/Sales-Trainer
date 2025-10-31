@@ -11,21 +11,24 @@ import Admin from './pages/Admin'
 import Organization from './pages/Organization'
 import Rubrics from './pages/Rubrics'
 import Assignments from './pages/Assignments'
+import Analytics from './pages/Analytics'
+import MyAnalytics from './pages/MyAnalytics'
 import Auth from './pages/Auth'
 import AuthCallbackSimple from './pages/AuthCallbackSimple'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 import { AuthProvider } from './contexts/AuthContext'
 import { ProfileProvider } from './contexts/ProfileContext'
+import TemplateLibrary from './pages/TemplateLibrary'
 
 // Component to handle navigation persistence
 function NavigationHandler() {
   const location = useLocation()
 
   useEffect(() => {
-    // Save current path to localStorage (but not auth paths)
-    if (!location.pathname.includes('/auth')) {
-      localStorage.setItem('lastVisitedPath', location.pathname)
+    // Save current path to sessionStorage (but not auth paths or root)
+    if (!location.pathname.includes('/auth') && location.pathname !== '/') {
+      sessionStorage.setItem('lastVisitedPath', location.pathname)
     }
   }, [location.pathname])
 
@@ -34,8 +37,8 @@ function NavigationHandler() {
 
 // Component to redirect to last visited path
 function DefaultRedirect() {
-  const lastPath = localStorage.getItem('lastVisitedPath')
-  const validPaths = ['/create-session', '/admin', '/organization', '/rubrics', '/assignments']
+  const lastPath = sessionStorage.getItem('lastVisitedPath')
+  const validPaths = ['/create-session', '/admin', '/organization', '/rubrics', '/assignments', '/analytics', '/my-analytics', '/template-library']
   
   // If we have a last path and it's valid, redirect there
   if (lastPath && validPaths.includes(lastPath)) {
@@ -71,10 +74,21 @@ function App() {
                   <Routes>
                     <Route path="/" element={<DefaultRedirect />} />
                     <Route path="/create-session" element={<CreateSession />} />
-                    <Route path="/rubrics" element={<Rubrics />} />
+                    <Route path="/my-analytics" element={<MyAnalytics />} />
+                    <Route path="/template-library" element={<TemplateLibrary />} />
+                    <Route path="/rubrics" element={
+                      <AdminRoute>
+                        <Rubrics />
+                      </AdminRoute>
+                    } />
                     <Route path="/assignments" element={
                       <AdminRoute>
                         <Assignments />
+                      </AdminRoute>
+                    } />
+                    <Route path="/analytics" element={
+                      <AdminRoute>
+                        <Analytics />
                       </AdminRoute>
                     } />
                     <Route path="/admin" element={

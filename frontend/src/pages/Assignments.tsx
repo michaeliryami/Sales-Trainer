@@ -36,11 +36,14 @@ import {
   Stack,
   Avatar,
 } from '@chakra-ui/react'
-import { FileText, Save, Edit2, Trash2, Copy, MoreVertical, Eye, Download, FileDown } from 'lucide-react'
+import { FileText, Save, Edit2, Trash2, Copy, MoreVertical, Eye } from 'lucide-react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { supabase, Template } from '../config/supabase'
 import { useProfile } from '../contexts/ProfileContext'
 import { Profile } from '../types/database'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { ALL_BUILT_IN_TEMPLATES } from '../config/templateLibrary'
+import { GENERAL_LIFE_INSURANCE_RUBRIC } from '../config/rubricLibrary'
 
 interface Assignment {
   id: number
@@ -93,8 +96,7 @@ function AssignmentCard({
   onDelete, 
   cardBg, 
 }: AssignmentCardProps) {
-  const [isViewOpen, setIsViewOpen] = useState(false)
-  const [editingGrades, setEditingGrades] = useState<{[userId: string]: number}>({})
+  const navigate = useNavigate()
 
   const getAssignedUsers = (assignment: Assignment): string[] => {
     try {
@@ -105,9 +107,9 @@ function AssignmentCard({
     }
   }
 
-  const getUserName = (userId: string) => {
-    const user = users.find(u => u.id === userId)
-    return user?.display_name || user?.email || 'Unknown User'
+  const handleViewPerformance = () => {
+    // Navigate to analytics page with assignment filter
+    navigate(`/analytics?assignment=${assignment.id}`)
   }
 
   const getTemplateName = (templateId: number) => {
@@ -118,40 +120,6 @@ function AssignmentCard({
   const getRubricName = (rubricId: number) => {
     const rubric = rubrics.find(r => r.id === rubricId)
     return rubric?.title || 'Unknown Rubric'
-  }
-
-  // Mock performance data for each assigned user
-  const getUserPerformance = (userId: string) => {
-    const performances = [
-      { status: 'completed', score: 85, completedAt: '2024-01-10' },
-      { status: 'in_progress', score: null, completedAt: null },
-      { status: 'completed', score: 92, completedAt: '2024-01-08' },
-      { status: 'overdue', score: null, completedAt: null },
-      { status: 'not_started', score: null, completedAt: null }
-    ]
-    // Use userId hash to get consistent mock data
-    const index = parseInt(userId.slice(-1)) % performances.length
-    return performances[index]
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'green'
-      case 'in_progress': return 'orange'
-      case 'overdue': return 'red'
-      case 'not_started': return 'gray'
-      default: return 'gray'
-    }
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'completed': return 'Completed'
-      case 'in_progress': return 'In Progress'
-      case 'overdue': return 'Overdue'
-      case 'not_started': return 'Not Started'
-      default: return 'Unknown'
-    }
   }
 
   const assignedUserIds = getAssignedUsers(assignment)
@@ -303,117 +271,12 @@ function AssignmentCard({
               size="sm"
               variant="outline"
               colorScheme="blue"
-              onClick={() => setIsViewOpen(!isViewOpen)}
+              onClick={handleViewPerformance}
               borderRadius="lg"
             >
-              {isViewOpen ? 'Hide' : 'View'} Performance
+              View Performance
             </Button>
           </HStack>
-
-          {/* User Performance Cards (Collapsible) */}
-          {isViewOpen && (
-            <VStack spacing={3} align="stretch" pt={2}>
-              <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.700', 'gray.300')}>
-                User Performance ({assignedUserIds.length} assigned)
-              </Text>
-              
-              {assignedUserIds.map((userId) => {
-                const performance = getUserPerformance(userId)
-                const currentGrade = editingGrades[userId] ?? performance.score ?? 0
-                
-                return (
-                  <Card 
-                    key={userId}
-                    bg={useColorModeValue('gray.50', 'gray.800')}
-                    border="1px solid"
-                    borderColor={useColorModeValue('gray.100', 'gray.700')}
-                    borderRadius="lg"
-                    size="sm"
-                  >
-                    <CardBody p={4}>
-                      <Flex justify="space-between" align="center">
-                        <HStack spacing={3}>
-                          <Avatar name={getUserName(userId)} size="sm" />
-                          <VStack align="start" spacing={0}>
-                            <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
-                              {getUserName(userId)}
-                            </Text>
-                            <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
-                              {performance.completedAt ? `Completed: ${performance.completedAt}` : 'Not completed'}
-                            </Text>
-                          </VStack>
-                        </HStack>
-                        
-                        <VStack spacing={3} align="end">
-                          <HStack spacing={3}>
-                            <Badge 
-                              colorScheme={getStatusColor(performance.status)}
-                              variant="subtle"
-                              textTransform="capitalize"
-                              borderRadius="full"
-                              px={3}
-                              py={1}
-                              fontWeight="500"
-                            >
-                              {getStatusLabel(performance.status)}
-                            </Badge>
-                            
-                            {/* Editable Grade */}
-                            <HStack spacing={2}>
-                              <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
-                                Grade:
-                              </Text>
-                              <Input
-                                size="xs"
-                                w="60px"
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={currentGrade}
-                                onChange={(e) => setEditingGrades(prev => ({
-                                  ...prev,
-                                  [userId]: parseInt(e.target.value) || 0
-                                }))}
-                                bg={cardBg}
-                                border="1px solid"
-                                borderColor={useColorModeValue('gray.200', 'gray.600')}
-                                borderRadius="md"
-                                fontSize="xs"
-                              />
-                              <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
-                                %
-                              </Text>
-                            </HStack>
-                          </HStack>
-                          
-                          <HStack spacing={2}>
-                            <Button
-                              leftIcon={<Icon as={Download} />}
-                              size="xs"
-                              variant="outline"
-                              colorScheme="blue"
-                              borderRadius="lg"
-                            >
-                              Download Report
-                            </Button>
-                            <Button
-                              leftIcon={<Icon as={FileDown} />}
-                              size="xs"
-                              variant="ghost"
-                              colorScheme="gray"
-                              borderRadius="lg"
-                            >
-                              Transcript
-                            </Button>
-                          </HStack>
-                        </VStack>
-                      </Flex>
-                    </CardBody>
-                  </Card>
-                )
-              })}
-            </VStack>
-          )}
         </VStack>
       </CardBody>
     </Card>
@@ -422,6 +285,7 @@ function AssignmentCard({
 
 function Assignments() {
   const { organization } = useProfile()
+  const location = useLocation()
   
   // Load form data from localStorage or use defaults
   const loadFormData = (): AssignmentFormData => {
@@ -444,6 +308,23 @@ function Assignments() {
   }
 
   const [formData, setFormData] = useState<AssignmentFormData>(loadFormData)
+  
+  // Handle prefilled template from navigation state
+  React.useEffect(() => {
+    const state = location.state as any
+    if (state?.prefillTemplate) {
+      const prefill = state.prefillTemplate
+      setFormData(prev => ({
+        ...prev,
+        title: `${prefill.title} Assignment`,
+        description: prefill.description,
+        templateId: prefill.id,
+        rubricId: GENERAL_LIFE_INSURANCE_RUBRIC.id // Default to general rubric
+      }))
+      // Clear the navigation state
+      window.history.replaceState({}, document.title)
+    }
+  }, [location])
   const [isSubmitting, setIsSubmitting] = useState(false)
   
   const [assignments, setAssignments] = useState<Assignment[]>([])
@@ -917,11 +798,22 @@ function Assignments() {
                           boxShadow: `0 0 0 1px ${accentColor}`
                         }}
                       >
-                        {templates.map((template) => (
-                          <option key={template.id} value={template.id}>
-                            {template.title}
-                          </option>
-                        ))}
+                        <optgroup label="Built-In Templates">
+                          {ALL_BUILT_IN_TEMPLATES.map((template) => (
+                            <option key={template.id} value={template.id}>
+                              {template.title} ({template.category} - {template.difficulty})
+                            </option>
+                          ))}
+                        </optgroup>
+                        {templates.length > 0 && (
+                          <optgroup label="Custom Templates">
+                            {templates.map((template) => (
+                              <option key={template.id} value={template.id}>
+                                {template.title} (Custom - {template.difficulty})
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
                       </Select>
                     </FormControl>
 
@@ -950,11 +842,20 @@ function Assignments() {
                           boxShadow: `0 0 0 1px ${accentColor}`
                         }}
                       >
-                        {rubrics.map((rubric) => (
-                          <option key={rubric.id} value={rubric.id}>
-                            {rubric.title}
+                        <optgroup label="Standard Rubrics">
+                          <option key={GENERAL_LIFE_INSURANCE_RUBRIC.id} value={GENERAL_LIFE_INSURANCE_RUBRIC.id}>
+                            {GENERAL_LIFE_INSURANCE_RUBRIC.title} (Recommended)
                           </option>
-                        ))}
+                        </optgroup>
+                        {rubrics.length > 0 && (
+                          <optgroup label="Custom Rubrics">
+                            {rubrics.map((rubric) => (
+                              <option key={rubric.id} value={rubric.id}>
+                                {rubric.title}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
                       </Select>
                     </FormControl>
                   </HStack>

@@ -6,23 +6,11 @@ const supabase_1 = require("../config/supabase");
 const router = (0, express_1.Router)();
 router.post('/', async (req, res) => {
     try {
-        const { templateId, accountType, scriptContent } = req.body;
+        const { templateId, accountType, scriptContent, templateTitle, insuranceType } = req.body;
         if (!templateId || !accountType) {
             res.status(400).json({
                 error: 'Missing required fields',
                 required: ['templateId', 'accountType']
-            });
-            return;
-        }
-        const { data: template, error } = await supabase_1.supabase
-            .from('templates')
-            .select('*')
-            .eq('id', templateId)
-            .single();
-        if (error || !template) {
-            res.status(404).json({
-                error: 'Template not found',
-                templateId
             });
             return;
         }
@@ -34,10 +22,34 @@ router.post('/', async (req, res) => {
             });
             return;
         }
-        console.log('Updating VAPI assistant with template:', { templateId, template: template.title, accountType });
-        const templateWithScript = scriptContent ? { ...template, script: scriptContent } : template;
+        let template;
+        if (scriptContent) {
+            template = {
+                id: templateId,
+                title: templateTitle || 'Custom Template',
+                script: scriptContent,
+                type: insuranceType || 'life'
+            };
+            console.log('Using built-in template:', { templateId, title: template.title, type: template.type, accountType });
+        }
+        else {
+            const { data: dbTemplate, error } = await supabase_1.supabase
+                .from('templates')
+                .select('*')
+                .eq('id', templateId)
+                .single();
+            if (error || !dbTemplate) {
+                res.status(404).json({
+                    error: 'Template not found',
+                    templateId
+                });
+                return;
+            }
+            template = dbTemplate;
+            console.log('Using database template:', { templateId, template: template.title, accountType });
+        }
         const assistant = await vapi_1.vapiService.updateAssistantWithTemplate({
-            template: templateWithScript,
+            template,
             accountType
         });
         res.status(200).json({

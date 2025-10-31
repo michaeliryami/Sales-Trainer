@@ -12,6 +12,7 @@ export interface Organization {
   name: string
   admin: string // uuid - references profile ID
   users: string[] // text array of user IDs
+  insurance_type: string // Insurance type for this organization (life, health, auto, home, business, other)
 }
 
 export interface UserRole {

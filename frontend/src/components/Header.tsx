@@ -14,9 +14,11 @@ import {
   MenuList,
   MenuItem,
   MenuDivider,
+  Collapse,
+  useDisclosure,
 } from '@chakra-ui/react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Database, Sun, Moon, Zap, Settings, BarChart3, Building2, LogOut, User, FileCheck, ClipboardList } from 'lucide-react'
+import { Database, Sun, Moon, Zap, Settings, BarChart3, Building2, LogOut, User, FileCheck, ClipboardList, Library, ChevronDown, PlusCircle } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
@@ -36,28 +38,6 @@ function Header() {
     await signOut()
     navigate('/auth')
   }
-
-  // Filter nav items based on user role
-  const allNavItems = [
-    // Employee items - show "Assignments" but link to create-session
-    { name: 'Assignments', path: '/create-session', icon: ClipboardList, employeeOnly: true },
-    // Admin items
-    { name: 'Playground', path: '/create-session', icon: Zap, adminOnly: true },
-    { name: 'Rubrics', path: '/rubrics', icon: FileCheck, adminOnly: true },
-    { name: 'Assignments', path: '/assignments', icon: ClipboardList, adminOnly: true },
-    { name: 'Templates', path: '/admin', icon: Settings, adminOnly: true },
-    { name: 'Organization', path: '/organization', icon: Building2, adminOnly: true },
-  ]
-
-  const navItems = allNavItems.filter(item => {
-    if (item.adminOnly) {
-      return userRole.isAdmin
-    }
-    if (item.employeeOnly) {
-      return !userRole.isAdmin
-    }
-    return false // Don't show items that are neither adminOnly nor employeeOnly
-  })
 
   const isActive = (path: string) => location.pathname === path
 
@@ -90,19 +70,106 @@ function Header() {
 
         {/* Navigation and Controls */}
         <HStack spacing={6}>
-          {navItems.map((item) => (
-            <Button
-              key={item.name}
-              variant={isActive(item.path) ? "solid" : "ghost"}
-              colorScheme={isActive(item.path) ? "brand" : "gray"}
-              size="sm"
-              onClick={() => navigate(item.path)}
-              leftIcon={item.icon ? <Icon as={item.icon} boxSize={4} /> : undefined}
-              fontWeight="medium"
-            >
-              {item.name}
-            </Button>
-          ))}
+          {/* Employee Navigation */}
+          {!userRole.isAdmin && (
+            <>
+              <Button
+                variant={isActive('/create-session') ? "solid" : "ghost"}
+                colorScheme={isActive('/create-session') ? "brand" : "gray"}
+                size="sm"
+                onClick={() => navigate('/create-session')}
+                leftIcon={<Icon as={ClipboardList} boxSize={4} />}
+                fontWeight="medium"
+              >
+                Assignments
+              </Button>
+              <Button
+                variant={isActive('/my-analytics') ? "solid" : "ghost"}
+                colorScheme={isActive('/my-analytics') ? "brand" : "gray"}
+                size="sm"
+                onClick={() => navigate('/my-analytics')}
+                leftIcon={<Icon as={BarChart3} boxSize={4} />}
+                fontWeight="medium"
+              >
+                My Performance
+              </Button>
+            </>
+          )}
+
+          {/* Admin Navigation */}
+          {userRole.isAdmin && (
+            <>
+              <Button
+                variant={isActive('/create-session') ? "solid" : "ghost"}
+                colorScheme={isActive('/create-session') ? "brand" : "gray"}
+                size="sm"
+                onClick={() => navigate('/create-session')}
+                leftIcon={<Icon as={Zap} boxSize={4} />}
+                fontWeight="medium"
+              >
+                Playground
+              </Button>
+              <Button
+                variant={isActive('/assignments') ? "solid" : "ghost"}
+                colorScheme={isActive('/assignments') ? "brand" : "gray"}
+                size="sm"
+                onClick={() => navigate('/assignments')}
+                leftIcon={<Icon as={ClipboardList} boxSize={4} />}
+                fontWeight="medium"
+              >
+                Assignments
+              </Button>
+              <Button
+                variant={isActive('/template-library') ? "solid" : "ghost"}
+                colorScheme={isActive('/template-library') ? "brand" : "gray"}
+                size="sm"
+                onClick={() => navigate('/template-library')}
+                leftIcon={<Icon as={Library} boxSize={4} />}
+                fontWeight="medium"
+              >
+                Template Library
+              </Button>
+
+              {/* Admin Tools Menu */}
+              <Menu>
+                <MenuButton
+                  as={Button}
+                  size="sm"
+                  variant="ghost"
+                  rightIcon={<Icon as={ChevronDown} boxSize={4} />}
+                  fontWeight="medium"
+                >
+                  Admin Tools
+                </MenuButton>
+                <MenuList>
+                  <MenuItem
+                    icon={<Icon as={PlusCircle} />}
+                    onClick={() => navigate('/admin')}
+                  >
+                    Create Template
+                  </MenuItem>
+                  <MenuItem
+                    icon={<Icon as={FileCheck} />}
+                    onClick={() => navigate('/rubrics')}
+                  >
+                    Manage Rubrics
+                  </MenuItem>
+                  <MenuItem
+                    icon={<Icon as={BarChart3} />}
+                    onClick={() => navigate('/analytics')}
+                  >
+                    Analytics
+                  </MenuItem>
+                  <MenuItem
+                    icon={<Icon as={Building2} />}
+                    onClick={() => navigate('/organization')}
+                  >
+                    Organization
+                  </MenuItem>
+                </MenuList>
+              </Menu>
+            </>
+          )}
           
           <IconButton
             aria-label="Toggle theme"

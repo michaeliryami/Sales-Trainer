@@ -42,7 +42,6 @@ import { useProfile } from '../contexts/ProfileContext'
 interface TemplateFormData {
   title: string
   description: string
-  insuranceType: string
   difficulty: string
   script: string
 }
@@ -63,7 +62,6 @@ function Admin() {
     return {
       title: '',
       description: '',
-      insuranceType: '',
       difficulty: '',
       script: ''
     }
@@ -163,10 +161,10 @@ function Admin() {
 
   const generateScript = async () => {
     // Validate required fields for generation
-    if (!formData.title || !formData.description || !formData.insuranceType || !formData.difficulty) {
+    if (!formData.title || !formData.description || !formData.difficulty) {
       toast({
         title: 'Missing Information',
-        description: 'Please fill in Title, Description, Insurance Type, and Difficulty Level before generating a script.',
+        description: 'Please fill in Title, Description, and Difficulty Level before generating a script.',
         status: 'warning',
         duration: 4000,
         isClosable: true,
@@ -185,7 +183,7 @@ function Admin() {
         body: JSON.stringify({
           title: formData.title,
           description: formData.description,
-          insuranceType: formData.insuranceType,
+          insuranceType: 'life', // Hardcoded to life insurance
           difficulty: formData.difficulty
         })
       })
@@ -206,7 +204,7 @@ function Admin() {
 
       toast({
         title: 'Script Generated!',
-        description: `AI generated a ${formData.difficulty} difficulty script for ${formData.insuranceType} insurance.`,
+        description: `AI generated a ${formData.difficulty} difficulty script for life insurance.`,
         status: 'success',
         duration: 4000,
         isClosable: true,
@@ -228,7 +226,7 @@ function Admin() {
 
   const handleSubmit = async () => {
     // Validate required fields
-    if (!formData.title || !formData.description || !formData.insuranceType || !formData.difficulty || !formData.script) {
+    if (!formData.title || !formData.description || !formData.difficulty || !formData.script) {
       toast({
         title: 'Missing fields',
         description: 'Please fill in all required fields',
@@ -250,7 +248,7 @@ function Admin() {
           body: JSON.stringify({
             title: formData.title,
             description: formData.description,
-            insuranceType: formData.insuranceType,
+            insuranceType: 'life', // Hardcoded to life insurance
             difficulty: formData.difficulty,
             script: formData.script
           })
@@ -275,7 +273,7 @@ function Admin() {
           body: JSON.stringify({
             title: formData.title,
             description: formData.description,
-            insuranceType: formData.insuranceType,
+            insuranceType: 'life', // Hardcoded to life insurance
             difficulty: formData.difficulty,
             script: formData.script,
             org: organization?.id
@@ -299,7 +297,6 @@ function Admin() {
       const emptyForm = {
         title: '',
         description: '',
-        insuranceType: '',
         difficulty: '',
         script: ''
       }
@@ -327,7 +324,6 @@ function Admin() {
     setFormData({
       title: template.title,
       description: template.description,
-      insuranceType: template.type,
       difficulty: template.difficulty,
       script: template.script
     })
@@ -338,7 +334,6 @@ function Admin() {
     setFormData({
       title: `${template.title} (Copy)`,
       description: template.description,
-      insuranceType: template.type,
       difficulty: template.difficulty,
       script: template.script
     })
@@ -518,87 +513,47 @@ function Admin() {
                     />
                   </FormControl>
 
-                  <VStack spacing={4} align="stretch">
-                    <FormControl isRequired>
-                      <FormLabel 
-                        fontSize="sm" 
-                        color={useColorModeValue('gray.700', 'gray.300')} 
-                        fontWeight="semibold"
-                        mb={2}
-                      >
-                        Insurance Type
-                      </FormLabel>
-                      <Select
-                        placeholder="Select insurance type"
-                        value={formData.insuranceType}
-                        onChange={(e) => handleInputChange('insuranceType', e.target.value)}
-                        bg={cardBg}
-                        border="1px solid"
-                        borderColor={useColorModeValue('gray.100', 'gray.750')}
-                        borderRadius="xl"
-                        _hover={{
-                          borderColor: useColorModeValue('gray.300', 'gray.600')
-                        }}
-                        _focus={{
-                          borderColor: accentColor,
-                          boxShadow: `0 0 0 1px ${accentColor}`
-                        }}
-                      >
-                        <option value="health">Health Insurance</option>
-                        <option value="life">Life Insurance</option>
-                        <option value="auto">Auto Insurance</option>
-                        <option value="business">Business Insurance</option>
-                        <option value="home">Home Insurance</option>
-                        <option value="disability">Disability Insurance</option>
-                      </Select>
-                    </FormControl>
-
-                    <FormControl isRequired>
-                      <FormLabel 
-                        fontSize="sm" 
-                        color={useColorModeValue('gray.700', 'gray.300')} 
-                        fontWeight="semibold"
-                        mb={2}
-                      >
-                        Difficulty Level
-                      </FormLabel>
-                      <Select
-                        placeholder="Select difficulty"
-                        value={formData.difficulty}
-                        onChange={(e) => handleInputChange('difficulty', e.target.value)}
-                        bg={cardBg}
-                        border="1px solid"
-                        borderColor={useColorModeValue('gray.100', 'gray.750')}
-                        borderRadius="xl"
-                        _hover={{
-                          borderColor: useColorModeValue('gray.300', 'gray.600')
-                        }}
-                        _focus={{
-                          borderColor: accentColor,
-                          boxShadow: `0 0 0 1px ${accentColor}`
-                        }}
-                      >
-                        <option value="easy">Easy</option>
-                        <option value="medium">Medium</option>
-                        <option value="hard">Hard</option>
-                        <option value="expert">Expert</option>
-                      </Select>
-                    </FormControl>
-                  </VStack>
+                  <FormControl isRequired>
+                    <FormLabel 
+                      fontSize="sm" 
+                      color={useColorModeValue('gray.700', 'gray.300')} 
+                      fontWeight="semibold"
+                      mb={2}
+                    >
+                      Difficulty Level
+                    </FormLabel>
+                    <Select
+                      placeholder="Select difficulty"
+                      value={formData.difficulty}
+                      onChange={(e) => handleInputChange('difficulty', e.target.value)}
+                      bg={cardBg}
+                      border="1px solid"
+                      borderColor={useColorModeValue('gray.100', 'gray.750')}
+                      borderRadius="xl"
+                      _hover={{
+                        borderColor: useColorModeValue('gray.300', 'gray.600')
+                      }}
+                      _focus={{
+                        borderColor: accentColor,
+                        boxShadow: `0 0 0 1px ${accentColor}`
+                      }}
+                    >
+                      <option value="easy">Easy</option>
+                      <option value="medium">Medium</option>
+                      <option value="hard">Hard</option>
+                      <option value="expert">Expert</option>
+                    </Select>
+                  </FormControl>
 
                   {/* Preview of selected options */}
-                  {(formData.insuranceType || formData.difficulty) && (
+                  {formData.difficulty && (
                     <Flex gap={2} mt={2}>
-                      {formData.insuranceType && (
-                        <Badge colorScheme="blue" textTransform="capitalize">
-                          {formData.insuranceType}
-                        </Badge>
-                      )}
-                      {formData.difficulty && (
-                        <Badge colorScheme={getDifficultyColor(formData.difficulty)} textTransform="capitalize">
-                          {formData.difficulty}
-                        </Badge>
-                      )}
+                      <Badge colorScheme="blue" textTransform="capitalize">
+                        Life Insurance
+                      </Badge>
+                      <Badge colorScheme={getDifficultyColor(formData.difficulty)} textTransform="capitalize">
+                        {formData.difficulty}
+                      </Badge>
                     </Flex>
                   )}
                 </VStack>
@@ -623,7 +578,7 @@ function Admin() {
                     onClick={generateScript}
                     isLoading={isGeneratingScript}
                     loadingText="Generating..."
-                    isDisabled={!formData.title || !formData.description || !formData.insuranceType || !formData.difficulty}
+                    isDisabled={!formData.title || !formData.description || !formData.difficulty}
                     _hover={{
                       bg: "linear-gradient(135deg, #7c3aed, #6d28d9)",
                       transform: 'translateY(-1px)',
@@ -709,7 +664,6 @@ Speaker: Clear dialogue format"
                       const emptyForm = {
                         title: '',
                         description: '',
-                        insuranceType: '',
                         difficulty: '',
                         script: ''
                       }
@@ -739,7 +693,6 @@ Speaker: Clear dialogue format"
                         const emptyForm = {
                           title: '',
                           description: '',
-                          insuranceType: '',
                           difficulty: '',
                           script: ''
                         }

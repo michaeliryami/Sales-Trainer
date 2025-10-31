@@ -160,6 +160,12 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       }
       
       setProfile(userProfile)
+      
+      // Fetch organization immediately after profile is loaded
+      if (userProfile?.org) {
+        const org = await fetchOrganization(userProfile.org)
+        setOrganization(org)
+      }
     } catch (error) {
       console.error('Error refreshing profile:', error)
     } finally {
@@ -189,14 +195,18 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
     }
   }, [user, session])
 
-  // Fetch organization when profile changes
+  // Note: Organization is now fetched within refreshProfile to avoid race conditions
+  // This effect is kept for manual refreshes via refreshOrganization()
   useEffect(() => {
-    if (profile?.org) {
+    // Skip if this is the initial load (loading is true) - organization will be fetched in refreshProfile
+    if (loading) return
+    
+    if (profile?.org && !organization) {
       refreshOrganization()
-    } else {
+    } else if (!profile?.org) {
       setOrganization(null)
     }
-  }, [profile?.org])
+  }, [profile?.org, loading])
 
   // Calculate user role
   const userRole: UserRole = {
