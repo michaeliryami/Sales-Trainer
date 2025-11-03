@@ -9,7 +9,6 @@ import Header from './components/Header'
 import CreateSession from './pages/CreateSession'
 import Admin from './pages/Admin'
 import Organization from './pages/Organization'
-import Rubrics from './pages/Rubrics'
 import Assignments from './pages/Assignments'
 import Analytics from './pages/Analytics'
 import MyAnalytics from './pages/MyAnalytics'
@@ -19,8 +18,6 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 import { AuthProvider } from './contexts/AuthContext'
 import { ProfileProvider } from './contexts/ProfileContext'
-import TemplateLibrary from './pages/TemplateLibrary'
-
 // Component to handle navigation persistence
 function NavigationHandler() {
   const location = useLocation()
@@ -38,7 +35,7 @@ function NavigationHandler() {
 // Component to redirect to last visited path
 function DefaultRedirect() {
   const lastPath = sessionStorage.getItem('lastVisitedPath')
-  const validPaths = ['/create-session', '/admin', '/organization', '/rubrics', '/assignments', '/analytics', '/my-analytics', '/template-library']
+  const validPaths = ['/create-session', '/admin', '/organization', '/assignments', '/analytics', '/my-analytics']
   
   // If we have a last path and it's valid, redirect there
   if (lastPath && validPaths.includes(lastPath)) {
@@ -75,12 +72,6 @@ function App() {
                     <Route path="/" element={<DefaultRedirect />} />
                     <Route path="/create-session" element={<CreateSession />} />
                     <Route path="/my-analytics" element={<MyAnalytics />} />
-                    <Route path="/template-library" element={<TemplateLibrary />} />
-                    <Route path="/rubrics" element={
-                      <AdminRoute>
-                        <Rubrics />
-                      </AdminRoute>
-                    } />
                     <Route path="/assignments" element={
                       <AdminRoute>
                         <Assignments />

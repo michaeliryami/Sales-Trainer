@@ -303,9 +303,9 @@ function CreateSession() {
 
   // Template script previews removed - using direct template script content
 
-  const bg = useColorModeValue('gray.50', 'gray.900')
-  const cardBg = useColorModeValue('white', 'gray.800')
-  const borderColor = useColorModeValue('gray.200', 'gray.700')
+  const bg = 'gray.50'
+  const cardBg = 'white'
+  const borderColor = 'gray.200'
 
   return (
     <Box bg={bg} h="calc(100vh - 88px)" overflow="hidden">
@@ -321,11 +321,11 @@ function CreateSession() {
             <Flex p={4} borderBottom="1px" borderColor={borderColor} justify="space-between" align="center" bg={cardBg}>
               <Box flex={1}>
                 <HStack justify="space-between" align="center" mb={1}>
-                  <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
+                  <Heading size="md" color={'gray.900'}>
                     Training Setup
                   </Heading>
                 </HStack>
-                <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+                <Text fontSize="sm" color={'gray.600'}>
                   Configure your personalized sales training session with AI
                 </Text>
               </Box>
@@ -338,7 +338,7 @@ function CreateSession() {
                   <FormControl>
                     <FormLabel 
                       fontSize="sm" 
-                      color={useColorModeValue('gray.700', 'gray.300')} 
+                      color={'gray.700'} 
                       fontWeight="semibold"
                       mb={3}
                     >
@@ -348,13 +348,13 @@ function CreateSession() {
                     <VStack spacing={3} align="stretch">
                       {isLoadingTemplates ? (
                         <Box p={4} textAlign="center">
-                          <Text color={useColorModeValue('gray.500', 'gray.400')}>
+                          <Text color={'gray.500'}>
                             Loading templates...
                           </Text>
                         </Box>
                       ) : templates.length === 0 ? (
                         <Box p={4} textAlign="center">
-                          <Text color={useColorModeValue('gray.500', 'gray.400')}>
+                          <Text color={'gray.500'}>
                             No templates found. Create some in the Admin tab!
                           </Text>
                         </Box>
@@ -364,20 +364,20 @@ function CreateSession() {
                           key={template.id}
                           p={4}
                           border="2px solid"
-                            borderColor={selectedTemplate === template.id.toString() ? "blue.400" : useColorModeValue('gray.200', 'gray.600')}
+                            borderColor={selectedTemplate === template.id.toString() ? "blue.400" : 'gray.200'}
                           borderRadius="lg"
                           cursor="pointer"
                             onClick={() => setSelectedTemplate(template.id.toString())}
-                            bg={selectedTemplate === template.id.toString() ? useColorModeValue('blue.50', 'blue.900') : useColorModeValue('white', 'gray.700')}
+                            bg={selectedTemplate === template.id.toString() ? 'blue.50' : 'white'}
                           _hover={{
-                              borderColor: selectedTemplate === template.id.toString() ? "blue.500" : useColorModeValue('gray.300', 'gray.500'),
-                              bg: selectedTemplate === template.id.toString() ? useColorModeValue('blue.100', 'blue.800') : useColorModeValue('gray.50', 'gray.600')
+                              borderColor: selectedTemplate === template.id.toString() ? "blue.500" : 'gray.300',
+                              bg: selectedTemplate === template.id.toString() ? 'blue.100' : 'gray.50'
                           }}
                           transition="all 0.2s"
                         >
                           <VStack align="start" spacing={2}>
                             <HStack justify="space-between" w="full">
-                              <Heading size="sm" color={useColorModeValue('gray.900', 'white')}>
+                              <Heading size="sm" color={'gray.900'}>
                                   {template.title}
                               </Heading>
                                 <Badge 
@@ -392,7 +392,7 @@ function CreateSession() {
                                 {template.difficulty}
                               </Badge>
                             </HStack>
-                            <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>
+                            <Text fontSize="xs" color={'gray.600'}>
                               {template.description}
                             </Text>
                             <HStack spacing={2}>
@@ -420,7 +420,7 @@ function CreateSession() {
             w="2px" 
             h="full" 
             bg={borderColor}
-            _hover={{ bg: useColorModeValue('gray.400', 'gray.500'), w: "4px" }}
+            _hover={{ bg: 'gray.500', w: "4px" }}
             transition="all 0.2s"
             cursor="col-resize"
             position="relative"
@@ -465,10 +465,10 @@ function CreateSession() {
                 colorScheme="blue"
                 variant={isOpen ? "outline" : "solid"}
                 borderRadius="full"
-                bg={isOpen ? useColorModeValue('white', 'gray.800') : undefined}
+                bg={isOpen ? 'white' : undefined}
                 borderColor={isOpen ? "blue.400" : undefined}
                 _hover={{
-                  bg: isOpen ? useColorModeValue('blue.50', 'blue.900') : undefined
+                  bg: isOpen ? 'blue.50' : undefined
                 }}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -579,7 +579,7 @@ function CreateSession() {
                   <Text 
                     fontSize={["md", "lg", "xl"]} 
                     fontWeight="medium" 
-                    color={useColorModeValue('gray.700', 'gray.300')}
+                    color={'gray.700'}
                     textAlign="center"
                   >
                     {isCreatingCall ? "Ringing..." : (callConnected ? "Click anywhere to end call" : "Click anywhere to start call")}
@@ -595,7 +595,7 @@ function CreateSession() {
                   h="2px" 
                   w="full" 
                   bg={borderColor}
-                  _hover={{ bg: useColorModeValue('gray.400', 'gray.500'), h: "4px" }}
+                  _hover={{ bg: 'gray.500', h: "4px" }}
                   transition="all 0.2s"
                   cursor="row-resize"
                   position="relative"
@@ -639,11 +639,11 @@ function CreateSession() {
               <Flex p={3} borderBottom="1px" borderColor={borderColor} justify="space-between" align="center" minH="60px">
                 <Box flex={1} minW={0}>
                   <HStack spacing={2}>
-                    <Heading size="sm" color={useColorModeValue('gray.900', 'white')} noOfLines={1}>
+                    <Heading size="sm" color={'gray.900'} noOfLines={1}>
                       Live Transcript
                     </Heading>
                   </HStack>
-                  <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} mt={1} noOfLines={1}>
+                  <Text fontSize="xs" color={'gray.600'} mt={1} noOfLines={1}>
                     AI-powered conversation analysis and feedback
                   </Text>
                 </Box>
@@ -662,7 +662,7 @@ function CreateSession() {
                 
                 <Box flex={1} overflowY="auto" p={4}>
                   {transcript.length === 0 ? (
-                    <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} textAlign="center" mt={8}>
+                    <Text fontSize="xs" color={'gray.600'} textAlign="center" mt={8}>
                   {isCallActive ? "Conversation transcript will appear here..." : "Start a training session to see the live transcript"}
                 </Text>  
                         ) : (
@@ -677,12 +677,12 @@ function CreateSession() {
                                   >
                                     {entry.speaker}
                                   </Badge>
-                                  <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.500')}>
+                                  <Text fontSize="xs" color={'gray.500'}>
                                     {entry.timestamp.toLocaleTimeString()}
                                   </Text>
                                 </HStack>
                                 <Box 
-                                  bg={useColorModeValue('gray.50', 'gray.700')}
+                                  bg={'gray.50'}
                                   p={4}
                                   borderRadius="lg"
                                   borderLeft="4px solid"
@@ -690,7 +690,7 @@ function CreateSession() {
                                 >
                                   <Text 
                                     fontSize="sm" 
-                                    color={useColorModeValue('gray.800', 'gray.200')}
+                                    color={'gray.800'}
                                     lineHeight="1.6"
                                   >
                                     {entry.text}
@@ -718,11 +718,11 @@ function CreateSession() {
           top={`${modalPosition.y}px`}
           w={`${modalSize.width}px`}
           h={`${modalSize.height}px`}
-          bg={useColorModeValue('white', 'gray.800')}
+          bg={'white'}
           borderRadius="2xl"
           boxShadow="2xl"
           border="1px solid"
-          borderColor={useColorModeValue('gray.200', 'gray.700')}
+          borderColor={'gray.200'}
           zIndex="100"
           overflow="hidden"
           display="flex"
@@ -732,8 +732,8 @@ function CreateSession() {
           <Box 
             pb={4} 
             borderBottom="1px solid" 
-            borderColor={useColorModeValue('gray.200', 'gray.700')}
-            bg={useColorModeValue('gray.50', 'gray.750')}
+            borderColor={'gray.200'}
+            bg={'gray.50'}
             borderTopRadius="2xl"
             p={4}
             position="relative"
@@ -745,18 +745,18 @@ function CreateSession() {
             <HStack spacing={4} flex="1">
               <Box 
                 p={3} 
-                bg={useColorModeValue('blue.50', 'blue.900')} 
+                bg={'blue.50'} 
                 borderRadius="xl"
                 border="1px solid"
-                borderColor={useColorModeValue('blue.200', 'blue.700')}
+                borderColor={'blue.200'}
               >
                 <Icon as={FileText} color="blue.500" boxSize={6} />
               </Box>
               <VStack align="start" spacing={1} flex="1">
-                <Text fontSize="xl" fontWeight="bold" color={useColorModeValue('gray.900', 'white')}>
+                <Text fontSize="xl" fontWeight="bold" color={'gray.900'}>
                   Sample Script Preview
                 </Text>
-                <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+                <Text fontSize="sm" color={'gray.600'}>
                   {trainingTemplates.find(t => t.id === selectedTemplate)?.name} Training
                 </Text>
               </VStack>
@@ -765,10 +765,10 @@ function CreateSession() {
                 icon={<Text fontSize="lg" lineHeight="1">×</Text>}
                 size="sm"
                 variant="ghost"
-                color={useColorModeValue('gray.600', 'gray.400')}
+                color={'gray.600'}
                 _hover={{ 
-                  bg: useColorModeValue('gray.200', 'gray.600'),
-                  color: useColorModeValue('gray.800', 'gray.200')
+                  bg: 'gray.200',
+                  color: 'gray.800'
                 }}
                 borderRadius="md"
                 onClick={(e) => {
@@ -780,11 +780,11 @@ function CreateSession() {
           </Box>
           <Box p={4} overflowY="auto" flex="1">
             <Box
-              bg={useColorModeValue('white', 'gray.900')}
+              bg={'white'}
               p={6}
               borderRadius="xl"
               border="2px solid"
-              borderColor={useColorModeValue('gray.200', 'gray.600')}
+              borderColor={'gray.200'}
               h="calc(100% - 20px)"
               overflowY="auto"
               position="relative"
@@ -793,11 +793,11 @@ function CreateSession() {
                   width: '8px',
                 },
                 '&::-webkit-scrollbar-track': {
-                  background: useColorModeValue('gray.100', 'gray.700'),
+                  background: 'gray.100',
                   borderRadius: '10px',
                 },
                 '&::-webkit-scrollbar-thumb': {
-                  background: useColorModeValue('gray.400', 'gray.500'),
+                  background: 'gray.500',
                   borderRadius: '10px',
                 },
               }}
@@ -808,23 +808,23 @@ function CreateSession() {
                     '& h1': {
                       fontSize: 'xl',
                       fontWeight: 'bold',
-                      color: useColorModeValue('gray.800', 'white'),
+                      color: 'gray.800',
                       mb: 4,
                       borderBottom: '2px solid',
-                      borderColor: useColorModeValue('gray.200', 'gray.600'),
+                      borderColor: 'gray.200',
                       pb: 2
                     },
                     '& h2': {
                       fontSize: 'lg',
                       fontWeight: 'semibold',
-                      color: useColorModeValue('blue.600', 'blue.300'),
+                      color: 'blue.600',
                       mt: 6,
                       mb: 3
                     },
                     '& h3': {
                       fontSize: 'md',
                       fontWeight: 'semibold',
-                      color: useColorModeValue('gray.700', 'gray.300'),
+                      color: 'gray.700',
                       mt: 4,
                       mb: 2
                     },
@@ -834,7 +834,7 @@ function CreateSession() {
                     },
                     '& strong': {
                       fontWeight: 'bold',
-                      color: useColorModeValue('gray.800', 'white')
+                      color: 'gray.800'
                     },
                     '& ul, & ol': {
                       pl: 4,
@@ -873,7 +873,7 @@ function CreateSession() {
                   </ReactMarkdown>
                 </Box>
               ) : (
-                <Text color={useColorModeValue('gray.500', 'gray.400')} textAlign="center" py={8}>
+                <Text color={'gray.500'} textAlign="center" py={8}>
                   Select a template to view the script preview.
               </Text>
               )}
@@ -891,7 +891,7 @@ function CreateSession() {
             cursor="nw-resize"
             onMouseDown={handleResizeMouseDown}
             _hover={{
-              bg: useColorModeValue('gray.200', 'gray.600')
+              bg: 'gray.200'
             }}
             borderBottomRightRadius="2xl"
             display="flex"
@@ -903,7 +903,7 @@ function CreateSession() {
               h="12px"
               opacity={0.4}
               sx={{
-                background: `linear-gradient(-45deg, transparent 30%, ${useColorModeValue('#666', '#ccc')} 30%, ${useColorModeValue('#666', '#ccc')} 35%, transparent 35%, transparent 65%, ${useColorModeValue('#666', '#ccc')} 65%, ${useColorModeValue('#666', '#ccc')} 70%, transparent 70%)`,
+                background: `linear-gradient(-45deg, transparent 30%, ${'#666'} 30%, ${'#666'} 35%, transparent 35%, transparent 65%, ${'#666'} 65%, ${'#666'} 70%, transparent 70%)`,
                 backgroundSize: '4px 4px'
               }}
             />

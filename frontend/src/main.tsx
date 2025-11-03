@@ -5,10 +5,10 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
 import { ThemeProvider } from './contexts/ThemeContext.tsx'
 
-// Professional SaaS theme with light/dark mode support
+// Professional SaaS theme - light mode only
 const theme = extendTheme({
   config: {
-    initialColorMode: 'dark',
+    initialColorMode: 'light',
     useSystemColorMode: false,
   },
   styles: {

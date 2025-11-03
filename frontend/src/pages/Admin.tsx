@@ -32,12 +32,29 @@ import {
   AlertDialogContent,
   AlertDialogOverlay,
   Spinner,
-  IconButton
+  IconButton,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
+  InputGroup,
+  InputLeftElement,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+  ModalFooter
 } from '@chakra-ui/react'
-import { FileText, Plus, Save, Edit2, Trash2, Copy, MoreVertical, Sparkles } from 'lucide-react'
+import { FileText, Plus, Save, Edit2, Trash2, Copy, MoreVertical, Sparkles, Search, UserPlus } from 'lucide-react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import ReactMarkdown from 'react-markdown'
 import { supabase, Template } from '../config/supabase'
 import { useProfile } from '../contexts/ProfileContext'
+import { ALL_BUILT_IN_TEMPLATES, BuiltInTemplate } from '../config/templateLibrary'
+import { useNavigate } from 'react-router-dom'
 
 interface TemplateFormData {
   title: string
@@ -48,6 +65,7 @@ interface TemplateFormData {
 
 function Admin() {
   const { organization } = useProfile()
+  const navigate = useNavigate()
   
   // Load form data from localStorage or use defaults
   const loadFormData = (): TemplateFormData => {
@@ -90,7 +108,13 @@ function Admin() {
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(loadEditingTemplate)
   const [templateToDelete, setTemplateToDelete] = useState<Template | null>(null)
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
+  const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure()
   const cancelRef = React.useRef<HTMLButtonElement>(null)
+  
+  // Template library state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [difficultyFilter, setDifficultyFilter] = useState<string>('all')
+  const [selectedViewTemplate, setSelectedViewTemplate] = useState<BuiltInTemplate | Template | null>(null)
   
   const toast = useToast()
   const bgColor = useColorModeValue('white', 'gray.800')
@@ -389,10 +413,91 @@ function Admin() {
     }
   }
 
-  const bg = useColorModeValue('gray.25', 'gray.925')
-  const cardBg = useColorModeValue('white', 'gray.850')
-  const headerBg = useColorModeValue('gray.50/80', 'gray.800/80')
-  const accentColor = useColorModeValue('blue.500', 'blue.400')
+  // Template library functions
+  const filterBuiltInTemplates = (templates: BuiltInTemplate[]) => {
+    return templates.filter(template => {
+      const matchesSearch = template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           template.description.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesDifficulty = difficultyFilter === 'all' || template.difficulty === difficultyFilter
+      
+      return matchesSearch && matchesDifficulty
+    })
+  }
+
+  const filterCustomTemplates = (templates: Template[]) => {
+    return templates.filter(template => {
+      const matchesSearch = template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           template.description.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesDifficulty = difficultyFilter === 'all' || template.difficulty === difficultyFilter
+      
+      return matchesSearch && matchesDifficulty
+    })
+  }
+
+  const basicTemplates = filterBuiltInTemplates(ALL_BUILT_IN_TEMPLATES.filter(t => t.category === 'basic'))
+  const advancedTemplates = filterBuiltInTemplates(ALL_BUILT_IN_TEMPLATES.filter(t => t.category === 'advanced'))
+  const filteredCustom = filterCustomTemplates(templates)
+
+  const handleViewTemplate = (template: BuiltInTemplate | Template) => {
+    setSelectedViewTemplate(template)
+    onViewOpen()
+  }
+
+  const isBuiltInTemplate = (template: any): template is BuiltInTemplate => {
+    return 'isBuiltIn' in template && template.isBuiltIn === true
+  }
+
+  const handleAssignTemplate = async (template: BuiltInTemplate | Template) => {
+    // Check if this is a built-in template
+    if (isBuiltInTemplate(template)) {
+      // Check if this built-in template exists in the database
+      const { data: dbTemplates, error } = await supabase
+        .from('templates')
+        .select('id, title')
+        .eq('title', template.title)
+        .limit(1)
+      
+      if (error || !dbTemplates || dbTemplates.length === 0) {
+        toast({
+          title: 'Built-in template not found in database',
+          description: 'Please run the insert_built_in_templates.sql script first to add built-in templates to your database. Check the project root folder for this file.',
+          status: 'error',
+          duration: 8000,
+          isClosable: true,
+        })
+        return
+      }
+      
+      // Use the database ID for the built-in template
+      navigate('/assignments', {
+        state: {
+          prefillTemplate: {
+            id: dbTemplates[0].id.toString(),
+            title: template.title,
+            description: template.description,
+            difficulty: template.difficulty
+          }
+        }
+      })
+    } else {
+      // Custom template - use its database ID directly
+      navigate('/assignments', {
+        state: {
+          prefillTemplate: {
+            id: template.id.toString(),
+            title: template.title,
+            description: template.description,
+            difficulty: template.difficulty
+          }
+        }
+      })
+    }
+  }
+
+  const bg = useColorModeValue('gray.50', 'gray.900')
+  const cardBg = useColorModeValue('white', 'gray.800')
+  const headerBg = useColorModeValue('white', 'gray.800')
+  const accentColor = useColorModeValue('blue.600', 'blue.400')
 
   return (
     <Box bg={bg} h="calc(100vh - 88px)" overflow="hidden">
@@ -417,26 +522,22 @@ function Admin() {
           >
           {/* Sidebar Header */}
           <Box 
-            bg={headerBg}
-            backdropFilter="blur(10px)"
+            px={6}
+            py={4}
             borderBottom="1px"
             borderColor={borderColor}
-            px={6}
-            py={5}
           >
             <VStack align="start" spacing={1}>
               <Heading 
-                size="lg" 
+                size="md" 
                 color={useColorModeValue('gray.900', 'white')}
                 fontWeight="600"
-                letterSpacing="-0.02em"
               >
                 Template Creation
               </Heading>
               <Text 
                 fontSize="sm" 
-                color={useColorModeValue('gray.500', 'gray.400')}
-                fontWeight="400"
+                color={useColorModeValue('gray.600', 'gray.400')}
               >
                 Create custom training scenarios with AI personas
               </Text>
@@ -717,42 +818,13 @@ Speaker: Clear dialogue format"
           <Box 
             w="1px" 
             h="full" 
-            bg={useColorModeValue('gray.100', 'gray.750')}
+            bg="transparent"
             _hover={{ 
-              bg: accentColor,
-              w: "3px",
-              shadow: 'lg'
+              bg: useColorModeValue('gray.200', 'gray.600')
             }}
-            transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+            transition="all 0.2s"
             cursor="col-resize"
-            position="relative"
-          >
-            <Box
-              position="absolute"
-              top="50%"
-              left="50%"
-              transform="translate(-50%, -50%)"
-              w="24px"
-              h="48px"
-              bg={cardBg}
-              border="1px solid"
-              borderColor={useColorModeValue('gray.100', 'gray.750')}
-              borderRadius="xl"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              opacity={0}
-              _hover={{ opacity: 1, shadow: 'md' }}
-              transition="all 0.3s"
-              backdropFilter="blur(10px)"
-            >
-              <VStack spacing="2px">
-                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
-                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
-                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
-              </VStack>
-            </Box>
-          </Box>
+          />
         </PanelResizeHandle>
 
         {/* Right Panel - Template Management */}
@@ -772,174 +844,408 @@ Speaker: Clear dialogue format"
           >
           {/* Right Panel Header */}
           <Box 
-            bg={headerBg}
-            backdropFilter="blur(10px)"
-            borderBottom="1px"
-            borderColor={useColorModeValue('gray.100', 'gray.750')}
             px={6}
-            py={5}
+            py={4}
+            borderBottom="1px"
+            borderColor={borderColor}
           >
             <VStack align="start" spacing={1}>
               <Heading 
-                size="lg" 
+                size="md" 
                 color={useColorModeValue('gray.900', 'white')}
                 fontWeight="600"
-                letterSpacing="-0.02em"
               >
                 Template Library
               </Heading>
               <Text 
                 fontSize="sm" 
-                color={useColorModeValue('gray.500', 'gray.400')}
-                fontWeight="400"
+                color={useColorModeValue('gray.600', 'gray.400')}
               >
-                Manage and preview your training templates
+                Browse built-in personas and manage your custom templates
               </Text>
             </VStack>
           </Box>
           
-          {/* Template List Content */}
+          {/* Template Library Content with Tabs */}
           <Box flex={1} overflowY="auto" p={6}>
-            <VStack spacing={4} align="stretch">
-              {isLoadingTemplates ? (
-                <VStack spacing={4} justify="center" py={12}>
-                  <Spinner size="xl" color={accentColor} thickness="4px" />
-                  <Text color={useColorModeValue('gray.500', 'gray.400')} fontWeight="500">
-                    Loading templates...
-                  </Text>
-                </VStack>
-              ) : templates.length === 0 ? (
-                <VStack spacing={4} justify="center" py={12} color={useColorModeValue('gray.400', 'gray.500')}>
-                  <Box
-                    w="16"
-                    h="16"
-                    borderRadius="full"
-                    bg={useColorModeValue('gray.100', 'gray.700')}
-                    display="flex"
-                    align="center"
-                    justify="center"
-                  >
-                    <Icon as={FileText} boxSize={8} />
-                  </Box>
-                  <VStack spacing={1} textAlign="center">
-                    <Text fontSize="lg" fontWeight="600" color={useColorModeValue('gray.600', 'gray.400')}>
-                      No templates yet
-                    </Text>
-                    <Text fontSize="sm">
-                      Create your first template using the form on the left
-                    </Text>
-                  </VStack>
-                </VStack>
-              ) : (
-                templates.map((template) => (
-                  <Card 
-                    key={template.id} 
+            <VStack spacing={6} align="stretch">
+              {/* Search and Filters */}
+              <VStack align="stretch" spacing={4}>
+                <InputGroup size="lg">
+                  <InputLeftElement pointerEvents="none">
+                    <Icon as={Search} color={useColorModeValue('gray.400', 'gray.500')} />
+                  </InputLeftElement>
+                  <Input
+                    placeholder="Search templates..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    borderRadius="xl"
                     bg={cardBg}
                     border="1px solid"
-                    borderColor={useColorModeValue('gray.100', 'gray.750')}
-                    borderRadius="2xl"
-                    _hover={{
-                      borderColor: useColorModeValue('gray.300', 'gray.600'),
-                      shadow: 'lg',
-                      transform: 'translateY(-1px)'
+                    borderColor={borderColor}
+                    _hover={{ borderColor: useColorModeValue('gray.300', 'gray.600') }}
+                    _focus={{
+                      borderColor: accentColor,
+                      boxShadow: `0 0 0 1px ${accentColor}`
                     }}
-                    transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-                    shadow="sm"
+                  />
+                </InputGroup>
+
+                <HStack spacing={4}>
+                  <Select
+                    value={difficultyFilter}
+                    onChange={(e) => setDifficultyFilter(e.target.value)}
+                    size="md"
+                    borderRadius="xl"
+                    bg={cardBg}
+                    border="1px solid"
+                    borderColor={borderColor}
+                    _hover={{ borderColor: useColorModeValue('gray.300', 'gray.600') }}
+                    _focus={{
+                      borderColor: accentColor,
+                      boxShadow: `0 0 0 1px ${accentColor}`
+                    }}
                   >
-                    <CardBody p={5}>
-                      <Flex justify="space-between" align="flex-start" mb={4}>
-                        <Box flex={1}>
-                          <HStack justify="space-between" align="flex-start" mb={3}>
-                            <Heading 
-                              size="md" 
-                              color={useColorModeValue('gray.900', 'white')}
-                              fontWeight="600"
-                              letterSpacing="-0.01em"
-                            >
-                              {template.title}
-                            </Heading>
-                            <Menu>
-                              <MenuButton
-                                as={IconButton}
-                                icon={<Icon as={MoreVertical} />}
-                                variant="ghost"
-                                size="sm"
-                                aria-label="Template actions"
-                                borderRadius="lg"
-                                _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }}
-                              />
-                              <MenuList borderRadius="xl" border="1px solid" borderColor={useColorModeValue('gray.100', 'gray.700')}>
-                                <MenuItem 
-                                  icon={<Icon as={Edit2} />}
-                                  onClick={() => handleEditTemplate(template)}
-                                  borderRadius="lg"
-                                  _hover={{ bg: useColorModeValue('blue.50', 'blue.900/30') }}
+                    <option value="all">All Difficulties</option>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                    <option value="expert">Expert</option>
+                  </Select>
+                </HStack>
+              </VStack>
+
+              {/* Tabs for Built-In vs Custom */}
+              <Tabs colorScheme="purple" size="lg">
+                <TabList borderBottom="2px solid" borderColor={borderColor}>
+                  <Tab 
+                    fontWeight="600"
+                    _selected={{
+                      color: accentColor,
+                      borderColor: accentColor
+                    }}
+                  >
+                    Basic ({basicTemplates.length})
+                  </Tab>
+                  <Tab 
+                    fontWeight="600"
+                    _selected={{
+                      color: accentColor,
+                      borderColor: accentColor
+                    }}
+                  >
+                    Advanced ({advancedTemplates.length})
+                  </Tab>
+                  <Tab 
+                    fontWeight="600"
+                    _selected={{
+                      color: accentColor,
+                      borderColor: accentColor
+                    }}
+                  >
+                    Custom ({filteredCustom.length})
+                  </Tab>
+                </TabList>
+
+                <TabPanels>
+                  {/* Basic Templates */}
+                  <TabPanel px={0} py={6}>
+                    {basicTemplates.length === 0 ? (
+                      <Text color={useColorModeValue('gray.500', 'gray.400')} textAlign="center" py={8}>
+                        No basic templates match your search
+                      </Text>
+                    ) : (
+                      <VStack spacing={4} align="stretch">
+                        {basicTemplates.map((template) => (
+                          <Card 
+                            key={template.id}
+                            bg={cardBg}
+                            border="2px solid"
+                            borderColor={borderColor}
+                            borderRadius="2xl"
+                            backdropFilter="blur(10px)"
+                            _hover={{
+                              borderColor: useColorModeValue('purple.300', 'purple.600'),
+                              shadow: 'xl',
+                              transform: 'translateY(-2px) scale(1.01)'
+                            }}
+                            transition="all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)"
+                            shadow="lg"
+                            cursor="pointer"
+                            onClick={() => handleViewTemplate(template)}
+                          >
+                            <CardBody p={6}>
+                              <VStack align="stretch" spacing={3}>
+                                <Heading 
+                                  size="md" 
+                                  color={useColorModeValue('gray.900', 'white')}
+                                  fontWeight="600"
+                                  letterSpacing="-0.01em"
                                 >
-                                  Edit
-                                </MenuItem>
-                                <MenuItem 
-                                  icon={<Icon as={Copy} />}
-                                  onClick={() => handleDuplicateTemplate(template)}
-                                  borderRadius="lg"
-                                  _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                                  {template.title}
+                                </Heading>
+                                <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')} lineHeight="1.5">
+                                  {template.description}
+                                </Text>
+                                <HStack spacing={2}>
+                                  <Badge 
+                                    bgGradient={
+                                      template.difficulty === 'easy' ? 'linear(to-r, green.400, teal.400)' : 
+                                      template.difficulty === 'medium' ? 'linear(to-r, yellow.400, orange.400)' : 
+                                      template.difficulty === 'hard' ? 'linear(to-r, orange.400, red.400)' : 
+                                      'linear(to-r, red.500, pink.500)'
+                                    }
+                                    color="white"
+                                    textTransform="capitalize"
+                                    borderRadius="full"
+                                    px={3}
+                                    py={1}
+                                    fontWeight="600"
+                                    shadow="sm"
+                                  >
+                                    {template.difficulty}
+                                  </Badge>
+                                </HStack>
+                              </VStack>
+                            </CardBody>
+                          </Card>
+                        ))}
+                      </VStack>
+                    )}
+                  </TabPanel>
+
+                  {/* Advanced Templates */}
+                  <TabPanel px={0} py={6}>
+                    {advancedTemplates.length === 0 ? (
+                      <Text color={useColorModeValue('gray.500', 'gray.400')} textAlign="center" py={8}>
+                        No advanced templates match your search
+                      </Text>
+                    ) : (
+                      <VStack spacing={4} align="stretch">
+                        {advancedTemplates.map((template) => (
+                          <Card 
+                            key={template.id}
+                            bg={cardBg}
+                            border="2px solid"
+                            borderColor={borderColor}
+                            borderRadius="2xl"
+                            backdropFilter="blur(10px)"
+                            _hover={{
+                              borderColor: useColorModeValue('purple.300', 'purple.600'),
+                              shadow: 'xl',
+                              transform: 'translateY(-2px) scale(1.01)'
+                            }}
+                            transition="all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)"
+                            shadow="lg"
+                            cursor="pointer"
+                            onClick={() => handleViewTemplate(template)}
+                          >
+                            <CardBody p={6}>
+                              <VStack align="stretch" spacing={3}>
+                                <Heading 
+                                  size="md" 
+                                  color={useColorModeValue('gray.900', 'white')}
+                                  fontWeight="600"
+                                  letterSpacing="-0.01em"
                                 >
-                                  Duplicate
-                                </MenuItem>
-                                <MenuItem 
-                                  icon={<Icon as={Trash2} />}
-                                  onClick={() => confirmDelete(template)}
-                                  color="red.500"
-                                  borderRadius="lg"
-                                  _hover={{ bg: useColorModeValue('red.50', 'red.900/30') }}
-                                >
-                                  Delete
-                                </MenuItem>
-                              </MenuList>
-                            </Menu>
-                          </HStack>
-                          
-                          <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')} mb={4} lineHeight="1.5">
-                            {template.description}
-                          </Text>
-                          
-                          <HStack spacing={3} mb={4}>
-                            <Badge 
-                              colorScheme={getDifficultyColor(template.difficulty)} 
-                              variant="subtle"
-                              textTransform="capitalize"
-                              borderRadius="full"
-                              px={3}
-                              py={1}
-                              fontWeight="500"
-                            >
-                              {template.difficulty}
-                            </Badge>
-                            <Badge 
-                              colorScheme="blue" 
-                              variant="outline"
-                              textTransform="capitalize"
-                              borderRadius="full"
-                              px={3}
-                              py={1}
-                              fontWeight="500"
-                            >
-                              {template.type}
-                            </Badge>
-                          </HStack>
-                          
-                          <Text fontSize="xs" color={useColorModeValue('gray.400', 'gray.500')} fontWeight="500">
-                            Created {new Date(template.created_at).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}
-                          </Text>
+                                  {template.title}
+                                </Heading>
+                                <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')} lineHeight="1.5">
+                                  {template.description}
+                                </Text>
+                                <HStack spacing={2}>
+                                  <Badge 
+                                    bgGradient={
+                                      template.difficulty === 'easy' ? 'linear(to-r, green.400, teal.400)' : 
+                                      template.difficulty === 'medium' ? 'linear(to-r, yellow.400, orange.400)' : 
+                                      template.difficulty === 'hard' ? 'linear(to-r, orange.400, red.400)' : 
+                                      'linear(to-r, red.500, pink.500)'
+                                    }
+                                    color="white"
+                                    textTransform="capitalize"
+                                    borderRadius="full"
+                                    px={3}
+                                    py={1}
+                                    fontWeight="600"
+                                    shadow="sm"
+                                  >
+                                    {template.difficulty}
+                                  </Badge>
+                                </HStack>
+                              </VStack>
+                            </CardBody>
+                          </Card>
+                        ))}
+                      </VStack>
+                    )}
+                  </TabPanel>
+
+                  {/* Custom Templates */}
+                  <TabPanel px={0} py={6}>
+                    {isLoadingTemplates ? (
+                      <VStack spacing={4} justify="center" py={12}>
+                        <Spinner size="xl" color={accentColor} thickness="4px" />
+                        <Text color={useColorModeValue('gray.500', 'gray.400')} fontWeight="500">
+                          Loading templates...
+                        </Text>
+                      </VStack>
+                    ) : filteredCustom.length === 0 ? (
+                      <VStack spacing={4} justify="center" py={12} color={useColorModeValue('gray.400', 'gray.500')}>
+                        <Box
+                          w="16"
+                          h="16"
+                          borderRadius="full"
+                          bg={useColorModeValue('gray.100', 'gray.700')}
+                          display="flex"
+                          align="center"
+                          justify="center"
+                        >
+                          <Icon as={FileText} boxSize={8} />
                         </Box>
-                      </Flex>
-                    </CardBody>
-                  </Card>
-                ))
-              )}
+                        <VStack spacing={1} textAlign="center">
+                          <Text fontSize="lg" fontWeight="600" color={useColorModeValue('gray.600', 'gray.400')}>
+                            {searchQuery || difficultyFilter !== 'all' ? 'No templates match your search' : 'No custom templates yet'}
+                          </Text>
+                          {!searchQuery && difficultyFilter === 'all' && (
+                            <Text fontSize="sm">
+                              Create your first template using the form on the left
+                            </Text>
+                          )}
+                        </VStack>
+                      </VStack>
+                    ) : (
+                      <VStack spacing={4} align="stretch">
+                        {filteredCustom.map((template) => (
+                          <Card 
+                            key={template.id} 
+                            bg={cardBg}
+                            border="2px solid"
+                            borderColor={borderColor}
+                            borderRadius="2xl"
+                            _hover={{
+                              borderColor: useColorModeValue('purple.300', 'purple.600'),
+                              shadow: 'xl',
+                              transform: 'translateY(-2px) scale(1.01)'
+                            }}
+                            transition="all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)"
+                            shadow="lg"
+                          >
+                            <CardBody p={5}>
+                              <Flex justify="space-between" align="flex-start" mb={4}>
+                                <Box flex={1} onClick={() => handleViewTemplate(template)} cursor="pointer">
+                                  <HStack justify="space-between" align="flex-start" mb={3}>
+                                    <Heading 
+                                      size="md" 
+                                      color={useColorModeValue('gray.900', 'white')}
+                                      fontWeight="600"
+                                      letterSpacing="-0.01em"
+                                    >
+                                      {template.title}
+                                    </Heading>
+                                    <Badge 
+                                      bgGradient="linear(to-r, purple.500, pink.500)"
+                                      color="white"
+                                      borderRadius="full" 
+                                      px={3}
+                                      py={1}
+                                      fontWeight="600"
+                                      shadow="sm"
+                                    >
+                                      Custom
+                                    </Badge>
+                                  </HStack>
+                                  
+                                  <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')} mb={4} lineHeight="1.5">
+                                    {template.description}
+                                  </Text>
+                                  
+                                  <HStack spacing={3} mb={4}>
+                                    <Badge 
+                                      bgGradient={
+                                        template.difficulty === 'easy' ? 'linear(to-r, green.400, teal.400)' : 
+                                        template.difficulty === 'medium' ? 'linear(to-r, yellow.400, orange.400)' : 
+                                        template.difficulty === 'hard' ? 'linear(to-r, orange.400, red.400)' : 
+                                        'linear(to-r, red.500, pink.500)'
+                                      }
+                                      color="white"
+                                      textTransform="capitalize"
+                                      borderRadius="full"
+                                      px={3}
+                                      py={1}
+                                      fontWeight="600"
+                                      shadow="sm"
+                                    >
+                                      {template.difficulty}
+                                    </Badge>
+                                    <Badge 
+                                      colorScheme="blue" 
+                                      variant="outline"
+                                      textTransform="capitalize"
+                                      borderRadius="full"
+                                      px={3}
+                                      py={1}
+                                      fontWeight="500"
+                                    >
+                                      {template.type}
+                                    </Badge>
+                                  </HStack>
+                                  
+                                  <Text fontSize="xs" color={useColorModeValue('gray.400', 'gray.500')} fontWeight="500">
+                                    Created {new Date(template.created_at).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })}
+                                  </Text>
+                                </Box>
+                                <Menu>
+                                  <MenuButton
+                                    as={IconButton}
+                                    icon={<Icon as={MoreVertical} />}
+                                    variant="ghost"
+                                    size="sm"
+                                    aria-label="Template actions"
+                                    borderRadius="lg"
+                                    _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                  <MenuList borderRadius="xl" border="1px solid" borderColor={useColorModeValue('gray.100', 'gray.700')}>
+                                    <MenuItem 
+                                      icon={<Icon as={Edit2} />}
+                                      onClick={() => handleEditTemplate(template)}
+                                      borderRadius="lg"
+                                      _hover={{ bg: useColorModeValue('blue.50', 'blue.900/30') }}
+                                    >
+                                      Edit
+                                    </MenuItem>
+                                    <MenuItem 
+                                      icon={<Icon as={Copy} />}
+                                      onClick={() => handleDuplicateTemplate(template)}
+                                      borderRadius="lg"
+                                      _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                                    >
+                                      Duplicate
+                                    </MenuItem>
+                                    <MenuItem 
+                                      icon={<Icon as={Trash2} />}
+                                      onClick={() => confirmDelete(template)}
+                                      color="red.500"
+                                      borderRadius="lg"
+                                      _hover={{ bg: useColorModeValue('red.50', 'red.900/30') }}
+                                    >
+                                      Delete
+                                    </MenuItem>
+                                  </MenuList>
+                                </Menu>
+                              </Flex>
+                            </CardBody>
+                          </Card>
+                        ))}
+                      </VStack>
+                    )}
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
             </VStack>
           </Box>
           </Box>
@@ -973,6 +1279,122 @@ Speaker: Clear dialogue format"
           </AlertDialogContent>
         </AlertDialogOverlay>
       </AlertDialog>
+
+      {/* Template View Modal */}
+      <Modal isOpen={isViewOpen} onClose={onViewClose} size="4xl">
+        <ModalOverlay backdropFilter="blur(10px)" />
+        <ModalContent borderRadius="2xl" mx={4}>
+          <ModalHeader 
+            borderBottom="1px solid"
+            borderColor={useColorModeValue('gray.100', 'gray.700')}
+            py={6}
+          >
+            <VStack align="stretch" spacing={3}>
+              <Heading size="lg" fontWeight="600">
+                {selectedViewTemplate?.title}
+              </Heading>
+              <HStack spacing={3}>
+                {selectedViewTemplate && isBuiltInTemplate(selectedViewTemplate) && (
+                  <Badge colorScheme="purple" borderRadius="full" px={3} py={1} fontWeight="600">
+                    Built-In
+                  </Badge>
+                )}
+                {selectedViewTemplate && !isBuiltInTemplate(selectedViewTemplate) && (
+                  <Badge 
+                    bgGradient="linear(to-r, purple.500, pink.500)"
+                    color="white"
+                    borderRadius="full" 
+                    px={3}
+                    py={1}
+                    fontWeight="600"
+                  >
+                    Custom
+                  </Badge>
+                )}
+                <Badge 
+                  bgGradient={
+                    selectedViewTemplate?.difficulty === 'easy' ? 'linear(to-r, green.400, teal.400)' : 
+                    selectedViewTemplate?.difficulty === 'medium' ? 'linear(to-r, yellow.400, orange.400)' : 
+                    selectedViewTemplate?.difficulty === 'hard' ? 'linear(to-r, orange.400, red.400)' : 
+                    'linear(to-r, red.500, pink.500)'
+                  }
+                  color="white"
+                  textTransform="capitalize"
+                  borderRadius="full"
+                  px={3}
+                  py={1}
+                  fontWeight="600"
+                >
+                  {selectedViewTemplate?.difficulty}
+                </Badge>
+              </HStack>
+              <Text fontSize="md" color={useColorModeValue('gray.600', 'gray.400')}>
+                {selectedViewTemplate?.description}
+              </Text>
+            </VStack>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody maxH="60vh" overflowY="auto" py={6}>
+            {selectedViewTemplate && (
+              <Box
+                bg={useColorModeValue('gray.50', 'gray.900')}
+                p={6}
+                borderRadius="xl"
+                border="1px solid"
+                borderColor={useColorModeValue('gray.200', 'gray.700')}
+              >
+                <ReactMarkdown
+                  components={{
+                    h1: ({ node, ...props }) => <Heading as="h1" size="xl" mt={4} mb={2} {...props} />,
+                    h2: ({ node, ...props }) => <Heading as="h2" size="lg" mt={6} mb={3} {...props} />,
+                    h3: ({ node, ...props }) => <Heading as="h3" size="md" mt={4} mb={2} {...props} />,
+                    p: ({ node, ...props }) => <Text mb={3} lineHeight="1.7" {...props} />,
+                    ul: ({ node, ...props }) => <Box as="ul" pl={6} mb={3} {...props} />,
+                    ol: ({ node, ...props }) => <Box as="ol" pl={6} mb={3} {...props} />,
+                    li: ({ node, ...props }) => <Box as="li" mb={1} {...props} />,
+                    strong: ({ node, ...props }) => <Box as="strong" fontWeight="bold" color={useColorModeValue('purple.600', 'purple.300')} {...props} />,
+                    em: ({ node, ...props }) => <Box as="em" fontStyle="italic" {...props} />,
+                    code: ({ node, ...props }) => (
+                      <Box
+                        as="code"
+                        bg={useColorModeValue('gray.100', 'gray.800')}
+                        px={2}
+                        py={1}
+                        borderRadius="md"
+                        fontSize="sm"
+                        fontFamily="monospace"
+                        {...props}
+                      />
+                    ),
+                  }}
+                >
+                  {selectedViewTemplate.script}
+                </ReactMarkdown>
+              </Box>
+            )}
+          </ModalBody>
+          <ModalFooter borderTop="1px solid" borderColor={useColorModeValue('gray.100', 'gray.700')}>
+            <Button
+              colorScheme="purple"
+              leftIcon={<Icon as={UserPlus} />}
+              onClick={() => {
+                if (selectedViewTemplate) {
+                  handleAssignTemplate(selectedViewTemplate)
+                }
+              }}
+              size="lg"
+              borderRadius="xl"
+              fontWeight="600"
+              mr={3}
+            >
+              Assign to Team
+            </Button>
+            <Button variant="outline" onClick={onViewClose} borderRadius="xl">
+              Close
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Box>
   )
 }

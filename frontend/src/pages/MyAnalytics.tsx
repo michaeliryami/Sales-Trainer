@@ -55,10 +55,10 @@ const MyAnalytics: React.FC = () => {
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const toast = useToast()
 
-  const bg = useColorModeValue('gray.25', 'gray.925')
-  const cardBg = useColorModeValue('white', 'gray.850')
-  const borderColor = useColorModeValue('gray.100', 'gray.750')
-  const headerBg = useColorModeValue('gray.50/80', 'gray.800/80')
+  const bg = useColorModeValue('gray.50', 'gray.900')
+  const cardBg = useColorModeValue('white', 'gray.800')
+  const borderColor = useColorModeValue('gray.200', 'gray.700')
+  const headerBg = useColorModeValue('white', 'gray.800')
   const accentColor = useColorModeValue('blue.500', 'blue.400')
 
   // Fetch employee analytics data

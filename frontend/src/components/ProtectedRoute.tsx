@@ -14,7 +14,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   if (loading) {
     return (
       <Box 
-        bg={useColorModeValue('gray.50', 'gray.900')} 
+        bg={'gray.50'} 
         minH="100vh" 
         display="flex" 
         alignItems="center" 
@@ -22,7 +22,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       >
         <VStack spacing={4}>
           <Spinner size="xl" color="blue.500" thickness="4px" />
-          <Text color={useColorModeValue('gray.600', 'gray.400')}>
+          <Text color={'gray.600'}>
             Loading...
           </Text>
         </VStack>

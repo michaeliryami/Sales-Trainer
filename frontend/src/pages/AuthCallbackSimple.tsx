@@ -19,7 +19,7 @@ const AuthCallbackSimple: React.FC = () => {
   const [success, setSuccess] = useState(false)
   const navigate = useNavigate()
 
-  const bg = useColorModeValue('gray.50', 'gray.900')
+  const bg = 'gray.50'
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -99,10 +99,10 @@ const AuthCallbackSimple: React.FC = () => {
       <Box bg={bg} minH="100vh" display="flex" alignItems="center" justifyContent="center">
         <VStack spacing={4}>
           <Spinner size="xl" color="blue.500" thickness="4px" />
-          <Text color={useColorModeValue('gray.600', 'gray.400')}>
+          <Text color={'gray.600'}>
             Confirming your email...
           </Text>
-          <Text color={useColorModeValue('gray.500', 'gray.500')} fontSize="sm">
+          <Text color={'gray.500'} fontSize="sm">
             This may take a few moments
           </Text>
         </VStack>
@@ -116,13 +116,13 @@ const AuthCallbackSimple: React.FC = () => {
         <VStack spacing={6} maxW="400px" textAlign="center">
           <Icon as={XCircle} boxSize={16} color="red.500" />
           <Box>
-            <Heading size="lg" color={useColorModeValue('gray.900', 'white')} mb={2}>
+            <Heading size="lg" color={'gray.900'} mb={2}>
               Confirmation Failed
             </Heading>
-            <Text color={useColorModeValue('gray.600', 'gray.400')} mb={4}>
+            <Text color={'gray.600'} mb={4}>
               {error}
             </Text>
-            <Text color={useColorModeValue('gray.500', 'gray.500')} fontSize="sm">
+            <Text color={'gray.500'} fontSize="sm">
               Please try clicking the confirmation link in your email again, or contact support if the problem persists.
             </Text>
           </Box>
@@ -143,10 +143,10 @@ const AuthCallbackSimple: React.FC = () => {
         <VStack spacing={6} maxW="400px" textAlign="center">
           <Icon as={CheckCircle} boxSize={16} color="green.500" />
           <Box>
-            <Heading size="lg" color={useColorModeValue('gray.900', 'white')} mb={2}>
+            <Heading size="lg" color={'gray.900'} mb={2}>
               Email Confirmed!
             </Heading>
-            <Text color={useColorModeValue('gray.600', 'gray.400')}>
+            <Text color={'gray.600'}>
               Your email has been successfully confirmed. Welcome to Sales Trainer!
             </Text>
           </Box>

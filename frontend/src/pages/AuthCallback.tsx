@@ -22,7 +22,7 @@ const AuthCallback: React.FC = () => {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
-  const bg = useColorModeValue('gray.50', 'gray.900')
+  const bg = 'gray.50'
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -113,7 +113,7 @@ const AuthCallback: React.FC = () => {
       <Box bg={bg} minH="100vh" display="flex" alignItems="center" justifyContent="center">
         <VStack spacing={4}>
           <Spinner size="xl" color="blue.500" thickness="4px" />
-          <Text color={useColorModeValue('gray.600', 'gray.400')}>
+          <Text color={'gray.600'}>
             Confirming your email...
           </Text>
         </VStack>
@@ -127,10 +127,10 @@ const AuthCallback: React.FC = () => {
         <VStack spacing={6} maxW="400px" textAlign="center">
           <Icon as={XCircle} boxSize={16} color="red.500" />
           <Box>
-            <Heading size="lg" color={useColorModeValue('gray.900', 'white')} mb={2}>
+            <Heading size="lg" color={'gray.900'} mb={2}>
               Confirmation Failed
             </Heading>
-            <Text color={useColorModeValue('gray.600', 'gray.400')} mb={4}>
+            <Text color={'gray.600'} mb={4}>
               {error}
             </Text>
           </Box>
@@ -151,10 +151,10 @@ const AuthCallback: React.FC = () => {
         <VStack spacing={6} maxW="400px" textAlign="center">
           <Icon as={CheckCircle} boxSize={16} color="green.500" />
           <Box>
-            <Heading size="lg" color={useColorModeValue('gray.900', 'white')} mb={2}>
+            <Heading size="lg" color={'gray.900'} mb={2}>
               Email Confirmed!
             </Heading>
-            <Text color={useColorModeValue('gray.600', 'gray.400')}>
+            <Text color={'gray.600'}>
               Your email has been successfully confirmed. You'll be redirected to the app shortly.
             </Text>
           </Box>

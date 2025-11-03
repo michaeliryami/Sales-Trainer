@@ -17,11 +17,11 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
         alignItems="center" 
         justifyContent="center" 
         h="calc(100vh - 88px)"
-        bg={useColorModeValue('gray.50', 'gray.900')}
+        bg={'gray.50'}
       >
         <VStack spacing={4}>
           <Spinner size="xl" color="blue.500" thickness="4px" />
-          <Text color={useColorModeValue('gray.600', 'gray.400')}>
+          <Text color={'gray.600'}>
             Loading...
           </Text>
         </VStack>

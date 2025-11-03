@@ -89,10 +89,10 @@ const Analytics: React.FC = () => {
     }
   }, [filterAssignmentId, analyticsData])
 
-  const bg = useColorModeValue('gray.25', 'gray.925')
-  const cardBg = useColorModeValue('white', 'gray.850')
-  const borderColor = useColorModeValue('gray.100', 'gray.750')
-  const headerBg = useColorModeValue('gray.50/80', 'gray.800/80')
+  const bg = useColorModeValue('gray.50', 'gray.900')
+  const cardBg = useColorModeValue('white', 'gray.800')
+  const borderColor = useColorModeValue('gray.200', 'gray.700')
+  const headerBg = useColorModeValue('white', 'gray.800')
   const accentColor = useColorModeValue('blue.500', 'blue.400')
 
   // Fetch real analytics data from API
@@ -368,8 +368,6 @@ const Analytics: React.FC = () => {
           <Box 
             bg={cardBg} 
             h="full"
-            borderRight="1px" 
-            borderColor={borderColor} 
             overflow="hidden" 
             display="flex" 
             flexDirection="column"
@@ -379,27 +377,23 @@ const Analytics: React.FC = () => {
           >
             {/* Header */}
             <Box 
-              bg={headerBg}
-              backdropFilter="blur(10px)"
+              px={6}
+              py={4}
               borderBottom="1px"
               borderColor={borderColor}
-              px={6}
-              py={5}
             >
               <Flex justify="space-between" align="center">
                 <VStack align="start" spacing={1} flex={1}>
                   <Heading 
-                    size="lg" 
+                    size="md" 
                     color={useColorModeValue('gray.900', 'white')}
                     fontWeight="600"
-                    letterSpacing="-0.02em"
                   >
                     Analytics Dashboard
                   </Heading>
                   <Text 
                     fontSize="sm" 
-                    color={useColorModeValue('gray.500', 'gray.400')}
-                    fontWeight="400"
+                    color={useColorModeValue('gray.600', 'gray.400')}
                   >
                     Training performance and insights
                   </Text>
@@ -620,47 +614,20 @@ const Analytics: React.FC = () => {
           </Box>
         </Panel>
 
-        {/* Resize Handle */}
+        {/* Resize Handle - Invisible but functional */}
         <PanelResizeHandle>
           <Box 
             w="1px" 
             h="full" 
-            bg={borderColor}
+            bg="transparent"
             _hover={{ 
-              bg: accentColor,
-              w: "3px",
-              shadow: 'lg'
+              bg: useColorModeValue('gray.200', 'gray.700'),
+              w: "2px"
             }}
-            transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+            transition="all 0.2s"
             cursor="col-resize"
             position="relative"
-          >
-            <Box
-              position="absolute"
-              top="50%"
-              left="50%"
-              transform="translate(-50%, -50%)"
-              w="24px"
-              h="48px"
-              bg={cardBg}
-              border="1px solid"
-              borderColor={borderColor}
-              borderRadius="xl"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              opacity={0}
-              _hover={{ opacity: 1, shadow: 'md' }}
-              transition="all 0.3s"
-              backdropFilter="blur(10px)"
-            >
-              <VStack spacing="2px">
-                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
-                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
-                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
-              </VStack>
-            </Box>
-          </Box>
+          />
         </PanelResizeHandle>
 
         {/* Right Panel - Recent Activity */}
@@ -677,26 +644,22 @@ const Analytics: React.FC = () => {
           >
             {/* Header */}
             <Box 
-              bg={headerBg}
-              backdropFilter="blur(10px)"
+              px={6}
+              py={4}
               borderBottom="1px"
               borderColor={borderColor}
-              px={6}
-              py={5}
             >
               <VStack align="start" spacing={1}>
                 <Heading 
-                  size="lg" 
+                  size="md" 
                   color={useColorModeValue('gray.900', 'white')}
                   fontWeight="600"
-                  letterSpacing="-0.02em"
                 >
                   Recent Activity
                 </Heading>
                 <Text 
                   fontSize="sm" 
-                  color={useColorModeValue('gray.500', 'gray.400')}
-                  fontWeight="400"
+                  color={useColorModeValue('gray.600', 'gray.400')}
                 >
                   Latest training sessions
                 </Text>

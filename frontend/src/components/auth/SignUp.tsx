@@ -40,8 +40,8 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
   const [success, setSuccess] = useState(false)
   
   const { signUp } = useAuth()
-  const cardBg = useColorModeValue('white', 'gray.800')
-  const borderColor = useColorModeValue('gray.200', 'gray.600')
+  const cardBg = 'white'
+  const borderColor = 'gray.200'
 
   // Password validation
   const getPasswordStrength = (password: string) => {
@@ -122,13 +122,13 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
           <VStack spacing={6} align="stretch" textAlign="center">
             <Icon as={MailCheck} boxSize={16} color="blue.500" mx="auto" />
             <Box>
-              <Heading size="lg" color={useColorModeValue('gray.900', 'white')} mb={2}>
+              <Heading size="lg" color={'gray.900'} mb={2}>
                 Account Created!
               </Heading>
-              <Text color={useColorModeValue('gray.600', 'gray.400')}>
+              <Text color={'gray.600'}>
                 We've sent a verification email to <strong>{email}</strong>
               </Text>
-              <Text color={useColorModeValue('gray.600', 'gray.400')} mt={2} fontSize="sm">
+              <Text color={'gray.600'} mt={2} fontSize="sm">
                 Please check your email and click the verification link to activate your account.
               </Text>
             </Box>
@@ -151,10 +151,10 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
         <VStack spacing={6} align="stretch">
           {/* Header */}
           <Box textAlign="center">
-            <Heading size="lg" color={useColorModeValue('gray.900', 'white')} mb={2}>
+            <Heading size="lg" color={'gray.900'} mb={2}>
               Create Account
             </Heading>
-            <Text color={useColorModeValue('gray.600', 'gray.400')}>
+            <Text color={'gray.600'}>
               Join Sales Trainer to start your journey
             </Text>
           </Box>
@@ -171,23 +171,23 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
           <form onSubmit={handleSubmit}>
             <VStack spacing={4}>
               <FormControl isRequired>
-                <FormLabel color={useColorModeValue('gray.700', 'gray.300')}>
+                <FormLabel color={'gray.700'}>
                   Display Name
                 </FormLabel>
                 <InputGroup>
                   <InputLeftElement>
-                    <Icon as={User} color={useColorModeValue('gray.400', 'gray.500')} />
+                    <Icon as={User} color={'gray.500'} />
                   </InputLeftElement>
                   <Input
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="Enter your full name"
-                    bg={useColorModeValue('white', 'gray.700')}
+                    bg={'white'}
                     border="1px solid"
-                    borderColor={useColorModeValue('gray.300', 'gray.600')}
+                    borderColor={'gray.300'}
                     _hover={{
-                      borderColor: useColorModeValue('gray.400', 'gray.500')
+                      borderColor: 'gray.500'
                     }}
                     _focus={{
                       borderColor: 'blue.500',
@@ -198,23 +198,23 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
               </FormControl>
 
               <FormControl isRequired>
-                <FormLabel color={useColorModeValue('gray.700', 'gray.300')}>
+                <FormLabel color={'gray.700'}>
                   Email Address
                 </FormLabel>
                 <InputGroup>
                   <InputLeftElement>
-                    <Icon as={Mail} color={useColorModeValue('gray.400', 'gray.500')} />
+                    <Icon as={Mail} color={'gray.500'} />
                   </InputLeftElement>
                   <Input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
-                    bg={useColorModeValue('white', 'gray.700')}
+                    bg={'white'}
                     border="1px solid"
-                    borderColor={useColorModeValue('gray.300', 'gray.600')}
+                    borderColor={'gray.300'}
                     _hover={{
-                      borderColor: useColorModeValue('gray.400', 'gray.500')
+                      borderColor: 'gray.500'
                     }}
                     _focus={{
                       borderColor: 'blue.500',
@@ -225,23 +225,23 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
               </FormControl>
 
               <FormControl isRequired>
-                <FormLabel color={useColorModeValue('gray.700', 'gray.300')}>
+                <FormLabel color={'gray.700'}>
                   Password
                 </FormLabel>
                 <InputGroup>
                   <InputLeftElement>
-                    <Icon as={Lock} color={useColorModeValue('gray.400', 'gray.500')} />
+                    <Icon as={Lock} color={'gray.500'} />
                   </InputLeftElement>
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Create a password"
-                    bg={useColorModeValue('white', 'gray.700')}
+                    bg={'white'}
                     border="1px solid"
-                    borderColor={useColorModeValue('gray.300', 'gray.600')}
+                    borderColor={'gray.300'}
                     _hover={{
-                      borderColor: useColorModeValue('gray.400', 'gray.500')
+                      borderColor: 'gray.500'
                     }}
                     _focus={{
                       borderColor: 'blue.500',
@@ -281,7 +281,7 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
                           color={passwordStrength.checks.length ? 'green.500' : 'gray.400'}
                           boxSize={3}
                         />
-                        <Text color={passwordStrength.checks.length ? 'green.500' : useColorModeValue('gray.600', 'gray.400')}>
+                        <Text color={passwordStrength.checks.length ? 'green.500' : 'gray.600'}>
                           At least 8 characters
                         </Text>
                       </HStack>
@@ -291,7 +291,7 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
                           color={passwordStrength.checks.uppercase ? 'green.500' : 'gray.400'}
                           boxSize={3}
                         />
-                        <Text color={passwordStrength.checks.uppercase ? 'green.500' : useColorModeValue('gray.600', 'gray.400')}>
+                        <Text color={passwordStrength.checks.uppercase ? 'green.500' : 'gray.600'}>
                           One uppercase letter
                         </Text>
                       </HStack>
@@ -301,7 +301,7 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
                           color={passwordStrength.checks.number ? 'green.500' : 'gray.400'}
                           boxSize={3}
                         />
-                        <Text color={passwordStrength.checks.number ? 'green.500' : useColorModeValue('gray.600', 'gray.400')}>
+                        <Text color={passwordStrength.checks.number ? 'green.500' : 'gray.600'}>
                           One number
                         </Text>
                       </HStack>
@@ -311,26 +311,26 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
               </FormControl>
 
               <FormControl isRequired>
-                <FormLabel color={useColorModeValue('gray.700', 'gray.300')}>
+                <FormLabel color={'gray.700'}>
                   Confirm Password
                 </FormLabel>
                 <InputGroup>
                   <InputLeftElement>
-                    <Icon as={Lock} color={useColorModeValue('gray.400', 'gray.500')} />
+                    <Icon as={Lock} color={'gray.500'} />
                   </InputLeftElement>
                   <Input
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm your password"
-                    bg={useColorModeValue('white', 'gray.700')}
+                    bg={'white'}
                     border="1px solid"
                     borderColor={
-                      confirmPassword === '' ? useColorModeValue('gray.300', 'gray.600') :
+                      confirmPassword === '' ? 'gray.300' :
                       passwordsMatch ? 'green.300' : 'red.300'
                     }
                     _hover={{
-                      borderColor: useColorModeValue('gray.400', 'gray.500')
+                      borderColor: 'gray.500'
                     }}
                     _focus={{
                       borderColor: 'blue.500',
@@ -375,7 +375,7 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
 
           {/* Sign In Link */}
           <Box textAlign="center">
-            <Text color={useColorModeValue('gray.600', 'gray.400')}>
+            <Text color={'gray.600'}>
               Already have an account?{' '}
               <Link
                 color="blue.500"

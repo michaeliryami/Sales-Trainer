@@ -43,11 +43,29 @@ interface Assignment {
   created_at: string
 }
 
-interface Rubric {
-  id: number
-  title: string
-  grading: any[]
-  created_at: string
+// Helper function to find built-in template by matching title (case-insensitive, trimmed)
+const findBuiltInTemplateByTitle = (title: string) => {
+  if (!title) return null
+  
+  const normalizedTitle = title.trim().toLowerCase()
+  
+  // Try exact match first (after normalization)
+  let match = ALL_BUILT_IN_TEMPLATES.find(t => 
+    t.title.trim().toLowerCase() === normalizedTitle
+  )
+  
+  if (match) return match
+  
+  // Try fuzzy match - check if titles are very similar (handles minor typos or differences)
+  match = ALL_BUILT_IN_TEMPLATES.find(t => {
+    const builtInTitle = t.title.trim().toLowerCase()
+    // Remove special characters and extra spaces for comparison
+    const cleanBuiltIn = builtInTitle.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ')
+    const cleanInput = normalizedTitle.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ')
+    return cleanBuiltIn === cleanInput
+  })
+  
+  return match || null
 }
 
 function CreateSession() {
@@ -61,7 +79,8 @@ function CreateSession() {
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(false)
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null)
-  const [rubrics, setRubrics] = useState<Rubric[]>([])
+  const [assignmentTab, setAssignmentTab] = useState<'current' | 'completed'>('current')
+  const [leftSideTab, setLeftSideTab] = useState<'playground' | 'assignments'>('playground')
   const accountType = 'employee' // Hardcoded account type
   const [isCreatingCall, setIsCreatingCall] = useState(false)
   const [isCallActive, setIsCallActive] = useState(false)
@@ -178,16 +197,42 @@ function CreateSession() {
   const filteredBuiltInTemplates = filterTemplates(ALL_BUILT_IN_TEMPLATES)
   const filteredCustomTemplates = filterTemplates(templates)
 
-  // Load script when selection changes
+  // Load script when selection changes (for admins with templates OR employees with assignments)
   useEffect(() => {
-      if (!selectedTemplate) {
-      setScriptText('')
+    console.log('🔄 useEffect triggered - selectedTemplate:', selectedTemplate, 'selectedAssignment:', selectedAssignment?.title)
+    
+    // CHECK ASSIGNMENTS FIRST - they take priority when both are set
+    if (selectedAssignment) {
+      const assignmentTemplate = templates.find(t => t.id === selectedAssignment.template)
+      
+      if (assignmentTemplate) {
+        console.log('📋 Assignment template from DB:', assignmentTemplate.title)
+        
+        // ALWAYS check frontend code first for built-in templates using robust matching
+        const builtInMatch = findBuiltInTemplateByTitle(assignmentTemplate.title)
+        
+        if (builtInMatch) {
+          // Use the full script from frontend code (hard-coded templates)
+          console.log('✅ Found matching built-in template:', builtInMatch.title)
+          console.log('✅ Using hard-coded script, length:', builtInMatch.script.length, 'chars')
+          setScriptText(builtInMatch.script || '')
+          return
+        }
+        
+        // Not a built-in template - use custom template script from DB
+        console.log('⚠️ No built-in match found - using custom template script from DB')
+        console.log('⚠️ DB script length:', assignmentTemplate.script?.length || 0, 'chars')
+        setScriptText(assignmentTemplate.script || '')
         return
       }
-
+    }
+    
+    // If a template is selected (playground), use that
+    if (selectedTemplate) {
       // Check if it's a built-in template first
       const builtInTemplate = ALL_BUILT_IN_TEMPLATES.find(t => t.id === selectedTemplate)
       if (builtInTemplate) {
+        console.log('✅ Using built-in template script for playground:', builtInTemplate.title)
         setScriptText(builtInTemplate.script || '')
         return
       }
@@ -200,8 +245,14 @@ function CreateSession() {
       }
 
       // Use the custom template script
+      console.log('✅ Using custom template script for playground:', customTemplate.title)
       setScriptText(customTemplate.script || '')
-  }, [selectedTemplate, templates])
+      return
+    }
+    
+    // Nothing selected - clear script
+    setScriptText('')
+  }, [selectedTemplate, selectedAssignment, templates, userRole.isAdmin])
 
   const createAssistantAndStartCall = async () => {
     if (!vapiPublicKey) {
@@ -212,13 +263,44 @@ function CreateSession() {
     setIsCreatingCall(true)
     
     try {
-      // Get the selected template (built-in or custom)
-      const builtInTemplate = ALL_BUILT_IN_TEMPLATES.find(t => t.id === selectedTemplate)
-      const customTemplate = templates.find(t => t.id.toString() === selectedTemplate)
-      const template = builtInTemplate || customTemplate
+      let template = null
+      let scriptContent = ''
       
-      // Use the template script directly
-      const scriptContent = scriptText || template?.script || ''
+      // For employees: load template from assignment
+      if (!userRole.isAdmin && selectedAssignment) {
+        const assignmentTemplate = templates.find(t => t.id === selectedAssignment.template)
+        console.log('🚀 STARTING CALL - Employee assignment')
+        console.log('🚀 Assignment template from DB:', assignmentTemplate?.title)
+        
+        if (assignmentTemplate) {
+          // Try to find matching built-in template by title using robust matching
+          const builtInMatch = findBuiltInTemplateByTitle(assignmentTemplate.title)
+          console.log('🚀 Looking for built-in match...')
+          console.log('🚀 Built-in match found?', !!builtInMatch)
+          
+          if (builtInMatch) {
+            // Use built-in template's full script from hard-coded templates
+            template = builtInMatch
+            scriptContent = builtInMatch.script || ''
+            console.log('✅✅✅ SUCCESS! Using hard-coded built-in script for VAPI:', builtInMatch.title)
+            console.log('📝 Script being sent to VAPI:', scriptContent.length, 'characters')
+          } else {
+            // Use custom template from database
+            template = assignmentTemplate
+            scriptContent = assignmentTemplate.script || ''
+            console.log('⚠️ No built-in match - using custom template script from DB:', assignmentTemplate.title)
+            console.log('📝 Script being sent to VAPI:', scriptContent.length, 'characters')
+          }
+        } else {
+          console.log('❌❌❌ ERROR: Assignment template not found in database!')
+        }
+      } else {
+        // For admins: use selected template from playground
+        const builtInTemplate = ALL_BUILT_IN_TEMPLATES.find(t => t.id === selectedTemplate)
+        const customTemplate = templates.find(t => t.id.toString() === selectedTemplate)
+        template = builtInTemplate || customTemplate
+        scriptContent = scriptText || template?.script || ''
+      }
       
       // Update VAPI assistant with new persona/settings
       const response = await fetch('/api/assistants', {
@@ -282,9 +364,22 @@ function CreateSession() {
           if (chunks.length > 0 && profile?.id && organization?.id) {
             try {
               console.log('✅ Conditions met - Saving session to database...')
-              const builtInTemplate = ALL_BUILT_IN_TEMPLATES.find(t => t.id === selectedTemplate)
-              const customTemplate = templates.find(t => t.id.toString() === selectedTemplate)
-              const template = builtInTemplate || customTemplate
+              
+              // Get the correct template - for assignments, prefer built-in if available
+              let template = null
+              if (selectedAssignment) {
+                // For assignments, find the template from DB and check if it's a built-in
+                const assignmentTemplate = templates.find(t => t.id === selectedAssignment.template)
+                if (assignmentTemplate) {
+                  const builtInMatch = findBuiltInTemplateByTitle(assignmentTemplate.title)
+                  template = builtInMatch || assignmentTemplate
+                }
+              } else {
+                // For playground, use selected template
+                const builtInTemplate = ALL_BUILT_IN_TEMPLATES.find(t => t.id === selectedTemplate)
+                const customTemplate = templates.find(t => t.id.toString() === selectedTemplate)
+                template = builtInTemplate || customTemplate
+              }
               console.log('Template found:', template?.title)
               
               const sessionData = {
@@ -325,19 +420,17 @@ function CreateSession() {
                   let rubricId = null
                   let assignmentId = null
                   
-                  // For assignments, use the assignment's rubric
+                  // Always use the general life insurance rubric
+                  rubricToUse = { 
+                    id: GENERAL_LIFE_INSURANCE_RUBRIC.id, 
+                    grading: GENERAL_LIFE_INSURANCE_RUBRIC.categories 
+                  }
+                  rubricId = GENERAL_LIFE_INSURANCE_RUBRIC.id
+                  
                   if (selectedAssignment) {
-                    rubricToUse = rubrics.find(r => r.id === selectedAssignment.rubric)
-                    rubricId = selectedAssignment.rubric
                     assignmentId = selectedAssignment.id
-                    console.log('🎯 Using assignment rubric:', rubricId)
+                    console.log('🎯 Using general rubric for assignment:', assignmentId)
                   } else {
-                    // For playground sessions, use the general life insurance rubric
-                    rubricToUse = { 
-                      id: GENERAL_LIFE_INSURANCE_RUBRIC.id, 
-                      grading: GENERAL_LIFE_INSURANCE_RUBRIC.categories 
-                    }
-                    rubricId = GENERAL_LIFE_INSURANCE_RUBRIC.id
                     console.log('🎯 Using general rubric for playground session')
                   }
                   
@@ -526,7 +619,23 @@ function CreateSession() {
     setIsExportingPDF(true)
     
     try {
-      const template = templates.find(t => t.id.toString() === selectedTemplate)
+      // Get the correct template - for assignments, prefer built-in if available
+      let template = null
+      
+      if (selectedAssignment) {
+        // For assignments, find the template from DB and check if it's a built-in
+        const assignmentTemplate = templates.find(t => t.id === selectedAssignment.template)
+        if (assignmentTemplate) {
+          const builtInMatch = findBuiltInTemplateByTitle(assignmentTemplate.title)
+          template = builtInMatch || assignmentTemplate
+        }
+      } else {
+        // For playground, use selected template
+        const builtInTemplate = ALL_BUILT_IN_TEMPLATES.find(t => t.id === selectedTemplate)
+        const customTemplate = templates.find(t => t.id.toString() === selectedTemplate)
+        template = builtInTemplate || customTemplate
+      }
+      
       const exportData = {
         callId: activeCallId,
         templateTitle: template?.title || 'Training Session',
@@ -536,7 +645,7 @@ function CreateSession() {
         duration: fullTranscriptChunks.length > 0 ? 
           Math.round((fullTranscriptChunks[fullTranscriptChunks.length - 1].timestamp.getTime() - fullTranscriptChunks[0].timestamp.getTime()) / 1000) : 0,
         chunks: fullTranscriptChunks,
-        script: scriptText,
+        script: scriptText, // scriptText is already set to the correct script by useEffect
         // User and organization info for database storage
         userId: profile?.id,
         orgId: organization?.id,
@@ -545,9 +654,9 @@ function CreateSession() {
         ...(selectedAssignment && {
           assignmentId: selectedAssignment.id,
           assignmentTitle: selectedAssignment.title,
-          rubricId: selectedAssignment.rubric,
-          rubricTitle: rubrics.find(r => r.id === selectedAssignment.rubric)?.title || 'Unknown Rubric',
-          rubricCriteria: rubrics.find(r => r.id === selectedAssignment.rubric)?.grading || []
+          rubricId: GENERAL_LIFE_INSURANCE_RUBRIC.id,
+          rubricTitle: GENERAL_LIFE_INSURANCE_RUBRIC.title,
+          rubricCriteria: GENERAL_LIFE_INSURANCE_RUBRIC.categories
         })
       }
 
@@ -686,10 +795,11 @@ function CreateSession() {
         console.log('Fetching templates for organization:', organization?.id)
         console.log('User role isAdmin:', userRole.isAdmin)
         
+        // Fetch both global templates (org IS NULL) and organization templates
         const { data, error } = await supabase
           .from('templates')
           .select('*')
-          .eq('org', organization?.id)
+          .or(`org.is.null,org.eq.${organization?.id}`)
           .order('created_at', { ascending: false })
 
         if (error) {
@@ -732,31 +842,12 @@ function CreateSession() {
 
         setAssignments(myAssignments)
         
-        // Also fetch templates and rubrics to use with assignments
+        // Also fetch templates to use with assignments
         await fetchTemplates()
-        await fetchRubrics()
       } catch (error) {
         console.error('Error fetching assignments:', error)
       } finally {
         setIsLoadingAssignments(false)
-      }
-    }
-
-    const fetchRubrics = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('rubrics')
-          .select('*')
-          .order('created_at', { ascending: false })
-
-        if (error) {
-          console.error('Error fetching rubrics:', error)
-          return
-        }
-
-        setRubrics(data || [])
-      } catch (error) {
-        console.error('Error fetching rubrics:', error)
       }
     }
 
@@ -792,28 +883,25 @@ function CreateSession() {
 
   // Template script previews removed - using direct template script content
 
-  const bg = useColorModeValue('gray.25', 'gray.925')
-  const cardBg = useColorModeValue('white', 'gray.850')
-  const borderColor = useColorModeValue('gray.100', 'gray.750')
-  const headerBg = useColorModeValue('gray.50/80', 'gray.800/80')
-  const accentColor = useColorModeValue('blue.500', 'blue.400')
+  const cardBg = useColorModeValue('rgba(255, 255, 255, 0.9)', 'rgba(26, 32, 44, 0.9)')
+  const borderColor = useColorModeValue('purple.100', 'gray.700')
+  const headerBg = useColorModeValue('rgba(255, 255, 255, 0.8)', 'rgba(26, 32, 44, 0.8)')
+  const accentColor = useColorModeValue('purple.600', 'purple.400')
   
   // Pre-define all color mode values to avoid conditional hook calls
   const textPrimary = useColorModeValue('gray.900', 'white')
   const textSecondary = useColorModeValue('gray.500', 'gray.400')
-  const textTertiary = useColorModeValue('gray.600', 'gray.400')
   const textMuted = useColorModeValue('gray.400', 'gray.500')
   const hoverBorder = useColorModeValue('gray.300', 'gray.600')
   const hoverBgSelected = useColorModeValue('blue.50/70', 'blue.900/30')
   const hoverBgUnselected = useColorModeValue('gray.50/50', 'gray.700')
-  const assignmentDetailsBg = useColorModeValue('blue.50', 'blue.900/20')
-  const assignmentDetailsBorder = useColorModeValue('blue.200', 'blue.700')
-  const rubricItemBg = useColorModeValue('white', 'gray.800')
-  const rubricItemBorder = useColorModeValue('gray.200', 'gray.600')
-  const totalPointsBorder = useColorModeValue('gray.200', 'gray.600')
 
   return (
-    <Box bg={bg} h="calc(100vh - 88px)" overflow="hidden">
+    <Box 
+      bgGradient={useColorModeValue('linear(to-br, purple.50, pink.50, blue.50)', 'linear(to-br, gray.900, gray.800)')}
+      h="calc(100vh - 88px)" 
+      overflow="hidden"
+    >
       <PanelGroup direction="horizontal">
           {/* Left Panel - Template/Assignment Selection with Call Controls */}
         <Panel 
@@ -821,41 +909,71 @@ function CreateSession() {
             minSize={30}
             maxSize={70}
           >
-            <Box bg={cardBg} h="full" borderRight="1px" borderColor={borderColor} overflow="hidden" display="flex" flexDirection="column" borderRadius="xl" borderTopRightRadius="0" borderBottomRightRadius="0">
+             <Box bg={cardBg} h="full" overflow="hidden" display="flex" flexDirection="column">
               {/* Header */}
               <Box 
-                bg={headerBg}
-                backdropFilter="blur(10px)"
+                px={6}
+                py={4}
                 borderBottom="1px"
                 borderColor={borderColor}
-                px={6}
-                py={5}
               >
                 <VStack align="start" spacing={1}>
                   <Heading 
-                    size="lg" 
+                    size="md" 
                     color={textPrimary}
                     fontWeight="600"
-                    letterSpacing="-0.02em"
                   >
-                    {userRole.isAdmin ? 'Templates' : 'Assignments'}
+                    Train
                   </Heading>
                   <Text 
                     fontSize="sm" 
                     color={textSecondary}
-                    fontWeight="400"
                   >
-                    {isCallActive ? "🟢 Training session active" : userRole.isAdmin ? "Choose a template to begin" : "Select an assignment to practice"}
-                </Text>
+                    {isCallActive ? "🟢 Session active" : "Choose a template to practice"}
+                  </Text>
                 </VStack>
               </Box>
+
+              {/* Tabs for Employees - Playground vs Assignments */}
+              {!userRole.isAdmin && (
+                <HStack spacing={2} px={6} py={3}>
+                  <Button
+                    size="sm"
+                    onClick={() => setLeftSideTab('playground')}
+                    colorScheme="purple"
+                    variant={leftSideTab === 'playground' ? 'solid' : 'ghost'}
+                    borderRadius="lg"
+                    fontWeight="600"
+                    flex={1}
+                    _hover={{
+                      transform: leftSideTab === 'playground' ? 'none' : 'translateY(-1px)',
+                    }}
+                  >
+                    Playground
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setLeftSideTab('assignments')}
+                    colorScheme="purple"
+                    variant={leftSideTab === 'assignments' ? 'solid' : 'ghost'}
+                    borderRadius="lg"
+                    fontWeight="600"
+                    flex={1}
+                    _hover={{
+                      transform: leftSideTab === 'assignments' ? 'none' : 'translateY(-1px)',
+                    }}
+                  >
+                    Assignments
+                  </Button>
+                </HStack>
+              )}
             
-              {/* Content - Templates for Admin, Assignments for Employees */}
+              {/* Content - Playground or Assignments based on tab */}
               <Box flex={1} overflowY="auto" p={6}>
                 <VStack spacing={4} align="stretch">
-                  <Box>
-                    {userRole.isAdmin ? (
-                      // Admin Template Selection with Tabs
+                  {/* Show Playground for admins OR employees on playground tab */}
+                  {(userRole.isAdmin || leftSideTab === 'playground') && (
+                    <Box>
                       <>
                         <Text 
                           fontSize="xs" 
@@ -911,22 +1029,31 @@ function CreateSession() {
                                   filteredBuiltInTemplates.map((template) => (
                                   <Card
                                     key={template.id}
-                                    bg={cardBg}
+                                    bg={selectedTemplate === template.id.toString() ? 
+                                      useColorModeValue('linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))', 'rgba(102, 126, 234, 0.15)') : 
+                                      cardBg
+                                    }
                                     border="2px solid"
                                     borderColor={selectedTemplate === template.id.toString() ? accentColor : borderColor}
                                     borderRadius="2xl"
                                     cursor="pointer"
-                                    onClick={() => setSelectedTemplate(selectedTemplate === template.id.toString() ? '' : template.id.toString())}
-                                    _hover={{
-                                      borderColor: selectedTemplate === template.id.toString() ? accentColor : hoverBorder,
-                                      bg: selectedTemplate === template.id.toString() ? hoverBgSelected : hoverBgUnselected,
-                                      transform: 'translateY(-1px)',
-                                      shadow: selectedTemplate === template.id.toString() ? 'lg' : 'md'
+                                    onClick={() => {
+                                      setSelectedTemplate(selectedTemplate === template.id.toString() ? '' : template.id.toString())
+                                      setSelectedAssignment(null) // Clear assignment when selecting a template
                                     }}
-                                    transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+                                    backdropFilter="blur(10px)"
+                                    _hover={{
+                                      borderColor: selectedTemplate === template.id.toString() ? accentColor : useColorModeValue('purple.300', 'purple.600'),
+                                      transform: 'translateY(-2px) scale(1.01)',
+                                      shadow: 'xl',
+                                      bg: selectedTemplate === template.id.toString() ? 
+                                        useColorModeValue('linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15))', 'rgba(102, 126, 234, 0.2)') : 
+                                        useColorModeValue('white', 'gray.750')
+                                    }}
+                                    transition="all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)"
                                     position="relative"
                                     overflow="hidden"
-                                    shadow={selectedTemplate === template.id.toString() ? 'md' : 'sm'}
+                                    shadow={selectedTemplate === template.id.toString() ? 'lg' : 'md'}
                                   >
                                     
                                     <CardBody p={5}>
@@ -946,18 +1073,20 @@ function CreateSession() {
                                             </Text>
                                           </VStack>
                                           <Badge 
-                                            colorScheme={
-                                              template.difficulty === 'easy' ? 'green' : 
-                                              template.difficulty === 'medium' ? 'yellow' : 
-                                              template.difficulty === 'hard' ? 'orange' : 'red'
-                                            } 
-                                            variant="subtle"
+                                            bgGradient={
+                                              template.difficulty === 'easy' ? 'linear(to-r, green.400, teal.400)' : 
+                                              template.difficulty === 'medium' ? 'linear(to-r, yellow.400, orange.400)' : 
+                                              template.difficulty === 'hard' ? 'linear(to-r, orange.400, red.400)' : 
+                                              'linear(to-r, red.500, pink.500)'
+                                            }
+                                            color="white"
                                             textTransform="capitalize"
                                             fontSize="xs"
-                                            px={2}
+                                            px={3}
                                             py={1}
                                             borderRadius="full"
-                                            fontWeight="500"
+                                            fontWeight="600"
+                                            shadow="sm"
                                           >
                                             {template.difficulty}
                                           </Badge>
@@ -993,22 +1122,31 @@ function CreateSession() {
                                   filteredCustomTemplates.map((template) => (
                             <Card
                               key={template.id}
-                              bg={cardBg}
+                              bg={selectedTemplate === template.id.toString() ? 
+                                useColorModeValue('linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))', 'rgba(102, 126, 234, 0.15)') : 
+                                cardBg
+                              }
                               border="2px solid"
                               borderColor={selectedTemplate === template.id.toString() ? accentColor : borderColor}
                               borderRadius="2xl"
                               cursor="pointer"
-                                onClick={() => setSelectedTemplate(selectedTemplate === template.id.toString() ? '' : template.id.toString())}
-                              _hover={{
-                                borderColor: selectedTemplate === template.id.toString() ? accentColor : hoverBorder,
-                                bg: selectedTemplate === template.id.toString() ? hoverBgSelected : hoverBgUnselected,
-                                transform: 'translateY(-1px)',
-                                shadow: selectedTemplate === template.id.toString() ? 'lg' : 'md'
+                              onClick={() => {
+                                setSelectedTemplate(selectedTemplate === template.id.toString() ? '' : template.id.toString())
+                                setSelectedAssignment(null) // Clear assignment when selecting a template
                               }}
-                              transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+                              backdropFilter="blur(10px)"
+                              _hover={{
+                                borderColor: selectedTemplate === template.id.toString() ? accentColor : useColorModeValue('purple.300', 'purple.600'),
+                                transform: 'translateY(-2px) scale(1.01)',
+                                shadow: 'xl',
+                                bg: selectedTemplate === template.id.toString() ? 
+                                  useColorModeValue('linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15))', 'rgba(102, 126, 234, 0.2)') : 
+                                  useColorModeValue('white', 'gray.750')
+                              }}
+                              transition="all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)"
                               position="relative"
                               overflow="hidden"
-                              shadow={selectedTemplate === template.id.toString() ? 'md' : 'sm'}
+                              shadow={selectedTemplate === template.id.toString() ? 'lg' : 'md'}
                             >
                               
                               <CardBody p={5}>
@@ -1028,18 +1166,20 @@ function CreateSession() {
                                       </Text>
                                     </VStack>
                                     <Badge 
-                                      colorScheme={
-                                        template.difficulty === 'easy' ? 'green' : 
-                                        template.difficulty === 'medium' ? 'yellow' : 
-                                        template.difficulty === 'hard' ? 'orange' : 'red'
-                                      } 
-                                      variant="subtle"
+                                      bgGradient={
+                                        template.difficulty === 'easy' ? 'linear(to-r, green.400, teal.400)' : 
+                                        template.difficulty === 'medium' ? 'linear(to-r, yellow.400, orange.400)' : 
+                                        template.difficulty === 'hard' ? 'linear(to-r, orange.400, red.400)' : 
+                                        'linear(to-r, red.500, pink.500)'
+                                      }
+                                      color="white"
                                       textTransform="capitalize"
                                       fontSize="xs"
-                                      px={2}
+                                      px={3}
                                       py={1}
                                       borderRadius="full"
-                                      fontWeight="500"
+                                      fontWeight="600"
+                                      shadow="sm"
                                     >
                                     {template.difficulty}
                                   </Badge>
@@ -1068,19 +1208,43 @@ function CreateSession() {
                           </TabPanels>
                         </Tabs>
                       </>
-                    ) : (
-                      // Employee Assignment Selection
+                    </Box>
+                  )}
+
+                  {/* Assignments Section - Only show when on assignments tab */}
+                  {!userRole.isAdmin && leftSideTab === 'assignments' && (
+                    <Box>
                       <>
-                        <Text 
-                          fontSize="xs" 
-                          color={textMuted} 
-                          fontWeight="500"
-                          textTransform="uppercase"
-                          letterSpacing="0.05em"
-                          mb={4}
-                        >
-                          My Assignments {!selectedAssignment && <Text as="span" color="red.400" ml={1}>•</Text>}
-                        </Text>
+                        <HStack spacing={2} mb={4}>
+                          <Button
+                            size="sm"
+                            variant={assignmentTab === 'current' ? 'solid' : 'outline'}
+                            colorScheme="blue"
+                            onClick={() => setAssignmentTab('current')}
+                            borderRadius="full"
+                            fontWeight="600"
+                            flex={1}
+                            _hover={{
+                              transform: assignmentTab === 'current' ? 'none' : 'translateY(-1px)',
+                            }}
+                          >
+                            Current
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={assignmentTab === 'completed' ? 'solid' : 'outline'}
+                            colorScheme="green"
+                            onClick={() => setAssignmentTab('completed')}
+                            borderRadius="full"
+                            fontWeight="600"
+                            flex={1}
+                            _hover={{
+                              transform: assignmentTab === 'completed' ? 'none' : 'translateY(-1px)',
+                            }}
+                          >
+                            Completed
+                          </Button>
+                        </HStack>
                         <VStack spacing={3} align="stretch">
                           {isLoadingAssignments ? (
                             <Box p={4} textAlign="center">
@@ -1095,22 +1259,31 @@ function CreateSession() {
                               </Text>
                             </Box>
                           ) : (
-                            assignments.map((assignment) => {
+                            assignments
+                              .filter(() => assignmentTab === 'current') // TODO: add completed filter
+                              .map((assignment) => {
                               const assignmentTemplate = templates.find(t => t.id === assignment.template)
                               const isSelected = selectedAssignment?.id === assignment.id
+                              const isOverdue = assignment.due && new Date(assignment.due) < new Date()
                               
                               return (
                                 <Card
                                   key={assignment.id}
                                   bg={cardBg}
-                                  border="1px solid"
-                                  borderColor={isSelected ? accentColor : borderColor}
+                                  border="2px solid"
+                                  borderColor={isOverdue ? 'red.400' : (isSelected ? accentColor : borderColor)}
                                   borderRadius="2xl"
                                   cursor="pointer"
                                   onClick={() => {
-                                    setSelectedAssignment(assignment)
-                                    if (assignmentTemplate) {
-                                      setSelectedTemplate(assignmentTemplate.id.toString())
+                                    // Toggle selection like playground
+                                    if (selectedAssignment?.id === assignment.id) {
+                                      setSelectedAssignment(null)
+                                      setSelectedTemplate('')
+                                    } else {
+                                      setSelectedAssignment(assignment)
+                                      if (assignmentTemplate) {
+                                        setSelectedTemplate(assignmentTemplate.id.toString())
+                                      }
                                     }
                                   }}
                                   _hover={{
@@ -1124,30 +1297,6 @@ function CreateSession() {
                                   overflow="hidden"
                                   shadow={isSelected ? 'md' : 'sm'}
                                 >
-                                  {/* Selected indicator */}
-                                  {isSelected && (
-                                    <Box
-                                      position="absolute"
-                                      top="0"
-                                      right="0"
-                                      w="0"
-                                      h="0"
-                                      borderStyle="solid"
-                                      borderWidth="0 20px 20px 0"
-                                      borderColor={`transparent ${accentColor} transparent transparent`}
-                                    >
-                                      <Box
-                                        position="absolute"
-                                        top="2px"
-                                        right="-14px"
-                                        color="white"
-                                        fontSize="10px"
-                                      >
-                                        ✓
-                                      </Box>
-                                    </Box>
-                                  )}
-                                  
                                   <CardBody p={5}>
                                     <VStack align="start" spacing={3}>
                                       <HStack justify="space-between" w="full" align="start">
@@ -1217,181 +1366,6 @@ function CreateSession() {
                           )}
                         </VStack>
                       </>
-                    )}
-                  </Box>
-                  
-                  {/* Assignment Details for Employees */}
-                  {!userRole.isAdmin && selectedAssignment && (
-                    <Box>
-                      <Text 
-                        fontSize="xs" 
-                        color={useColorModeValue('gray.400', 'gray.500')} 
-                        fontWeight="500"
-                        textTransform="uppercase"
-                        letterSpacing="0.05em"
-                        mb={4}
-                      >
-                        Assignment Details
-                      </Text>
-                      <Card 
-                        bg={assignmentDetailsBg}
-                        border="1px solid"
-                        borderColor={assignmentDetailsBorder}
-                        borderRadius="xl"
-                      >
-                        <CardBody p={4}>
-                          <VStack align="stretch" spacing={3}>
-                            <Box>
-                              <Text fontSize="xs" color={textSecondary} fontWeight="600" mb={1}>
-                                ASSIGNMENT
-                              </Text>
-                              <Text fontSize="sm" fontWeight="600" color={textPrimary}>
-                                {selectedAssignment.title}
-                              </Text>
-                              {selectedAssignment.description && (
-                                <Text fontSize="xs" color={textTertiary} mt={1}>
-                                  {selectedAssignment.description}
-                                </Text>
-                              )}
-                            </Box>
-                            
-                            {(() => {
-                              const assignmentTemplate = templates.find(t => t.id === selectedAssignment.template)
-                              return assignmentTemplate ? (
-                                <Box>
-                                  <Text fontSize="xs" color={textSecondary} fontWeight="600" mb={1}>
-                                    TEMPLATE
-                                  </Text>
-                                  <Text fontSize="sm" fontWeight="500" color={textPrimary}>
-                                    {assignmentTemplate.title}
-                                  </Text>
-                                  <Text fontSize="xs" color={textTertiary} mt={1}>
-                                    {assignmentTemplate.description}
-                                  </Text>
-                                  <HStack spacing={2} mt={2}>
-                                    <Badge 
-                                      colorScheme={
-                                        assignmentTemplate.difficulty === 'easy' ? 'green' : 
-                                        assignmentTemplate.difficulty === 'medium' ? 'yellow' : 
-                                        assignmentTemplate.difficulty === 'hard' ? 'orange' : 'red'
-                                      } 
-                                      variant="subtle"
-                                      textTransform="capitalize"
-                                      fontSize="xs"
-                                      px={2}
-                                      py={1}
-                                      borderRadius="full"
-                                      fontWeight="500"
-                                    >
-                                      {assignmentTemplate.difficulty}
-                                    </Badge>
-                                    <Badge 
-                                      colorScheme="blue" 
-                                      variant="outline" 
-                                      textTransform="capitalize"
-                                      fontSize="xs"
-                                      px={2}
-                                      py={1}
-                                      borderRadius="full"
-                                      fontWeight="500"
-                                    >
-                                      {assignmentTemplate.type}
-                                    </Badge>
-                                  </HStack>
-                                </Box>
-                              ) : null
-                            })()}
-                            
-                            {(() => {
-                              const assignmentRubric = rubrics.find(r => r.id === selectedAssignment.rubric)
-                              return assignmentRubric ? (
-                                <Box>
-                                  <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')} fontWeight="600" mb={2}>
-                                    RUBRIC
-                                  </Text>
-                                  <Text fontSize="sm" fontWeight="500" color={useColorModeValue('gray.900', 'white')} mb={3}>
-                                    {assignmentRubric.title}
-                                  </Text>
-                                  
-                                  {/* Rubric Items */}
-                                  <VStack spacing={3} align="stretch">
-                                    {assignmentRubric.grading?.map((item: any, index: number) => (
-                                      <Box 
-                                        key={index}
-                                        p={3}
-                                        bg={rubricItemBg}
-                                        border="1px solid"
-                                        borderColor={rubricItemBorder}
-                                        borderRadius="lg"
-                                      >
-                                        <HStack justify="space-between" align="start" mb={2}>
-                                          <Text fontSize="sm" fontWeight="600" color={textPrimary}>
-                                            {item.title}
-                                          </Text>
-                                          <Badge 
-                                            colorScheme="blue" 
-                                            variant="solid"
-                                            fontSize="xs"
-                                            px={2}
-                                            py={1}
-                                            borderRadius="full"
-                                            fontWeight="600"
-                                          >
-                                            {item.maxPoints || 0} pts
-                                          </Badge>
-                                        </HStack>
-                                        {item.description && (
-                                          <Text fontSize="xs" color={textTertiary} lineHeight="1.4">
-                                            {item.description}
-                                          </Text>
-                                        )}
-                                      </Box>
-                                    )) || (
-                                      <Text fontSize="xs" color={textSecondary} fontStyle="italic">
-                                        No rubric items defined
-                                      </Text>
-                                    )}
-                                  </VStack>
-                                  
-                                  {/* Total Points */}
-                                  <HStack justify="space-between" align="center" mt={3} pt={3} borderTop="1px solid" borderColor={totalPointsBorder}>
-                                    <Text fontSize="sm" fontWeight="600" color={textPrimary}>
-                                      Total Points:
-                                    </Text>
-                                    <Badge 
-                                      colorScheme="green" 
-                                      variant="solid" 
-                                      fontSize="sm"
-                                      px={3}
-                                      py={1}
-                                      borderRadius="full"
-                                      fontWeight="600"
-                                    >
-                                      {assignmentRubric.grading?.reduce((sum: number, item: any) => sum + (item.maxPoints || 0), 0) || 0} points
-                                    </Badge>
-                                  </HStack>
-                                </Box>
-                              ) : null
-                            })()}
-                            
-                            {selectedAssignment.due && (
-                              <Box>
-                                <Text fontSize="xs" color={textSecondary} fontWeight="600" mb={1}>
-                                  DUE DATE
-                                </Text>
-                                <Text fontSize="sm" fontWeight="500" color={useColorModeValue('gray.900', 'white')}>
-                                  {new Date(selectedAssignment.due).toLocaleDateString('en-US', {
-                                    weekday: 'long',
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
-                                  })}
-                                </Text>
-                              </Box>
-                            )}
-                          </VStack>
-                        </CardBody>
-                      </Card>
                     </Box>
                   )}
                 </VStack>
@@ -1399,48 +1373,21 @@ function CreateSession() {
           </Box>
         </Panel>
 
-        {/* Resize Handle */}
-        <PanelResizeHandle>
-          <Box 
-              w="1px" 
-            h="full" 
-            bg={borderColor}
-              _hover={{ 
-                bg: accentColor,
-                w: "3px",
-                shadow: 'lg'
-              }}
-              transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-            cursor="col-resize"
-            position="relative"
-          >
-            <Box
-              position="absolute"
-              top="50%"
-              left="50%"
-              transform="translate(-50%, -50%)"
-                w="24px"
-                h="48px"
-              bg={cardBg}
-              border="1px solid"
-              borderColor={borderColor}
-                borderRadius="xl"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              opacity={0}
-                _hover={{ opacity: 1, shadow: 'md' }}
-                transition="all 0.3s"
-                backdropFilter="blur(10px)"
-              >
-                <VStack spacing="2px">
-                  <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
-                  <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
-                  <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
-                </VStack>
-            </Box>
-          </Box>
-        </PanelResizeHandle>
+         {/* Resize Handle - Invisible but functional */}
+         <PanelResizeHandle>
+           <Box 
+             w="1px" 
+             h="full" 
+             bg="transparent"
+             _hover={{ 
+               bg: useColorModeValue('gray.200', 'gray.700'),
+               w: "2px"
+             }}
+             transition="all 0.2s"
+             cursor="col-resize"
+             position="relative"
+           />
+         </PanelResizeHandle>
 
           {/* Right Panel - Live Transcript */}
           <Panel defaultSize={50} minSize={30} maxSize={70}>
@@ -1449,41 +1396,35 @@ function CreateSession() {
               h="full"
               display="flex"
               flexDirection="column"
-              borderRadius="xl"
-              borderTopLeftRadius="0"
-              borderBottomLeftRadius="0"
+              boxShadow="sm"
             >
                 <Flex 
-                bg={headerBg}
-                backdropFilter="blur(10px)"
+                px={6}
+                py={4}
                 borderBottom="1px"
                 borderColor={borderColor}
-                px={6}
-                py={5}
                 justify="space-between"
                 align="center"
               >
                 <VStack align="start" spacing={1} flex={1}>
                   <Heading 
-                    size="lg" 
+                    size="md" 
                     color={textPrimary}
                     fontWeight="600"
-                    letterSpacing="-0.02em"
                   >
                     Live Transcript
                   </Heading>
                   <Text 
                     fontSize="sm" 
                     color={textSecondary}
-                    fontWeight="400"
                   >
                     AI-powered conversation analysis
                   </Text>
                 </VStack>
                 
                 <HStack spacing={3} flexShrink={0}>
-            {/* Script Button */}
-            {selectedTemplate && (
+            {/* Script Button - Show for admins with template OR employees with assignment */}
+            {(selectedTemplate || (!userRole.isAdmin && selectedAssignment)) && scriptText && (
                     <Button
                       leftIcon={<Icon as={FileText} boxSize="4" />}
                       size="sm"
@@ -1699,8 +1640,6 @@ function CreateSession() {
           backdropFilter="blur(20px)"
         >
           <Box 
-            borderBottom="1px solid" 
-            borderColor={useColorModeValue('gray.100', 'gray.700')}
             bg={headerBg}
             backdropFilter="blur(20px)"
             borderTopRadius="3xl"
@@ -1726,7 +1665,20 @@ function CreateSession() {
                   Script Preview
                 </Text>
                 <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')} fontWeight="500">
-                  {templates.find(t => t.id.toString() === selectedTemplate)?.title || 'Training Script'}
+                  {(() => {
+                    // For assignments, get the assignment template and check for built-in match
+                    if (selectedAssignment) {
+                      const assignmentTemplate = templates.find(t => t.id === selectedAssignment.template)
+                      if (assignmentTemplate) {
+                        const builtInMatch = findBuiltInTemplateByTitle(assignmentTemplate.title)
+                        return (builtInMatch || assignmentTemplate)?.title || 'Training Script'
+                      }
+                    }
+                    // For playground, use selected template
+                    const builtInTemplate = ALL_BUILT_IN_TEMPLATES.find(t => t.id === selectedTemplate)
+                    const customTemplate = templates.find(t => t.id.toString() === selectedTemplate)
+                    return (builtInTemplate || customTemplate)?.title || 'Training Script'
+                  })()}
                 </Text>
               </VStack>
               <IconButton

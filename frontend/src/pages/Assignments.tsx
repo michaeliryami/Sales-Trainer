@@ -42,7 +42,6 @@ import { supabase, Template } from '../config/supabase'
 import { useProfile } from '../contexts/ProfileContext'
 import { Profile } from '../types/database'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ALL_BUILT_IN_TEMPLATES } from '../config/templateLibrary'
 import { GENERAL_LIFE_INSURANCE_RUBRIC } from '../config/rubricLibrary'
 
 interface Assignment {
@@ -56,18 +55,10 @@ interface Assignment {
   created_at: string
 }
 
-interface Rubric {
-  id: number
-  title: string
-  grading: any[]
-  created_at: string
-}
-
 interface AssignmentFormData {
   title: string
   description: string
   templateId: string
-  rubricId: string
   assignedUsers: string[]
   dueDate: string
 }
@@ -78,7 +69,6 @@ interface AssignmentCardProps {
   assignment: Assignment
   users: Profile[]
   templates: Template[]
-  rubrics: Rubric[]
   onEdit: (assignment: Assignment) => void
   onDuplicate: (assignment: Assignment) => void
   onDelete: (assignment: Assignment) => void
@@ -90,7 +80,6 @@ function AssignmentCard({
   assignment, 
   users, 
   templates, 
-  rubrics, 
   onEdit, 
   onDuplicate, 
   onDelete, 
@@ -115,11 +104,6 @@ function AssignmentCard({
   const getTemplateName = (templateId: number) => {
     const template = templates.find(t => t.id === templateId)
     return template?.title || 'Unknown Template'
-  }
-
-  const getRubricName = (rubricId: number) => {
-    const rubric = rubrics.find(r => r.id === rubricId)
-    return rubric?.title || 'Unknown Rubric'
   }
 
   const assignedUserIds = getAssignedUsers(assignment)
@@ -182,17 +166,6 @@ function AssignmentCard({
                   fontWeight="500"
                 >
                   {getTemplateName(assignment.template)}
-                </Badge>
-                <Badge 
-                  colorScheme="orange" 
-                  variant="outline"
-                  textTransform="capitalize"
-                  borderRadius="full"
-                  px={3}
-                  py={1}
-                  fontWeight="500"
-                >
-                  {getRubricName(assignment.rubric)}
                 </Badge>
                 {assignment.due && (
                   <Badge 
@@ -301,7 +274,6 @@ function Assignments() {
       title: '',
       description: '',
       templateId: '',
-      rubricId: '',
       assignedUsers: [],
       dueDate: ''
     }
@@ -318,8 +290,7 @@ function Assignments() {
         ...prev,
         title: `${prefill.title} Assignment`,
         description: prefill.description,
-        templateId: prefill.id,
-        rubricId: GENERAL_LIFE_INSURANCE_RUBRIC.id // Default to general rubric
+        templateId: prefill.id
       }))
       // Clear the navigation state
       window.history.replaceState({}, document.title)
@@ -332,8 +303,6 @@ function Assignments() {
   
   // Real data from Supabase
   const [templates, setTemplates] = useState<Template[]>([])
-  
-  const [rubrics, setRubrics] = useState<Rubric[]>([])
   
   // Real users data from organization
   const [users, setUsers] = useState<Profile[]>([])
@@ -360,7 +329,6 @@ function Assignments() {
   const cancelRef = React.useRef<HTMLButtonElement>(null)
   
   const toast = useToast()
-  const borderColor = useColorModeValue('gray.100', 'gray.750')
 
   // Save form data to localStorage whenever it changes
   React.useEffect(() => {
@@ -381,7 +349,6 @@ function Assignments() {
     if (organization?.id) {
       fetchAssignments()
       fetchTemplates()
-      fetchRubrics()
       fetchUsers()
     }
   }, [organization?.id])
@@ -420,10 +387,11 @@ function Assignments() {
 
   const fetchTemplates = async () => {
     try {
+      // Fetch both global templates (org IS NULL) and organization-specific templates
       const { data, error } = await supabase
         .from('templates')
         .select('*')
-        .eq('org', organization?.id)
+        .or(`org.is.null,org.eq.${organization?.id}`)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -434,24 +402,6 @@ function Assignments() {
       setTemplates(data || [])
     } catch (error) {
       console.error('Error fetching templates:', error)
-    }
-  }
-
-  const fetchRubrics = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('rubrics')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching rubrics:', error)
-        return
-      }
-
-      setRubrics(data || [])
-    } catch (error) {
-      console.error('Error fetching rubrics:', error)
     }
   }
 
@@ -483,7 +433,7 @@ function Assignments() {
 
   const handleSubmit = async () => {
     // Validate required fields
-    if (!formData.title || !formData.templateId || !formData.rubricId || formData.assignedUsers.length === 0) {
+    if (!formData.title || !formData.templateId || formData.assignedUsers.length === 0) {
       toast({
         title: 'Missing fields',
         description: 'Please fill in all required fields and assign to at least one user',
@@ -501,7 +451,7 @@ function Assignments() {
         title: formData.title,
         description: formData.description,
         template: parseInt(formData.templateId),
-        rubric: parseInt(formData.rubricId),
+        rubric: parseInt(GENERAL_LIFE_INSURANCE_RUBRIC.id), // Always use default rubric
         assigned: JSON.stringify(formData.assignedUsers), // Convert array to JSON string
         due: formData.dueDate || null
       }
@@ -546,7 +496,6 @@ function Assignments() {
         title: '',
         description: '',
         templateId: '',
-        rubricId: '',
         assignedUsers: [],
         dueDate: ''
       }
@@ -582,7 +531,6 @@ function Assignments() {
       title: assignment.title,
       description: assignment.description || '',
       templateId: assignment.template.toString(),
-      rubricId: assignment.rubric.toString(),
       assignedUsers: assignedUsers,
       dueDate: assignment.due || ''
     })
@@ -601,7 +549,6 @@ function Assignments() {
       title: `${assignment.title} (Copy)`,
       description: assignment.description || '',
       templateId: assignment.template.toString(),
-      rubricId: assignment.rubric.toString(),
       assignedUsers: assignedUsers,
       dueDate: assignment.due || ''
     })
@@ -648,13 +595,15 @@ function Assignments() {
     onDeleteOpen()
   }
 
-  const bg = useColorModeValue('gray.25', 'gray.925')
-  const cardBg = useColorModeValue('white', 'gray.850')
-  const headerBg = useColorModeValue('gray.50/80', 'gray.800/80')
-  const accentColor = useColorModeValue('blue.500', 'blue.400')
+  const cardBg = useColorModeValue('rgba(255, 255, 255, 0.9)', 'rgba(26, 32, 44, 0.9)')
+  const accentColor = useColorModeValue('purple.600', 'purple.400')
 
   return (
-    <Box bg={bg} h="calc(100vh - 88px)" overflow="hidden">
+    <Box 
+      bgGradient={useColorModeValue('linear(to-br, purple.50, pink.50, blue.50)', 'linear(to-br, gray.900, gray.800)')}
+      h="calc(100vh - 88px)" 
+      overflow="hidden"
+    >
       <PanelGroup direction="horizontal">
         {/* Left Panel - Assignment Creation */}
         <Panel 
@@ -665,37 +614,30 @@ function Assignments() {
           <Box 
             bg={cardBg} 
             h="full"
-            borderRight="1px" 
-            borderColor={borderColor} 
             overflow="hidden" 
             display="flex" 
             flexDirection="column"
-            borderRadius="xl"
-            borderTopRightRadius="0"
-            borderBottomRightRadius="0"
+            backdropFilter="blur(20px)"
+            shadow="xl"
           >
           {/* Sidebar Header */}
           <Box 
-            bg={headerBg}
-            backdropFilter="blur(10px)"
-            borderBottom="1px"
-            borderColor={borderColor}
             px={6}
-            py={5}
+            py={4}
+            borderBottom="1px"
+            borderColor={useColorModeValue('gray.100', 'gray.700')}
           >
             <VStack align="start" spacing={1}>
               <Heading 
-                size="lg" 
+                size="md" 
                 color={useColorModeValue('gray.900', 'white')}
                 fontWeight="600"
-                letterSpacing="-0.02em"
               >
                 Assignment Creation
               </Heading>
               <Text 
                 fontSize="sm" 
-                color={useColorModeValue('gray.500', 'gray.400')}
-                fontWeight="400"
+                color={useColorModeValue('gray.600', 'gray.400')}
               >
                 Create and manage training assignments for your team
               </Text>
@@ -798,64 +740,11 @@ function Assignments() {
                           boxShadow: `0 0 0 1px ${accentColor}`
                         }}
                       >
-                        <optgroup label="Built-In Templates">
-                          {ALL_BUILT_IN_TEMPLATES.map((template) => (
-                            <option key={template.id} value={template.id}>
-                              {template.title} ({template.category} - {template.difficulty})
-                            </option>
-                          ))}
-                        </optgroup>
-                        {templates.length > 0 && (
-                          <optgroup label="Custom Templates">
-                            {templates.map((template) => (
-                              <option key={template.id} value={template.id}>
-                                {template.title} (Custom - {template.difficulty})
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                      </Select>
-                    </FormControl>
-
-                    <FormControl isRequired>
-                      <FormLabel 
-                        fontSize="sm" 
-                        color={useColorModeValue('gray.700', 'gray.300')} 
-                        fontWeight="semibold"
-                        mb={2}
-                      >
-                        Rubric
-                      </FormLabel>
-                      <Select
-                        placeholder="Select rubric"
-                        value={formData.rubricId}
-                        onChange={(e) => handleInputChange('rubricId', e.target.value)}
-                        bg={cardBg}
-                        border="1px solid"
-                        borderColor={useColorModeValue('gray.100', 'gray.750')}
-                        borderRadius="xl"
-                        _hover={{
-                          borderColor: useColorModeValue('gray.300', 'gray.600')
-                        }}
-                        _focus={{
-                          borderColor: accentColor,
-                          boxShadow: `0 0 0 1px ${accentColor}`
-                        }}
-                      >
-                        <optgroup label="Standard Rubrics">
-                          <option key={GENERAL_LIFE_INSURANCE_RUBRIC.id} value={GENERAL_LIFE_INSURANCE_RUBRIC.id}>
-                            {GENERAL_LIFE_INSURANCE_RUBRIC.title} (Recommended)
+                        {templates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.title} ({template.difficulty})
                           </option>
-                        </optgroup>
-                        {rubrics.length > 0 && (
-                          <optgroup label="Custom Rubrics">
-                            {rubrics.map((rubric) => (
-                              <option key={rubric.id} value={rubric.id}>
-                                {rubric.title}
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
+                        ))}
                       </Select>
                     </FormControl>
                   </HStack>
@@ -986,7 +875,6 @@ function Assignments() {
                         title: '',
                         description: '',
                         templateId: '',
-                        rubricId: '',
                         assignedUsers: [],
                         dueDate: ''
                       }
@@ -1017,7 +905,6 @@ function Assignments() {
                           title: '',
                           description: '',
                           templateId: '',
-                          rubricId: '',
                           assignedUsers: [],
                           dueDate: ''
                         }
@@ -1091,32 +978,27 @@ function Assignments() {
             overflow="hidden" 
             display="flex" 
             flexDirection="column"
-            borderRadius="xl"
-            borderTopLeftRadius="0"
-            borderBottomLeftRadius="0"
+            backdropFilter="blur(20px)"
+            shadow="xl"
           >
           {/* Right Panel Header */}
           <Box 
-            bg={headerBg}
-            backdropFilter="blur(10px)"
-            borderBottom="1px"
-            borderColor={useColorModeValue('gray.100', 'gray.750')}
             px={6}
-            py={5}
+            py={4}
+            borderBottom="1px"
+            borderColor={useColorModeValue('gray.100', 'gray.700')}
           >
             <VStack align="start" spacing={1}>
               <Heading 
-                size="lg" 
+                size="md" 
                 color={useColorModeValue('gray.900', 'white')}
                 fontWeight="600"
-                letterSpacing="-0.02em"
               >
                 Assignment Management
               </Heading>
               <Text 
                 fontSize="sm" 
-                color={useColorModeValue('gray.500', 'gray.400')}
-                fontWeight="400"
+                color={useColorModeValue('gray.600', 'gray.400')}
               >
                 View assignments and track user performance
               </Text>
@@ -1152,7 +1034,6 @@ function Assignments() {
                     assignment={assignment}
                     users={users}
                     templates={templates}
-                    rubrics={rubrics}
                     onEdit={handleEditAssignment}
                     onDuplicate={handleDuplicateAssignment}
                     onDelete={confirmDelete}
