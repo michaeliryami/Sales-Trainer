@@ -1,5 +1,6 @@
 import express from 'express'
 import { supabase } from '../config/supabase'
+import { getTemplateName } from '../config/builtInTemplates'
 
 const router = express.Router()
 
@@ -52,10 +53,14 @@ router.get('/admin/:orgId', async (req, res) => {
 
     if (metricsError) throw metricsError
 
-    // Calculate stats
+    // Calculate stats (includes both assignment and playground sessions for usage metrics)
     const totalSessions = sessions?.length || 0
     const completedSessions = sessions?.filter(s => s.status === 'completed').length || 0
     const activeUsers = new Set(sessions?.map(s => s.user_id)).size
+    
+    // Track assignment-only sessions for detailed performance metrics
+    const assignmentSessions = sessions?.filter(s => s.assignment_id !== null) || []
+    const playgroundSessionsCount = totalSessions - assignmentSessions.length
     const avgDuration = sessions && sessions.length > 0
       ? sessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / sessions.length / 60
       : 0
@@ -107,8 +112,10 @@ router.get('/admin/:orgId', async (req, res) => {
     }).filter(Boolean).sort((a: any, b: any) => b.sessions - a.sessions).slice(0, 5)
 
     // Get recent sessions with user and template details
+    // Filter out playground sessions (assignment_id is null) for admin view
     const recentSessionsData = sessions
-      ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      ?.filter(s => s.assignment_id !== null) // Only show assignment sessions to admin
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 10) || []
 
     // Get profiles for user names
@@ -180,6 +187,8 @@ router.get('/admin/:orgId', async (req, res) => {
 
     const analyticsData = {
       totalSessions: Math.round(totalSessions),
+      assignmentSessions: assignmentSessions.length,
+      playgroundSessions: playgroundSessionsCount,
       totalUsers: activeUsers,
       avgSessionDuration: parseFloat(avgDuration.toFixed(1)),
       completionRate: parseFloat(completionRate.toFixed(1)),
@@ -298,19 +307,29 @@ router.get('/employee/:userId', async (req, res) => {
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 10)
       .map(session => {
-        const template = templates?.find(t => t.id === session.template_id)
         const grade = grades?.find(g => g.session_id === session.id)
+        const isPlayground = !session.assignment_id // Playground if no assignment
+        
+        // Get template name - check built-in templates first, then database
+        let templateName = getTemplateName(session.template_id)
+        if (!templateName) {
+          // Numeric ID - look up in database
+          const template = templates?.find(t => t.id === session.template_id)
+          templateName = template?.title || 'Unknown Template'
+        }
         
         return {
           id: session.id,
-          template: template?.title || 'Unknown Template',
+          template: templateName,
+          templateId: session.template_id,
           duration: session.duration_seconds ? `${Math.round(session.duration_seconds / 60)}m` : 'N/A',
           score: grade ? Math.round(grade.percentage) : null,
           date: session.created_at,
           status: session.status,
           type: session.session_type,
           pdfUrl: session.pdf_url,
-          hasGrade: !!grade
+          hasGrade: !!grade,
+          isPlayground: isPlayground
         }
       })
 
@@ -348,6 +367,49 @@ router.get('/employee/:userId', async (req, res) => {
       sessions: data.count
     })).sort((a, b) => b.avgScore - a.avgScore)
 
+    // Group playground sessions by template
+    const playgroundSessionsByTemplate: any = {}
+    sessions?.forEach(session => {
+      if (!session.assignment_id) { // Playground session
+        // Get template name - check built-in templates first, then database
+        let templateName = getTemplateName(session.template_id)
+        if (!templateName) {
+          const template = templates?.find(t => t.id === session.template_id)
+          templateName = template?.title || 'Unknown Template'
+        }
+        const grade = grades?.find(g => g.session_id === session.id)
+        
+        if (!playgroundSessionsByTemplate[templateName]) {
+          playgroundSessionsByTemplate[templateName] = {
+            templateName,
+            templateId: session.template_id,
+            count: 0,
+            scores: [],
+            avgScore: 0,
+            lastPlayed: session.created_at
+          }
+        }
+        
+        playgroundSessionsByTemplate[templateName].count++
+        if (grade) {
+          playgroundSessionsByTemplate[templateName].scores.push(grade.percentage)
+        }
+        
+        // Update last played if this session is more recent
+        if (new Date(session.created_at) > new Date(playgroundSessionsByTemplate[templateName].lastPlayed)) {
+          playgroundSessionsByTemplate[templateName].lastPlayed = session.created_at
+        }
+      }
+    })
+
+    // Calculate average scores for each template
+    const playgroundStats = Object.values(playgroundSessionsByTemplate).map((stat: any) => ({
+      ...stat,
+      avgScore: stat.scores.length > 0 
+        ? Math.round(stat.scores.reduce((a: number, b: number) => a + b, 0) / stat.scores.length)
+        : null
+    })).sort((a: any, b: any) => new Date(b.lastPlayed).getTime() - new Date(a.lastPlayed).getTime())
+
     const analyticsData = {
       // Overview Stats
       totalSessions,
@@ -371,6 +433,7 @@ router.get('/employee/:userId', async (req, res) => {
       recentSessions,
       scoreTrend,
       skills,
+      playgroundStats, // Practice sessions grouped by template
       
       // Performance Metrics
       improvementRate: scoreTrend.length >= 2 
@@ -421,25 +484,31 @@ router.post('/session', async (req, res) => {
       status
     })
 
-    // Insert session
+    // Insert session (don't include status if not provided - let DB handle default)
+    const sessionInsert: any = {
+      user_id: userId,
+      org_id: orgId,
+      session_type: sessionType,
+      template_id: templateId,
+      assignment_id: assignmentId,
+      call_id: callId,
+      vapi_call_id: vapiCallId,
+      start_time: startTime,
+      end_time: endTime,
+      duration_seconds: durationSeconds,
+      transcript: transcript,
+      transcript_clean: transcriptClean,
+      metadata: metadata || {}
+    }
+
+    // Only add status if provided (otherwise let DB use default)
+    if (status) {
+      sessionInsert.status = status
+    }
+
     const { data: session, error: sessionError } = await supabase
       .from('training_sessions')
-      .insert([{
-        user_id: userId,
-        org_id: orgId,
-        session_type: sessionType,
-        template_id: templateId,
-        assignment_id: assignmentId,
-        call_id: callId,
-        vapi_call_id: vapiCallId,
-        start_time: startTime,
-        end_time: endTime,
-        duration_seconds: durationSeconds,
-        transcript: transcript,
-        transcript_clean: transcriptClean,
-        status: status || 'completed',
-        metadata: metadata || {}
-      }])
+      .insert([sessionInsert])
       .select()
       .single()
 
@@ -464,18 +533,19 @@ router.post('/session', async (req, res) => {
 })
 
 // POST /api/analytics/grade-transcript - Grade transcript with AI and save
+// Supports both assignment sessions (assignmentId provided) and playground sessions (assignmentId = null)
 router.post('/grade-transcript', async (req, res) => {
   try {
     const {
       sessionId,
       userId,
-      assignmentId,
+      assignmentId, // Can be null for playground practice sessions
       rubricId,
       rubricCriteria,
       transcript
     } = req.body
 
-    console.log('Grading transcript for session:', sessionId)
+    console.log('Grading transcript for session:', sessionId, assignmentId ? `(Assignment ${assignmentId})` : '(Playground Practice)')
 
     // Import OpenAI for grading
     const OpenAI = require('openai')
@@ -797,6 +867,77 @@ router.post('/grade', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Failed to save grade',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})
+
+// POST /api/analytics/session/:id/submit - Submit a session for admin review
+router.post('/session/:id/submit', async (req, res): Promise<void> => {
+  try {
+    const { id } = req.params
+
+    if (!id) {
+      res.status(400).json({
+        error: 'Missing session ID'
+      })
+      return
+    }
+
+    // First, get the session to find its assignment_id
+    const { data: session, error: fetchError } = await supabase
+      .from('training_sessions')
+      .select('assignment_id, user_id')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !session) {
+      res.status(404).json({
+        error: 'Session not found'
+      })
+      return
+    }
+
+    // If this is an assignment session, unsubmit all other sessions for this assignment
+    if (session.assignment_id) {
+      const { error: unsubmitError } = await supabase
+        .from('training_sessions')
+        .update({ submitted_for_review: false })
+        .eq('assignment_id', session.assignment_id)
+        .eq('user_id', session.user_id)
+        .neq('id', id)
+
+      if (unsubmitError) {
+        console.error('Error unsubmitting other sessions:', unsubmitError)
+      }
+    }
+
+    // Now submit this session
+    const { data, error } = await supabase
+      .from('training_sessions')
+      .update({ submitted_for_review: true })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error submitting session:', error)
+      res.status(500).json({
+        error: 'Failed to submit session',
+        details: error.message
+      })
+      return
+    }
+
+    res.json({
+      success: true,
+      data
+    })
+
+  } catch (error) {
+    console.error('Error in submit session:', error)
+    res.status(500).json({
+      error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     })
   }

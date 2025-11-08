@@ -19,6 +19,7 @@ export interface Template {
   type: string
   script: string
   pdf_path?: string | null
+  org?: string | null
 }
 
 export default supabase

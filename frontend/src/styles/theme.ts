@@ -6,12 +6,12 @@ export const useModernTheme = () => {
     // Gradient Backgrounds
     gradients: {
       primary: useColorModeValue(
-        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        'linear-gradient(135deg, #f26f25 0%, #d95e1e 100%)',
+        'linear-gradient(135deg, #f26f25 0%, #d95e1e 100%)'
       ),
       secondary: useColorModeValue(
-        'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-        'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
+        'linear-gradient(135deg, #ff7d31 0%, #f26f25 100%)',
+        'linear-gradient(135deg, #ff7d31 0%, #f26f25 100%)'
       ),
       success: useColorModeValue(
         'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
@@ -26,8 +26,8 @@ export const useModernTheme = () => {
         'linear-gradient(135deg, #1a202c 0%, #0f1419 100%)'
       ),
       cool: useColorModeValue(
-        'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-        'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)'
+        'linear-gradient(135deg, #f26f25 0%, #ff7d31 50%, #ffa76b 100%)',
+        'linear-gradient(135deg, #f26f25 0%, #ff7d31 50%, #ffa76b 100%)'
       ),
     },
     
@@ -44,20 +44,20 @@ export const useModernTheme = () => {
       primary: useColorModeValue('gray.900', 'white'),
       secondary: useColorModeValue('gray.600', 'gray.400'),
       muted: useColorModeValue('gray.500', 'gray.500'),
-      accent: useColorModeValue('purple.600', 'purple.400'),
+      accent: useColorModeValue('#f26f25', '#ff7d31'),
     },
     
     // Border Colors
     border: {
       default: useColorModeValue('gray.200', 'gray.700'),
       hover: useColorModeValue('gray.300', 'gray.600'),
-      accent: useColorModeValue('purple.400', 'purple.500'),
+      accent: useColorModeValue('#f26f25', '#ff7d31'),
     },
     
     // Accent Colors
     accent: {
-      primary: useColorModeValue('purple.600', 'purple.400'),
-      secondary: useColorModeValue('pink.500', 'pink.400'),
+      primary: useColorModeValue('#f26f25', '#ff7d31'),
+      secondary: useColorModeValue('#d95e1e', '#b84e19'),
       success: useColorModeValue('green.500', 'green.400'),
       warning: useColorModeValue('orange.500', 'orange.400'),
       error: useColorModeValue('red.500', 'red.400'),
@@ -110,7 +110,7 @@ export const hoverEffects = {
   },
   
   glow: {
-    boxShadow: '0 0 20px rgba(102, 126, 234, 0.6)',
+    boxShadow: '0 0 20px rgba(242, 111, 37, 0.6)',
     transition: 'all 0.3s ease',
   },
   

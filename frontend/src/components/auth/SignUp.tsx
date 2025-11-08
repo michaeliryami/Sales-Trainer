@@ -120,7 +120,7 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
       <Card bg={cardBg} border="1px solid" borderColor={borderColor} shadow="lg" maxW="400px" w="full">
         <CardBody p={8}>
           <VStack spacing={6} align="stretch" textAlign="center">
-            <Icon as={MailCheck} boxSize={16} color="blue.500" mx="auto" />
+            <Icon as={MailCheck} boxSize={16} color="#f26f25" mx="auto" />
             <Box>
               <Heading size="lg" color={'gray.900'} mb={2}>
                 Account Created!
@@ -190,8 +190,8 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
                       borderColor: 'gray.500'
                     }}
                     _focus={{
-                      borderColor: 'blue.500',
-                      boxShadow: '0 0 0 1px blue.500'
+                      borderColor: '#f26f25',
+                      boxShadow: '0 0 0 1px #f26f25'
                     }}
                   />
                 </InputGroup>
@@ -217,8 +217,8 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
                       borderColor: 'gray.500'
                     }}
                     _focus={{
-                      borderColor: 'blue.500',
-                      boxShadow: '0 0 0 1px blue.500'
+                      borderColor: '#f26f25',
+                      boxShadow: '0 0 0 1px #f26f25'
                     }}
                   />
                 </InputGroup>
@@ -244,8 +244,8 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
                       borderColor: 'gray.500'
                     }}
                     _focus={{
-                      borderColor: 'blue.500',
-                      boxShadow: '0 0 0 1px blue.500'
+                      borderColor: '#f26f25',
+                      boxShadow: '0 0 0 1px #f26f25'
                     }}
                   />
                   <Button
@@ -333,8 +333,8 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
                       borderColor: 'gray.500'
                     }}
                     _focus={{
-                      borderColor: 'blue.500',
-                      boxShadow: '0 0 0 1px blue.500'
+                      borderColor: '#f26f25',
+                      boxShadow: '0 0 0 1px #f26f25'
                     }}
                   />
                   <Button
@@ -359,7 +359,7 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
 
               <Button
                 type="submit"
-                colorScheme="blue"
+                colorScheme="orange"
                 size="lg"
                 w="full"
                 isLoading={loading}
@@ -378,11 +378,11 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
             <Text color={'gray.600'}>
               Already have an account?{' '}
               <Link
-                color="blue.500"
+                color="#f26f25"
                 onClick={onToggleMode}
                 cursor="pointer"
                 fontWeight="semibold"
-                _hover={{ textDecoration: 'underline' }}
+                _hover={{ textDecoration: 'underline', color: '#d95e1e' }}
               >
                 Sign in
               </Link>

@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const supabase_1 = require("../config/supabase");
+const builtInTemplates_1 = require("../config/builtInTemplates");
 const router = express_1.default.Router();
 router.get('/admin/:orgId', async (req, res) => {
     try {
@@ -47,6 +48,8 @@ router.get('/admin/:orgId', async (req, res) => {
         const totalSessions = sessions?.length || 0;
         const completedSessions = sessions?.filter(s => s.status === 'completed').length || 0;
         const activeUsers = new Set(sessions?.map(s => s.user_id)).size;
+        const assignmentSessions = sessions?.filter(s => s.assignment_id !== null) || [];
+        const playgroundSessionsCount = totalSessions - assignmentSessions.length;
         const avgDuration = sessions && sessions.length > 0
             ? sessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / sessions.length / 60
             : 0;
@@ -88,7 +91,8 @@ router.get('/admin/:orgId', async (req, res) => {
             } : null;
         }).filter(Boolean).sort((a, b) => b.sessions - a.sessions).slice(0, 5);
         const recentSessionsData = sessions
-            ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            ?.filter(s => s.assignment_id !== null)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             .slice(0, 10) || [];
         const userIds = [...new Set(recentSessionsData.map(s => s.user_id))];
         const { data: profiles } = await supabase_1.supabase
@@ -148,6 +152,8 @@ router.get('/admin/:orgId', async (req, res) => {
         }
         const analyticsData = {
             totalSessions: Math.round(totalSessions),
+            assignmentSessions: assignmentSessions.length,
+            playgroundSessions: playgroundSessionsCount,
             totalUsers: activeUsers,
             avgSessionDuration: parseFloat(avgDuration.toFixed(1)),
             completionRate: parseFloat(completionRate.toFixed(1)),
@@ -242,18 +248,25 @@ router.get('/employee/:userId', async (req, res) => {
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             .slice(0, 10)
             .map(session => {
-            const template = templates?.find(t => t.id === session.template_id);
             const grade = grades?.find(g => g.session_id === session.id);
+            const isPlayground = !session.assignment_id;
+            let templateName = (0, builtInTemplates_1.getTemplateName)(session.template_id);
+            if (!templateName) {
+                const template = templates?.find(t => t.id === session.template_id);
+                templateName = template?.title || 'Unknown Template';
+            }
             return {
                 id: session.id,
-                template: template?.title || 'Unknown Template',
+                template: templateName,
+                templateId: session.template_id,
                 duration: session.duration_seconds ? `${Math.round(session.duration_seconds / 60)}m` : 'N/A',
                 score: grade ? Math.round(grade.percentage) : null,
                 date: session.created_at,
                 status: session.status,
                 type: session.session_type,
                 pdfUrl: session.pdf_url,
-                hasGrade: !!grade
+                hasGrade: !!grade,
+                isPlayground: isPlayground
             };
         });
         const scoreTrend = grades
@@ -284,6 +297,40 @@ router.get('/employee/:userId', async (req, res) => {
             avgScore: Math.round(data.total / data.count),
             sessions: data.count
         })).sort((a, b) => b.avgScore - a.avgScore);
+        const playgroundSessionsByTemplate = {};
+        sessions?.forEach(session => {
+            if (!session.assignment_id) {
+                let templateName = (0, builtInTemplates_1.getTemplateName)(session.template_id);
+                if (!templateName) {
+                    const template = templates?.find(t => t.id === session.template_id);
+                    templateName = template?.title || 'Unknown Template';
+                }
+                const grade = grades?.find(g => g.session_id === session.id);
+                if (!playgroundSessionsByTemplate[templateName]) {
+                    playgroundSessionsByTemplate[templateName] = {
+                        templateName,
+                        templateId: session.template_id,
+                        count: 0,
+                        scores: [],
+                        avgScore: 0,
+                        lastPlayed: session.created_at
+                    };
+                }
+                playgroundSessionsByTemplate[templateName].count++;
+                if (grade) {
+                    playgroundSessionsByTemplate[templateName].scores.push(grade.percentage);
+                }
+                if (new Date(session.created_at) > new Date(playgroundSessionsByTemplate[templateName].lastPlayed)) {
+                    playgroundSessionsByTemplate[templateName].lastPlayed = session.created_at;
+                }
+            }
+        });
+        const playgroundStats = Object.values(playgroundSessionsByTemplate).map((stat) => ({
+            ...stat,
+            avgScore: stat.scores.length > 0
+                ? Math.round(stat.scores.reduce((a, b) => a + b, 0) / stat.scores.length)
+                : null
+        })).sort((a, b) => new Date(b.lastPlayed).getTime() - new Date(a.lastPlayed).getTime());
         const analyticsData = {
             totalSessions,
             completedSessions,
@@ -300,6 +347,7 @@ router.get('/employee/:userId', async (req, res) => {
             recentSessions,
             scoreTrend,
             skills,
+            playgroundStats,
             improvementRate: scoreTrend.length >= 2
                 ? (scoreTrend[scoreTrend.length - 1]?.score || 0) - (scoreTrend[0]?.score || 0)
                 : 0
@@ -328,24 +376,27 @@ router.post('/session', async (req, res) => {
             assignmentId,
             status
         });
+        const sessionInsert = {
+            user_id: userId,
+            org_id: orgId,
+            session_type: sessionType,
+            template_id: templateId,
+            assignment_id: assignmentId,
+            call_id: callId,
+            vapi_call_id: vapiCallId,
+            start_time: startTime,
+            end_time: endTime,
+            duration_seconds: durationSeconds,
+            transcript: transcript,
+            transcript_clean: transcriptClean,
+            metadata: metadata || {}
+        };
+        if (status) {
+            sessionInsert.status = status;
+        }
         const { data: session, error: sessionError } = await supabase_1.supabase
             .from('training_sessions')
-            .insert([{
-                user_id: userId,
-                org_id: orgId,
-                session_type: sessionType,
-                template_id: templateId,
-                assignment_id: assignmentId,
-                call_id: callId,
-                vapi_call_id: vapiCallId,
-                start_time: startTime,
-                end_time: endTime,
-                duration_seconds: durationSeconds,
-                transcript: transcript,
-                transcript_clean: transcriptClean,
-                status: status || 'completed',
-                metadata: metadata || {}
-            }])
+            .insert([sessionInsert])
             .select()
             .single();
         if (sessionError)
@@ -370,7 +421,7 @@ router.post('/session', async (req, res) => {
 router.post('/grade-transcript', async (req, res) => {
     try {
         const { sessionId, userId, assignmentId, rubricId, rubricCriteria, transcript } = req.body;
-        console.log('Grading transcript for session:', sessionId);
+        console.log('Grading transcript for session:', sessionId, assignmentId ? `(Assignment ${assignmentId})` : '(Playground Practice)');
         const OpenAI = require('openai');
         const openai = new OpenAI({
             apiKey: process.env.OPENAI_API_KEY
@@ -633,6 +684,64 @@ router.post('/grade', async (req, res) => {
         return res.status(500).json({
             success: false,
             error: 'Failed to save grade',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+router.post('/session/:id/submit', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            res.status(400).json({
+                error: 'Missing session ID'
+            });
+            return;
+        }
+        const { data: session, error: fetchError } = await supabase_1.supabase
+            .from('training_sessions')
+            .select('assignment_id, user_id')
+            .eq('id', id)
+            .single();
+        if (fetchError || !session) {
+            res.status(404).json({
+                error: 'Session not found'
+            });
+            return;
+        }
+        if (session.assignment_id) {
+            const { error: unsubmitError } = await supabase_1.supabase
+                .from('training_sessions')
+                .update({ submitted_for_review: false })
+                .eq('assignment_id', session.assignment_id)
+                .eq('user_id', session.user_id)
+                .neq('id', id);
+            if (unsubmitError) {
+                console.error('Error unsubmitting other sessions:', unsubmitError);
+            }
+        }
+        const { data, error } = await supabase_1.supabase
+            .from('training_sessions')
+            .update({ submitted_for_review: true })
+            .eq('id', id)
+            .select()
+            .single();
+        if (error) {
+            console.error('Error submitting session:', error);
+            res.status(500).json({
+                error: 'Failed to submit session',
+                details: error.message
+            });
+            return;
+        }
+        res.json({
+            success: true,
+            data
+        });
+    }
+    catch (error) {
+        console.error('Error in submit session:', error);
+        res.status(500).json({
+            error: 'Internal server error',
             details: error instanceof Error ? error.message : 'Unknown error'
         });
     }

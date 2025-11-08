@@ -20,24 +20,14 @@ import {
   Divider,
   Select,
   Spinner,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer
+  Button
 } from '@chakra-ui/react'
 import { 
   TrendingUp, 
-  Target, 
-  Award,
+  Target,
   Calendar,
-  Zap,
   BarChart3,
   Clock,
-  CheckCircle2,
-  XCircle,
   FileDown
 } from 'lucide-react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
@@ -59,7 +49,7 @@ const MyAnalytics: React.FC = () => {
   const cardBg = useColorModeValue('white', 'gray.800')
   const borderColor = useColorModeValue('gray.200', 'gray.700')
   const headerBg = useColorModeValue('white', 'gray.800')
-  const accentColor = useColorModeValue('blue.500', 'blue.400')
+  const accentColor = useColorModeValue('#f26f25', '#ff7d31')
 
   // Fetch employee analytics data
   useEffect(() => {
@@ -408,6 +398,68 @@ const MyAnalytics: React.FC = () => {
                   </CardBody>
                 </Card>
 
+                {/* Playground Practice Stats */}
+                {analyticsData?.playgroundStats && analyticsData.playgroundStats.length > 0 && (
+                  <Card bg={cardBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" shadow="md">
+                    <CardBody p={6}>
+                      <Heading 
+                        size="md" 
+                        color={useColorModeValue('gray.900', 'white')} 
+                        mb={4}
+                        fontWeight="600"
+                        letterSpacing="-0.01em"
+                      >
+                        <HStack>
+                          <Icon as={Target} boxSize={5} color={accentColor} />
+                          <Text>Practice History by Template</Text>
+                        </HStack>
+                      </Heading>
+                      <VStack spacing={3} align="stretch">
+                        {analyticsData.playgroundStats.map((stat: any, index: number) => (
+                          <Box 
+                            key={index}
+                            p={4}
+                            borderRadius="lg"
+                            bg={useColorModeValue('gray.50', 'gray.700')}
+                            borderWidth="1px"
+                            borderColor={useColorModeValue('gray.200', 'gray.600')}
+                          >
+                            <Flex justify="space-between" align="start" mb={2}>
+                              <VStack align="start" spacing={1} flex={1}>
+                                <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.700', 'gray.200')}>
+                                  {stat.templateName}
+                                </Text>
+                                <HStack spacing={3}>
+                                  <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                                    {stat.count} {stat.count === 1 ? 'session' : 'sessions'}
+                                  </Text>
+                                  {stat.avgScore !== null && (
+                                    <Badge colorScheme="orange" fontSize="xs">
+                                      Avg: {stat.avgScore}%
+                                    </Badge>
+                                  )}
+                                </HStack>
+                              </VStack>
+                              <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                                {new Date(stat.lastPlayed).toLocaleDateString()}
+                              </Text>
+                            </Flex>
+                            {stat.avgScore !== null && (
+                              <Progress 
+                                value={stat.avgScore}
+                                size="sm" 
+                                colorScheme={stat.avgScore >= 85 ? 'green' : stat.avgScore >= 70 ? 'orange' : 'yellow'}
+                                borderRadius="full"
+                                bg={useColorModeValue('gray.200', 'gray.600')}
+                              />
+                            )}
+                          </Box>
+                        ))}
+                      </VStack>
+                    </CardBody>
+                  </Card>
+                )}
+
                 {/* Skills Breakdown */}
                 {analyticsData?.skills && analyticsData.skills.length > 0 && (
                   <Card bg={cardBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" shadow="md">
@@ -431,7 +483,7 @@ const MyAnalytics: React.FC = () => {
                               <Text fontSize="sm" fontWeight="500" color={useColorModeValue('gray.600', 'gray.300')}>
                                 {skill.skill}
                               </Text>
-                              <Text fontSize="sm" fontWeight="600" color={skill.avgScore >= 85 ? 'green.500' : skill.avgScore >= 70 ? 'blue.500' : 'yellow.500'}>
+                              <Text fontSize="sm" fontWeight="600" color={skill.avgScore >= 85 ? 'green.500' : skill.avgScore >= 70 ? '#f26f25' : 'yellow.500'}>
                                 {skill.avgScore}%
                               </Text>
                             </Flex>
@@ -578,90 +630,220 @@ const MyAnalytics: React.FC = () => {
               <VStack spacing={4} align="stretch">
                 {analyticsData?.recentSessions && analyticsData.recentSessions.length > 0 ? (
                   analyticsData.recentSessions.map((session: any, index: number) => (
-                    <Card 
-                      key={index}
-                      bg={selectedSession?.id === session.id ? useColorModeValue('blue.50', 'blue.900/20') : cardBg}
-                      border="1px solid"
-                      borderColor={selectedSession?.id === session.id ? accentColor : borderColor}
-                      borderRadius="2xl"
-                      shadow="sm"
-                      _hover={{ shadow: 'md', borderColor: accentColor, cursor: session.hasGrade ? 'pointer' : 'default' }}
-                      transition="all 0.3s"
-                      onClick={() => session.hasGrade && handleSessionClick(session)}
-                    >
-                      <CardBody p={4}>
-                        <VStack align="stretch" spacing={3}>
-                          <HStack justify="space-between" align="start">
-                            <VStack align="start" spacing={1} flex={1}>
-                              <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')} fontSize="sm">
-                                {session.template}
-                              </Text>
-                              <HStack spacing={2}>
-                                <Badge 
-                                  colorScheme={session.type === 'assignment' ? 'purple' : 'blue'}
-                                  variant="subtle"
-                                  fontSize="xs"
-                                  textTransform="capitalize"
-                                >
-                                  {session.type}
-                                </Badge>
-                                <Badge 
-                                  colorScheme={session.status === 'completed' ? 'green' : 'gray'}
-                                  variant="subtle"
-                                  fontSize="xs"
-                                  textTransform="capitalize"
-                                >
-                                  {session.status}
-                                </Badge>
-                              </HStack>
-                            </VStack>
-                            {session.score !== null && (
-                              <Badge 
-                                colorScheme={session.score >= 85 ? 'green' : session.score >= 70 ? 'yellow' : 'red'}
-                                variant="subtle"
-                                borderRadius="full"
-                                px={3}
-                                py={1}
-                                fontSize="sm"
-                                fontWeight="600"
-                              >
-                                {session.score}%
-                              </Badge>
-                            )}
-                          </HStack>
-                          
-                          <HStack justify="space-between" align="center">
-                            <HStack spacing={4}>
-                              <HStack spacing={1}>
-                                <Icon as={Clock} boxSize={3} color={useColorModeValue('gray.400', 'gray.500')} />
-                                <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
-                                  {session.duration}
+                    <React.Fragment key={index}>
+                      <Card 
+                        bg={selectedSession?.id === session.id ? useColorModeValue('orange.50', 'orange.900/20') : cardBg}
+                        border="1px solid"
+                        borderColor={selectedSession?.id === session.id ? accentColor : borderColor}
+                        borderRadius="2xl"
+                        shadow="sm"
+                        _hover={{ shadow: 'md', borderColor: accentColor, cursor: session.hasGrade ? 'pointer' : 'default' }}
+                        transition="all 0.3s"
+                        onClick={() => session.hasGrade && handleSessionClick(session)}
+                      >
+                        <CardBody p={4}>
+                          <VStack align="stretch" spacing={3}>
+                            <HStack justify="space-between" align="start">
+                              <VStack align="start" spacing={1} flex={1}>
+                                <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')} fontSize="sm">
+                                  {session.template}
                                 </Text>
-                              </HStack>
-                              <HStack spacing={1}>
-                                <Icon as={Calendar} boxSize={3} color={useColorModeValue('gray.400', 'gray.500')} />
-                                <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
-                                  {new Date(session.date).toLocaleDateString()}
-                                </Text>
-                              </HStack>
+                                <HStack spacing={2}>
+                                  {session.isPlayground ? (
+                                    <Badge 
+                                      colorScheme="orange"
+                                      variant="subtle"
+                                      fontSize="xs"
+                                    >
+                                      Practice
+                                    </Badge>
+                                  ) : (
+                                    <Badge 
+                                      colorScheme={session.type === 'assignment' ? 'purple' : 'blue'}
+                                      variant="subtle"
+                                      fontSize="xs"
+                                      textTransform="capitalize"
+                                    >
+                                      {session.type}
+                                    </Badge>
+                                  )}
+                                  <Badge 
+                                    colorScheme={session.status === 'completed' ? 'green' : 'gray'}
+                                    variant="subtle"
+                                    fontSize="xs"
+                                    textTransform="capitalize"
+                                  >
+                                    {session.status}
+                                  </Badge>
+                                </HStack>
+                              </VStack>
+                              {session.score !== null && (
+                                <Badge 
+                                  colorScheme={session.score >= 85 ? 'green' : session.score >= 70 ? 'yellow' : 'red'}
+                                  variant="subtle"
+                                  borderRadius="full"
+                                  px={3}
+                                  py={1}
+                                  fontSize="sm"
+                                  fontWeight="600"
+                                >
+                                  {session.score}%
+                                </Badge>
+                              )}
                             </HStack>
-                            {session.pdfUrl && (
-                              <Button
-                                as="a"
-                                href={session.pdfUrl}
-                                download
-                                size="xs"
-                                leftIcon={<Icon as={FileDown} boxSize={3} />}
-                                colorScheme="blue"
-                                variant="ghost"
+                            
+                            <HStack justify="space-between" align="center">
+                              <HStack spacing={4}>
+                                <HStack spacing={1}>
+                                  <Icon as={Clock} boxSize={3} color={useColorModeValue('gray.400', 'gray.500')} />
+                                  <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                                    {session.duration}
+                                  </Text>
+                                </HStack>
+                                <HStack spacing={1}>
+                                  <Icon as={Calendar} boxSize={3} color={useColorModeValue('gray.400', 'gray.500')} />
+                                  <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                                    {new Date(session.date).toLocaleDateString()}
+                                  </Text>
+                                </HStack>
+                              </HStack>
+                              {session.pdfUrl && (
+                                <Button
+                                  as="a"
+                                  href={session.pdfUrl}
+                                  download
+                                  size="xs"
+                                  leftIcon={<Icon as={FileDown} boxSize={3} />}
+                                  colorScheme="orange"
+                                  variant="ghost"
+                                >
+                                  PDF
+                                </Button>
+                              )}
+                            </HStack>
+                          </VStack>
+                        </CardBody>
+                      </Card>
+                      
+                      {/* Grade Breakdown Section - Show right after selected session */}
+                      {selectedSession?.id === session.id && sessionGrade && !loadingGrade && (
+                      <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg" ml={4}>
+                        <CardBody p={6}>
+                          <VStack align="stretch" spacing={4}>
+                            <HStack justify="space-between" align="start">
+                              <VStack align="start" spacing={2}>
+                                <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
+                                  Grade Breakdown
+                                </Heading>
+                                {selectedSession?.pdfUrl ? (
+                                  <Button
+                                    as="a"
+                                    href={selectedSession.pdfUrl}
+                                    download
+                                    leftIcon={<Icon as={FileDown} />}
+                                    size="sm"
+                                    colorScheme="orange"
+                                    variant="outline"
+                                  >
+                                    Download PDF Report
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    leftIcon={<Icon as={FileDown} />}
+                                    size="sm"
+                                    colorScheme="orange"
+                                    variant="outline"
+                                    onClick={generatePdf}
+                                    isLoading={generatingPdf}
+                                  >
+                                    Generate PDF Report
+                                  </Button>
+                                )}
+                              </VStack>
+                              <Badge 
+                                colorScheme={sessionGrade.percentage >= 85 ? 'green' : sessionGrade.percentage >= 70 ? 'blue' : 'red'}
+                                variant="solid"
+                                borderRadius="full"
+                                px={4}
+                                py={2}
+                                fontSize="lg"
+                                fontWeight="700"
                               >
-                                PDF
-                              </Button>
-                            )}
-                          </HStack>
-                        </VStack>
-                      </CardBody>
-                    </Card>
+                                {Math.round(sessionGrade.percentage)}%
+                              </Badge>
+                            </HStack>
+                            
+                            <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+                              {sessionGrade.total_score} / {sessionGrade.max_possible_score} points
+                            </Text>
+                            
+                            <Divider />
+                            
+                            {/* Individual Criteria */}
+                            <VStack spacing={4} align="stretch">
+                              {sessionGrade.criteria_grades?.map((criteria: any, idx: number) => (
+                                <Box key={idx} p={4} bg={useColorModeValue('gray.50', 'gray.800')} borderRadius="xl">
+                                  <VStack align="stretch" spacing={3}>
+                                    <HStack justify="space-between">
+                                      <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
+                                        {criteria.title}
+                                      </Text>
+                                      <Badge 
+                                        colorScheme={
+                                          (criteria.earnedPoints / criteria.maxPoints) >= 0.85 ? 'green' : 
+                                          (criteria.earnedPoints / criteria.maxPoints) >= 0.70 ? 'blue' : 'orange'
+                                        }
+                                        borderRadius="full"
+                                        px={3}
+                                        py={1}
+                                      >
+                                        {criteria.earnedPoints}/{criteria.maxPoints}
+                                      </Badge>
+                                    </HStack>
+                                    
+                                    <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} fontStyle="italic">
+                                      {criteria.description}
+                                    </Text>
+                                    
+                                    {criteria.evidence && criteria.evidence.length > 0 && (
+                                      <Box mt={1}>
+                                        <Text fontSize="xs" fontWeight="600" color={useColorModeValue('gray.700', 'gray.300')} mb={1}>
+                                          Evidence:
+                                        </Text>
+                                        {criteria.evidence.map((ev: string, i: number) => (
+                                          <Text key={i} fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} pl={3} borderLeft="2px solid" borderColor={useColorModeValue('gray.300', 'gray.600')} mb={1}>
+                                            "{ev}"
+                                          </Text>
+                                        ))}
+                                      </Box>
+                                    )}
+                                    
+                                    <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>
+                                      <strong>{criteria.isManualOverride ? 'Feedback:' : 'AI Reasoning:'}</strong> {criteria.reasoning}
+                                    </Text>
+                                  </VStack>
+                                </Box>
+                              ))}
+                            </VStack>
+                          </VStack>
+                        </CardBody>
+                      </Card>
+                    )}
+                    
+                    {/* Loading indicator right after selected session */}
+                    {selectedSession?.id === session.id && loadingGrade && (
+                      <Card bg={cardBg} borderRadius="2xl" ml={4}>
+                        <CardBody p={8}>
+                          <VStack>
+                            <Spinner color={accentColor} />
+                            <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
+                              Loading grade details...
+                            </Text>
+                          </VStack>
+                        </CardBody>
+                      </Card>
+                      )}
+                    </React.Fragment>
                   ))
                 ) : (
                   <Card bg={cardBg} border="1px solid" borderColor={borderColor} borderRadius="2xl">
@@ -673,124 +855,6 @@ const MyAnalytics: React.FC = () => {
                         </Text>
                         <Text fontSize="sm" color={useColorModeValue('gray.400', 'gray.500')} textAlign="center">
                           Complete your first assignment to see your stats here
-                        </Text>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                )}
-                
-                {/* Grade Breakdown Section */}
-                {selectedSession && sessionGrade && (
-                  <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg" mt={4}>
-                    <CardBody p={6}>
-                      <VStack align="stretch" spacing={4}>
-                        <HStack justify="space-between" align="start">
-                          <VStack align="start" spacing={2}>
-                            <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
-                              Grade Breakdown
-                            </Heading>
-                            {selectedSession?.pdfUrl ? (
-                              <Button
-                                as="a"
-                                href={selectedSession.pdfUrl}
-                                download
-                                leftIcon={<Icon as={FileDown} />}
-                                size="sm"
-                                colorScheme="blue"
-                                variant="outline"
-                              >
-                                Download PDF Report
-                              </Button>
-                            ) : (
-                              <Button
-                                leftIcon={<Icon as={FileDown} />}
-                                size="sm"
-                                colorScheme="blue"
-                                variant="outline"
-                                onClick={generatePdf}
-                                isLoading={generatingPdf}
-                              >
-                                Generate PDF Report
-                              </Button>
-                            )}
-                          </VStack>
-                          <Badge 
-                            colorScheme={sessionGrade.percentage >= 85 ? 'green' : sessionGrade.percentage >= 70 ? 'blue' : 'red'}
-                            variant="solid"
-                            borderRadius="full"
-                            px={4}
-                            py={2}
-                            fontSize="lg"
-                            fontWeight="700"
-                          >
-                            {Math.round(sessionGrade.percentage)}%
-                          </Badge>
-                        </HStack>
-                        
-                        <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
-                          {sessionGrade.total_score} / {sessionGrade.max_possible_score} points
-                        </Text>
-                        
-                        <Divider />
-                        
-                        {/* Individual Criteria */}
-                        <VStack spacing={4} align="stretch">
-                          {sessionGrade.criteria_grades?.map((criteria: any, idx: number) => (
-                            <Box key={idx} p={4} bg={useColorModeValue('gray.50', 'gray.800')} borderRadius="xl">
-                              <VStack align="stretch" spacing={3}>
-                                <HStack justify="space-between">
-                                  <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
-                                    {criteria.title}
-                                  </Text>
-                                  <Badge 
-                                    colorScheme={
-                                      (criteria.earnedPoints / criteria.maxPoints) >= 0.85 ? 'green' : 
-                                      (criteria.earnedPoints / criteria.maxPoints) >= 0.70 ? 'blue' : 'orange'
-                                    }
-                                    borderRadius="full"
-                                    px={3}
-                                    py={1}
-                                  >
-                                    {criteria.earnedPoints}/{criteria.maxPoints}
-                                  </Badge>
-                                </HStack>
-                                
-                                <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} fontStyle="italic">
-                                  {criteria.description}
-                                </Text>
-                                
-                                {criteria.evidence && criteria.evidence.length > 0 && (
-                                  <Box mt={1}>
-                                    <Text fontSize="xs" fontWeight="600" color={useColorModeValue('gray.700', 'gray.300')} mb={1}>
-                                      Evidence:
-                                    </Text>
-                                    {criteria.evidence.map((ev: string, i: number) => (
-                                      <Text key={i} fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} pl={3} borderLeft="2px solid" borderColor={useColorModeValue('gray.300', 'gray.600')} mb={1}>
-                                        "{ev}"
-                                      </Text>
-                                    ))}
-                                  </Box>
-                                )}
-                                
-                                <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>
-                                  <strong>{criteria.isManualOverride ? 'Feedback:' : 'AI Reasoning:'}</strong> {criteria.reasoning}
-                                </Text>
-                              </VStack>
-                            </Box>
-                          ))}
-                        </VStack>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                )}
-                
-                {loadingGrade && (
-                  <Card bg={cardBg} borderRadius="2xl" mt={4}>
-                    <CardBody p={8}>
-                      <VStack>
-                        <Spinner color={accentColor} />
-                        <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
-                          Loading grade details...
                         </Text>
                       </VStack>
                     </CardBody>

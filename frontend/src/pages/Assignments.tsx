@@ -53,6 +53,7 @@ interface Assignment {
   assigned: string // JSON string of user IDs
   due: string
   created_at: string
+  status: 'not started' | 'in progress' | 'complete'
 }
 
 interface AssignmentFormData {
@@ -146,7 +147,7 @@ function AssignmentCard({
               
               <HStack spacing={3} mb={4}>
                 <Badge 
-                  colorScheme="blue" 
+                  colorScheme="orange" 
                   variant="subtle"
                   textTransform="capitalize"
                   borderRadius="full"
@@ -157,7 +158,7 @@ function AssignmentCard({
                   {assignedUserIds.length} Users
                 </Badge>
                 <Badge 
-                  colorScheme="purple" 
+                  colorScheme="orange" 
                   variant="outline"
                   textTransform="capitalize"
                   borderRadius="full"
@@ -209,7 +210,7 @@ function AssignmentCard({
                   icon={<Icon as={Edit2} boxSize={4} />}
                   onClick={() => onEdit(assignment)}
                   _hover={{
-                    bg: useColorModeValue('blue.50', 'blue.900/20')
+                    bg: useColorModeValue('orange.50', 'orange.900/20')
                   }}
                 >
                   Edit Assignment
@@ -243,7 +244,7 @@ function AssignmentCard({
               leftIcon={<Icon as={Eye} />}
               size="sm"
               variant="outline"
-              colorScheme="blue"
+              colorScheme="orange"
               onClick={handleViewPerformance}
               borderRadius="lg"
             >
@@ -596,11 +597,11 @@ function Assignments() {
   }
 
   const cardBg = useColorModeValue('rgba(255, 255, 255, 0.9)', 'rgba(26, 32, 44, 0.9)')
-  const accentColor = useColorModeValue('purple.600', 'purple.400')
+  const accentColor = useColorModeValue('#f26f25', '#ff7d31')
 
   return (
     <Box 
-      bgGradient={useColorModeValue('linear(to-br, purple.50, pink.50, blue.50)', 'linear(to-br, gray.900, gray.800)')}
+      bgGradient={useColorModeValue('linear(to-br, orange.50, white, orange.50)', 'linear(to-br, gray.900, gray.800)')}
       h="calc(100vh - 88px)" 
       overflow="hidden"
     >
@@ -838,7 +839,7 @@ function Assignments() {
               {/* Action Buttons */}
               <VStack spacing={3} align="stretch">
                 <Button
-                  bg="linear-gradient(135deg, #3b82f6, #2563eb)"
+                  bg="linear-gradient(135deg, #f26f25, #d95e1e)"
                   color="white"
                   size="md"
                   leftIcon={<Icon as={Save} boxSize="4" />}
@@ -847,7 +848,7 @@ function Assignments() {
                   loadingText={editingAssignment ? "Updating..." : "Creating..."}
                   w="full"
                   _hover={{
-                    bg: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                    bg: "linear-gradient(135deg, #d95e1e, #b84e19)",
                     transform: 'translateY(-1px)',
                     shadow: 'lg'
                   }}

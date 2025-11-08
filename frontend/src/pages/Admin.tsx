@@ -497,7 +497,7 @@ function Admin() {
   const bg = useColorModeValue('gray.50', 'gray.900')
   const cardBg = useColorModeValue('white', 'gray.800')
   const headerBg = useColorModeValue('white', 'gray.800')
-  const accentColor = useColorModeValue('blue.600', 'blue.400')
+  const accentColor = useColorModeValue('#f26f25', '#ff7d31')
 
   return (
     <Box bg={bg} h="calc(100vh - 88px)" overflow="hidden">
@@ -649,7 +649,7 @@ function Admin() {
                   {/* Preview of selected options */}
                   {formData.difficulty && (
                     <Flex gap={2} mt={2}>
-                      <Badge colorScheme="blue" textTransform="capitalize">
+                      <Badge colorScheme="orange" textTransform="capitalize">
                         Life Insurance
                       </Badge>
                       <Badge colorScheme={getDifficultyColor(formData.difficulty)} textTransform="capitalize">
@@ -673,7 +673,7 @@ function Admin() {
                   </FormLabel>
                   <Button
                     size="sm"
-                    bg="linear-gradient(135deg, #9333ea, #7c3aed)"
+                    bg="linear-gradient(135deg, #f26f25, #d95e1e)"
                     color="white"
                     leftIcon={<Icon as={Sparkles} boxSize="4" />}
                     onClick={generateScript}
@@ -681,7 +681,7 @@ function Admin() {
                     loadingText="Generating..."
                     isDisabled={!formData.title || !formData.description || !formData.difficulty}
                     _hover={{
-                      bg: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+                      bg: "linear-gradient(135deg, #d95e1e, #b84e19)",
                       transform: 'translateY(-1px)',
                       shadow: 'lg'
                     }}
@@ -729,7 +729,7 @@ Speaker: Clear dialogue format"
               {/* Action Buttons */}
               <VStack spacing={3} align="stretch">
                 <Button
-                  bg="linear-gradient(135deg, #3b82f6, #2563eb)"
+                  bg="linear-gradient(135deg, #f26f25, #d95e1e)"
                   color="white"
                   size="md"
                   leftIcon={<Icon as={Save} boxSize="4" />}
@@ -738,7 +738,7 @@ Speaker: Clear dialogue format"
                   loadingText={editingTemplate ? "Updating..." : "Creating..."}
                   w="full"
                   _hover={{
-                    bg: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                    bg: "linear-gradient(135deg, #d95e1e, #b84e19)",
                     transform: 'translateY(-1px)',
                     shadow: 'lg'
                   }}
@@ -916,7 +916,7 @@ Speaker: Clear dialogue format"
               </VStack>
 
               {/* Tabs for Built-In vs Custom */}
-              <Tabs colorScheme="purple" size="lg">
+              <Tabs colorScheme="orange" size="lg">
                 <TabList borderBottom="2px solid" borderColor={borderColor}>
                   <Tab 
                     fontWeight="600"
@@ -965,7 +965,7 @@ Speaker: Clear dialogue format"
                             borderRadius="2xl"
                             backdropFilter="blur(10px)"
                             _hover={{
-                              borderColor: useColorModeValue('purple.300', 'purple.600'),
+                              borderColor: useColorModeValue('orange.300', 'orange.600'),
                               shadow: 'xl',
                               transform: 'translateY(-2px) scale(1.01)'
                             }}
@@ -1031,7 +1031,7 @@ Speaker: Clear dialogue format"
                             borderRadius="2xl"
                             backdropFilter="blur(10px)"
                             _hover={{
-                              borderColor: useColorModeValue('purple.300', 'purple.600'),
+                              borderColor: useColorModeValue('orange.300', 'orange.600'),
                               shadow: 'xl',
                               transform: 'translateY(-2px) scale(1.01)'
                             }}
@@ -1091,14 +1091,14 @@ Speaker: Clear dialogue format"
                       </VStack>
                     ) : filteredCustom.length === 0 ? (
                       <VStack spacing={4} justify="center" py={12} color={useColorModeValue('gray.400', 'gray.500')}>
-                        <Box
+                        <Box 
                           w="16"
                           h="16"
                           borderRadius="full"
                           bg={useColorModeValue('gray.100', 'gray.700')}
                           display="flex"
-                          align="center"
-                          justify="center"
+                          alignItems="center"
+                          justifyContent="center"
                         >
                           <Icon as={FileText} boxSize={8} />
                         </Box>
@@ -1123,7 +1123,7 @@ Speaker: Clear dialogue format"
                             borderColor={borderColor}
                             borderRadius="2xl"
                             _hover={{
-                              borderColor: useColorModeValue('purple.300', 'purple.600'),
+                              borderColor: useColorModeValue('orange.300', 'orange.600'),
                               shadow: 'xl',
                               transform: 'translateY(-2px) scale(1.01)'
                             }}
@@ -1143,7 +1143,7 @@ Speaker: Clear dialogue format"
                                       {template.title}
                                     </Heading>
                                     <Badge 
-                                      bgGradient="linear(to-r, purple.500, pink.500)"
+                                      bgGradient="linear(to-r, orange.500, orange.600)"
                                       color="white"
                                       borderRadius="full" 
                                       px={3}
@@ -1178,7 +1178,7 @@ Speaker: Clear dialogue format"
                                       {template.difficulty}
                                     </Badge>
                                     <Badge 
-                                      colorScheme="blue" 
+                                      colorScheme="orange" 
                                       variant="outline"
                                       textTransform="capitalize"
                                       borderRadius="full"
@@ -1214,7 +1214,7 @@ Speaker: Clear dialogue format"
                                       icon={<Icon as={Edit2} />}
                                       onClick={() => handleEditTemplate(template)}
                                       borderRadius="lg"
-                                      _hover={{ bg: useColorModeValue('blue.50', 'blue.900/30') }}
+                                      _hover={{ bg: useColorModeValue('orange.50', 'orange.900/30') }}
                                     >
                                       Edit
                                     </MenuItem>
@@ -1295,13 +1295,13 @@ Speaker: Clear dialogue format"
               </Heading>
               <HStack spacing={3}>
                 {selectedViewTemplate && isBuiltInTemplate(selectedViewTemplate) && (
-                  <Badge colorScheme="purple" borderRadius="full" px={3} py={1} fontWeight="600">
+                  <Badge colorScheme="orange" borderRadius="full" px={3} py={1} fontWeight="600">
                     Built-In
                   </Badge>
                 )}
                 {selectedViewTemplate && !isBuiltInTemplate(selectedViewTemplate) && (
                   <Badge 
-                    bgGradient="linear(to-r, purple.500, pink.500)"
+                    bgGradient="linear(to-r, orange.500, orange.600)"
                     color="white"
                     borderRadius="full" 
                     px={3}
@@ -1352,7 +1352,7 @@ Speaker: Clear dialogue format"
                     ul: ({ node, ...props }) => <Box as="ul" pl={6} mb={3} {...props} />,
                     ol: ({ node, ...props }) => <Box as="ol" pl={6} mb={3} {...props} />,
                     li: ({ node, ...props }) => <Box as="li" mb={1} {...props} />,
-                    strong: ({ node, ...props }) => <Box as="strong" fontWeight="bold" color={useColorModeValue('purple.600', 'purple.300')} {...props} />,
+                    strong: ({ node, ...props }) => <Box as="strong" fontWeight="bold" color={useColorModeValue('#f26f25', '#ff7d31')} {...props} />,
                     em: ({ node, ...props }) => <Box as="em" fontStyle="italic" {...props} />,
                     code: ({ node, ...props }) => (
                       <Box
@@ -1375,7 +1375,7 @@ Speaker: Clear dialogue format"
           </ModalBody>
           <ModalFooter borderTop="1px solid" borderColor={useColorModeValue('gray.100', 'gray.700')}>
             <Button
-              colorScheme="purple"
+              colorScheme="orange"
               leftIcon={<Icon as={UserPlus} />}
               onClick={() => {
                 if (selectedViewTemplate) {

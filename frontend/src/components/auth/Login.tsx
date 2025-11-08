@@ -152,12 +152,12 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
                         borderRadius="xl"
                         fontSize="md"
                         _hover={{
-                          borderColor: useColorModeValue('blue.300', 'blue.500'),
+                          borderColor: useColorModeValue('#ffa76b', '#f26f25'),
                           bg: useColorModeValue('white', 'gray.600')
                         }}
                         _focus={{
-                          borderColor: 'blue.500',
-                          boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+                          borderColor: '#f26f25',
+                          boxShadow: '0 0 0 3px rgba(242, 111, 37, 0.1)',
                           bg: useColorModeValue('white', 'gray.600')
                         }}
                         _placeholder={{
@@ -191,12 +191,12 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
                         borderRadius="xl"
                         fontSize="md"
                         _hover={{
-                          borderColor: useColorModeValue('blue.300', 'blue.500'),
+                          borderColor: useColorModeValue('#ffa76b', '#f26f25'),
                           bg: useColorModeValue('white', 'gray.600')
                         }}
                         _focus={{
-                          borderColor: 'blue.500',
-                          boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+                          borderColor: '#f26f25',
+                          boxShadow: '0 0 0 3px rgba(242, 111, 37, 0.1)',
                           bg: useColorModeValue('white', 'gray.600')
                         }}
                         _placeholder={{
@@ -225,14 +225,14 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
                   {/* Forgot Password Link */}
                   <Box w="full" textAlign="right">
                     <Link
-                      color="blue.500"
+                      color="#f26f25"
                       onClick={onForgotPassword}
                       cursor="pointer"
                       fontSize="sm"
                       fontWeight="500"
                       _hover={{ 
                         textDecoration: 'underline',
-                        color: 'blue.600'
+                        color: '#d95e1e'
                       }}
                     >
                       Forgot password?
@@ -246,13 +246,13 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
                     h={12}
                     isLoading={loading}
                     loadingText="Signing in..."
-                    bg="linear-gradient(135deg, #3b82f6, #2563eb)"
+                    bg="linear-gradient(135deg, #f26f25, #d95e1e)"
                     color="white"
                     borderRadius="xl"
                     fontSize="md"
                     fontWeight="600"
                     _hover={{
-                      bg: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                      bg: "linear-gradient(135deg, #d95e1e, #b84e19)",
                       transform: 'translateY(-1px)',
                       shadow: 'xl'
                     }}
@@ -275,13 +275,13 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
           <Text color={useColorModeValue('gray.600', 'gray.400')} fontSize="md">
             Don't have an account?{' '}
             <Link
-              color="blue.500"
+              color="#f26f25"
               onClick={onToggleMode}
               cursor="pointer"
               fontWeight="600"
               _hover={{ 
                 textDecoration: 'underline',
-                color: 'blue.600'
+                color: '#d95e1e'
               }}
             >
               Sign up for free

@@ -6,8 +6,8 @@ interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
-  signUp: (email: string, password: string, displayName?: string) => Promise<{ error: any }>
-  signIn: (email: string, password: string) => Promise<{ error: any }>
+  signUp: (email: string, password: string, displayName?: string) => Promise<{ data: any; error: any }>
+  signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
   signOut: () => Promise<{ error: any }>
   resetPassword: (email: string) => Promise<{ error: any }>
 }
@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [])
 
-  const signUp = async (email: string, password: string, displayName?: string) => {
+  const signUp = async (email: string, password: string, displayName?: string): Promise<{ data: any; error: any }> => {
     try {
       console.log('Validating invite for email:', email)
       
@@ -85,13 +85,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       })
 
       if (!inviteResponse.ok) {
-        return { error: { message: 'Failed to validate invitation. Please try again.' } }
+        return { data: null, error: { message: 'Failed to validate invitation. Please try again.' } }
       }
 
       const inviteData = await inviteResponse.json()
       
       if (!inviteData.valid) {
         return { 
+          data: null,
           error: { 
             message: 'This email address has not been invited to join any organization. Please contact your administrator for an invitation.' 
           } 
@@ -120,11 +121,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { data, error }
     } catch (error) {
       console.error('Error in signUp:', error)
-      return { error }
+      return { data: null, error }
     }
   }
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string): Promise<{ data: any; error: any }> => {
     try {
       console.log('Attempting sign in for:', email)
       
@@ -146,7 +147,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { data, error }
     } catch (error) {
       console.error('Error in signIn:', error)
-      return { error }
+      return { data: null, error }
     }
   }
 

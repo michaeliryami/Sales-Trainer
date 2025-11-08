@@ -30,9 +30,9 @@ const Auth: React.FC = () => {
   const { user, loading } = useAuth()
   
   const bg = useColorModeValue('gray.50', 'gray.900')
-  const brandColor = useColorModeValue('blue.600', 'blue.400')
+  const brandColor = useColorModeValue('#f26f25', '#ff7d31')
   const cardBg = useColorModeValue('white', 'gray.800')
-  const leftPanelBg = useColorModeValue('blue.600', 'blue.800')
+  const leftPanelBg = useColorModeValue('#f26f25', '#d95e1e')
 
   // Redirect authenticated users to the app
   useEffect(() => {
@@ -163,7 +163,7 @@ const Auth: React.FC = () => {
                   clozone.ai
                 </Heading>
                 <Text 
-                  color="blue.100"
+                  color="white"
                   fontSize="xl"
                   fontWeight="400"
                   maxW="400px"

@@ -22,6 +22,7 @@ import profilesRouter from './routes/profiles'
 import aiRouter from './routes/ai'
 import exportRouter from './routes/export'
 import analyticsRouter from './routes/analytics'
+import assignmentsRouter from './routes/assignments'
 
 const app = express()
 const PORT = process.env.PORT || 3002
@@ -53,6 +54,7 @@ app.use('/api/profiles', profilesRouter)
 app.use('/api/ai', aiRouter)
 app.use('/api/export', exportRouter)
 app.use('/api/analytics', analyticsRouter)
+app.use('/api/assignments', assignmentsRouter)
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

@@ -64,7 +64,7 @@ const Organization: React.FC = () => {
   const cardBg = useColorModeValue('white', 'gray.800')
   const borderColor = useColorModeValue('gray.200', 'gray.700')
   const headerBg = useColorModeValue('white', 'gray.800')
-  const accentColor = useColorModeValue('blue.500', 'blue.400')
+  const accentColor = useColorModeValue('#f26f25', '#ff7d31')
 
   const fetchOrganizationUsers = async () => {
     if (!organization) return
@@ -306,7 +306,7 @@ const Organization: React.FC = () => {
     return (
       <Box bg={bg} h="calc(100vh - 88px)" display="flex" alignItems="center" justifyContent="center">
         <VStack spacing={4}>
-          <Spinner size="xl" color="blue.500" thickness="4px" />
+          <Spinner size="xl" color="#f26f25" thickness="4px" />
           <Text color={useColorModeValue('gray.600', 'gray.400')}>
             Loading profile...
           </Text>
@@ -374,12 +374,12 @@ const Organization: React.FC = () => {
                 {userRole.isAdmin && (
                   <Button
                     leftIcon={<Icon as={UserPlus} boxSize="4" />}
-                    bg="linear-gradient(135deg, #3b82f6, #2563eb)"
+                    bg="linear-gradient(135deg, #f26f25, #d95e1e)"
                     color="white"
                     size="sm"
                     onClick={onInviteOpen}
                     _hover={{
-                      bg: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                      bg: "linear-gradient(135deg, #d95e1e, #b84e19)",
                       transform: 'translateY(-1px)',
                       shadow: 'lg'
                     }}
@@ -406,7 +406,7 @@ const Organization: React.FC = () => {
               <VStack spacing={4} align="stretch">
                 {loading ? (
                   <Box display="flex" justifyContent="center" py={8}>
-                    <Spinner color="blue.500" />
+                    <Spinner color="#f26f25" />
                     <Text ml={3} color={useColorModeValue('gray.600', 'gray.400')}>
                       Loading team members...
                     </Text>
@@ -852,7 +852,7 @@ const Organization: React.FC = () => {
               Cancel
             </Button>
             <Button 
-              colorScheme="blue" 
+              colorScheme="orange" 
               onClick={handleInviteUser}
               isLoading={inviteLoading}
               loadingText="Inviting..."

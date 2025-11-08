@@ -21,9 +21,10 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
+  useToast,
 } from '@chakra-ui/react'
 import React, { useState, useRef, useEffect } from 'react'
-import { FileText, MessageSquare, Search } from 'lucide-react'
+import { FileText, MessageSquare, Search, RefreshCw, Award } from 'lucide-react'
 import Vapi from '@vapi-ai/web'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import ReactMarkdown from 'react-markdown'
@@ -41,6 +42,7 @@ interface Assignment {
   assigned: string // JSON string of user IDs
   due: string
   created_at: string
+  status: 'not started' | 'in progress' | 'complete'
 }
 
 // Helper function to find built-in template by matching title (case-insensitive, trimmed)
@@ -98,7 +100,23 @@ function CreateSession() {
   const [activeCallId, setActiveCallId] = useState<string | null>(null)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const toast = useToast()
   const vapiRef = useRef<any>(null)
+  
+  // Assignment sessions state
+  const [assignmentSessions, setAssignmentSessions] = useState<Array<{
+    id: number
+    start_time: string
+    end_time: string
+    duration_seconds: number
+    grade?: { percentage: number, score: number }
+    submitted_for_review: boolean
+  }>>([])
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false)
+  const [submittingSessionId, setSubmittingSessionId] = useState<number | null>(null)
+  const [gradingAssignmentId, setGradingAssignmentId] = useState<number | null>(null)
+  const [playgroundSessionGrade, setPlaygroundSessionGrade] = useState<{ percentage: number, totalScore: number, maxScore: number, sessionId?: number, criteriaGrades?: any[] } | null>(null)
+  const [showPlaygroundGradeDetails, setShowPlaygroundGradeDetails] = useState(false)
   const transcriptEndRef = useRef<HTMLDivElement>(null)
   const transcriptChunksRef = useRef<Array<{
     speaker: string, 
@@ -195,7 +213,49 @@ function CreateSession() {
   }
 
   const filteredBuiltInTemplates = filterTemplates(ALL_BUILT_IN_TEMPLATES)
-  const filteredCustomTemplates = filterTemplates(templates)
+  // Filter out templates with org = null (those are built-in only, not custom)
+  const orgSpecificTemplates = templates.filter(t => t.org !== null)
+  const filteredCustomTemplates = filterTemplates(orgSpecificTemplates)
+
+  // Fetch assignments function (needs to be accessible from multiple places)
+  const fetchAssignments = async () => {
+    try {
+      setIsLoadingAssignments(true)
+      const { data, error } = await supabase
+        .from('assignments')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching assignments:', error)
+        return
+      }
+
+      // Filter assignments that include this user
+      const myAssignments = (data || []).filter(assignment => {
+        try {
+          const assignedUsers = JSON.parse(assignment.assigned || '[]')
+          return assignedUsers.includes(profile?.id)
+        } catch (error) {
+          console.warn('Error parsing assigned users:', error)
+          return false
+        }
+      })
+
+      setAssignments(myAssignments)
+      
+      // Debug: Log the first assignment to check status
+      if (myAssignments.length > 0) {
+        console.log('📋 First assignment:', myAssignments[0])
+        console.log('📋 Status value:', myAssignments[0].status)
+        console.log('📋 Status type:', typeof myAssignments[0].status)
+      }
+    } catch (error) {
+      console.error('Error fetching assignments:', error)
+    } finally {
+      setIsLoadingAssignments(false)
+    }
+  }
 
   // Load script when selection changes (for admins with templates OR employees with assignments)
   useEffect(() => {
@@ -254,15 +314,145 @@ function CreateSession() {
     setScriptText('')
   }, [selectedTemplate, selectedAssignment, templates, userRole.isAdmin])
 
+  // Fetch assignment sessions
+  const fetchAssignmentSessions = async (assignmentId: number, userId: string) => {
+    try {
+      setIsLoadingSessions(true)
+      const response = await fetch(`/api/assignments/${assignmentId}/sessions/${userId}`)
+      
+      if (response.ok) {
+        const result = await response.json()
+        setAssignmentSessions(result.data || [])
+      } else {
+        console.error('Failed to fetch assignment sessions')
+      }
+    } catch (error) {
+      console.error('Error fetching assignment sessions:', error)
+    } finally {
+      setIsLoadingSessions(false)
+    }
+  }
+
+  // Submit session for admin review and mark assignment as complete
+  const submitSessionForReview = async (sessionId: number) => {
+    try {
+      setSubmittingSessionId(sessionId)
+      
+      const response = await fetch(`/api/analytics/session/${sessionId}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      if (response.ok) {
+        toast({
+          title: 'Session submitted!',
+          description: 'Your trainer will review this session.',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        })
+        
+        // Mark assignment as complete if not already
+        if (selectedAssignment && selectedAssignment.status !== 'complete') {
+          await updateAssignmentStatus(selectedAssignment.id, 'complete')
+          
+          // Switch to completed tab to show it there
+          setAssignmentTab('completed')
+        }
+        
+        // Refresh sessions list
+        if (selectedAssignment && profile?.id) {
+          fetchAssignmentSessions(selectedAssignment.id, profile.id)
+        }
+      } else {
+        toast({
+          title: 'Submission failed',
+          description: 'Could not submit session. Please try again.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        })
+      }
+    } catch (error) {
+      console.error('Error submitting session:', error)
+      toast({
+        title: 'Error',
+        description: 'An error occurred while submitting.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    } finally {
+      setSubmittingSessionId(null)
+    }
+  }
+
+
+  // Update assignment status to in_progress
+  const updateAssignmentStatus = async (assignmentId: number, status: 'not started' | 'in progress' | 'complete') => {
+    try {
+      console.log(`📝 Updating assignment ${assignmentId} status to: ${status}`)
+      
+      const response = await fetch(`/api/assignments/${assignmentId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        console.log(`✅ Assignment status updated to: ${status}`, result)
+        
+        // Update local state immediately
+        if (selectedAssignment && selectedAssignment.id === assignmentId) {
+          setSelectedAssignment({
+            ...selectedAssignment,
+            status
+          })
+        }
+        
+        // Update in assignments list
+        setAssignments(prevAssignments => 
+          prevAssignments.map(a => 
+            a.id === assignmentId ? { ...a, status } : a
+          )
+        )
+      } else {
+        const errorText = await response.text()
+        console.error('❌ Failed to update assignment status:', response.status, errorText)
+      }
+    } catch (error) {
+      console.error('❌ Error updating assignment status:', error)
+    }
+  }
+
   const createAssistantAndStartCall = async () => {
     if (!vapiPublicKey) {
-      alert('VAPI configuration not loaded. Please try again.')
+      toast({
+        title: 'Configuration error',
+        description: 'VAPI not loaded. Please refresh and try again.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
       return
     }
 
     setIsCreatingCall(true)
     
+    // Clear existing transcript and playground grade before starting new call
+    setTranscript([])
+    setFullTranscriptChunks([])
+    transcriptChunksRef.current = []
+    setPlaygroundSessionGrade(null)
+    setShowPlaygroundGradeDetails(false)
+    
     try {
+      // If this is an assignment and it's not started or undefined, update to in progress
+      if (selectedAssignment && (selectedAssignment.status === 'not started' || !selectedAssignment.status)) {
+        console.log('📊 First training session - updating status to in progress')
+        await updateAssignmentStatus(selectedAssignment.id, 'in progress')
+      }
       let template = null
       let scriptContent = ''
       
@@ -365,28 +555,39 @@ function CreateSession() {
             try {
               console.log('✅ Conditions met - Saving session to database...')
               
-              // Get the correct template - for assignments, prefer built-in if available
-              let template = null
+              // Get the correct template - for assignments, always use DB template ID
+              let templateIdForDb = null
+              let templateTitle = null
+              
               if (selectedAssignment) {
-                // For assignments, find the template from DB and check if it's a built-in
+                // For assignments, use the DB template ID (numeric)
+                templateIdForDb = selectedAssignment.template
                 const assignmentTemplate = templates.find(t => t.id === selectedAssignment.template)
-                if (assignmentTemplate) {
-                  const builtInMatch = findBuiltInTemplateByTitle(assignmentTemplate.title)
-                  template = builtInMatch || assignmentTemplate
-                }
+                templateTitle = assignmentTemplate?.title || 'Assignment'
+                console.log('Assignment - using DB template ID:', templateIdForDb)
               } else {
-                // For playground, use selected template
-                const builtInTemplate = ALL_BUILT_IN_TEMPLATES.find(t => t.id === selectedTemplate)
+                // For playground, check if it's custom or built-in
                 const customTemplate = templates.find(t => t.id.toString() === selectedTemplate)
-                template = builtInTemplate || customTemplate
+                if (customTemplate) {
+                  templateIdForDb = customTemplate.id
+                  templateTitle = customTemplate.title
+                  console.log('Playground - using custom template ID:', templateIdForDb)
+                } else {
+                  // Built-in template - store the string ID and get title from built-in templates
+                  const builtInTemplate = ALL_BUILT_IN_TEMPLATES.find(t => t.id === selectedTemplate)
+                  if (builtInTemplate) {
+                    templateIdForDb = selectedTemplate // Store the string ID (e.g., "objection-handling-pro")
+                    templateTitle = builtInTemplate.title
+                    console.log('Playground - built-in template:', templateIdForDb, templateTitle)
+                  }
+                }
               }
-              console.log('Template found:', template?.title)
               
               const sessionData = {
                 userId: profile.id,
                 orgId: organization.id,
                 sessionType: selectedAssignment ? 'assignment' : 'template',
-                templateId: template?.id,
+                templateId: templateIdForDb,
                 assignmentId: selectedAssignment?.id,
                 callId: activeCallId,
                 vapiCallId: activeCallId,
@@ -396,8 +597,7 @@ function CreateSession() {
                   ? Math.round((chunks[chunks.length - 1].timestamp.getTime() - chunks[0].timestamp.getTime()) / 1000)
                   : 0,
                 transcript: chunks,
-                transcriptClean: chunks.map(c => `${c.speaker}: ${c.text}`).join('\n'),
-                status: 'completed'
+                transcriptClean: chunks.map(c => `${c.speaker}: ${c.text}`).join('\n')
               }
 
               console.log('📤 Sending session data to backend:', sessionData)
@@ -417,7 +617,6 @@ function CreateSession() {
                 // Grade ALL sessions (assignments and playground) using appropriate rubric
                 if (result.data?.id) {
                   let rubricToUse = null
-                  let rubricId = null
                   let assignmentId = null
                   
                   // Always use the general life insurance rubric
@@ -425,7 +624,6 @@ function CreateSession() {
                     id: GENERAL_LIFE_INSURANCE_RUBRIC.id, 
                     grading: GENERAL_LIFE_INSURANCE_RUBRIC.categories 
                   }
-                  rubricId = GENERAL_LIFE_INSURANCE_RUBRIC.id
                   
                   if (selectedAssignment) {
                     assignmentId = selectedAssignment.id
@@ -437,6 +635,12 @@ function CreateSession() {
                   if (rubricToUse?.grading && Array.isArray(rubricToUse.grading)) {
                     console.log('🎯 Grading session against rubric...')
                     
+                    // Set grading indicator if this is an assignment
+                    if (assignmentId) {
+                      setGradingAssignmentId(assignmentId)
+                    }
+                    
+                    try {
                     // Call backend to grade the transcript
                     const gradeResponse = await fetch('/api/analytics/grade-transcript', {
                       method: 'POST',
@@ -445,7 +649,7 @@ function CreateSession() {
                         sessionId: result.data.id,
                         userId: profile.id,
                         assignmentId: assignmentId, // null for playground sessions
-                        rubricId: rubricId,
+                          rubricId: null, // Don't send built-in rubric ID to database
                         rubricCriteria: rubricToUse.grading,
                         transcript: chunks.map(c => `${c.speaker}: ${c.text}`).join('\n')
                       })
@@ -455,8 +659,24 @@ function CreateSession() {
                       const gradeResult = await gradeResponse.json()
                       console.log('✅ Session graded:', gradeResult)
                       console.log(`📊 Score: ${Math.round(gradeResult.data.percentage)}%`)
+                      
+                      // If this is a playground session (no assignment), store the grade in state
+                      if (!assignmentId && gradeResult.data) {
+                        setPlaygroundSessionGrade({
+                          percentage: gradeResult.data.percentage || 0,
+                          totalScore: gradeResult.data.total_score || 0,
+                          maxScore: gradeResult.data.max_possible_score || 100,
+                          sessionId: gradeResult.data.session_id,
+                          criteriaGrades: gradeResult.data.criteria_grades || []
+                        })
+                        setShowPlaygroundGradeDetails(false) // Reset details view
+                      }
                     } else {
                       console.error('Failed to grade session')
+                      }
+                    } finally {
+                      // Clear grading indicator
+                      setGradingAssignmentId(null)
                     }
                   }
                 }
@@ -597,7 +817,13 @@ function CreateSession() {
       
     } catch (error) {
       console.error('Error creating call:', error)
-      alert('Failed to start training call. Please try again.')
+      toast({
+        title: 'Call failed',
+        description: 'Could not start training call. Please try again.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
     } finally {
       setIsCreatingCall(false)
     }
@@ -612,7 +838,13 @@ function CreateSession() {
 
   const exportTranscriptToPDF = async () => {
     if (fullTranscriptChunks.length === 0) {
-      alert('No transcript data to export')
+      toast({
+        title: 'No transcript',
+        description: 'Complete a training session first to export.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      })
       return
     }
 
@@ -685,7 +917,13 @@ function CreateSession() {
 
     } catch (error) {
       console.error('Error exporting transcript:', error)
-      alert('Failed to export transcript. Please try again.')
+      toast({
+        title: 'Export failed',
+        description: 'Could not export transcript. Please try again.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
     } finally {
       setIsExportingPDF(false)
     }
@@ -795,7 +1033,8 @@ function CreateSession() {
         console.log('Fetching templates for organization:', organization?.id)
         console.log('User role isAdmin:', userRole.isAdmin)
         
-        // Fetch both global templates (org IS NULL) and organization templates
+        // Fetch both NULL org templates (for lookups) and org-specific templates
+        // BUT we'll filter NULL org templates out of the Custom tab display
         const { data, error } = await supabase
           .from('templates')
           .select('*')
@@ -816,41 +1055,6 @@ function CreateSession() {
       }
     }
 
-    const fetchAssignments = async () => {
-      try {
-        setIsLoadingAssignments(true)
-        const { data, error } = await supabase
-          .from('assignments')
-          .select('*')
-          .order('created_at', { ascending: false })
-
-        if (error) {
-          console.error('Error fetching assignments:', error)
-          return
-        }
-
-        // Filter assignments that include this user
-        const myAssignments = (data || []).filter(assignment => {
-          try {
-            const assignedUsers = JSON.parse(assignment.assigned || '[]')
-            return assignedUsers.includes(profile?.id)
-          } catch (error) {
-            console.warn('Error parsing assigned users:', error)
-            return false
-          }
-        })
-
-        setAssignments(myAssignments)
-        
-        // Also fetch templates to use with assignments
-        await fetchTemplates()
-      } catch (error) {
-        console.error('Error fetching assignments:', error)
-      } finally {
-        setIsLoadingAssignments(false)
-      }
-    }
-
     console.log('CreateSession useEffect - Organization ID:', organization?.id)
     console.log('CreateSession useEffect - Profile ID:', profile?.id)
     console.log('CreateSession useEffect - User Role isAdmin:', userRole.isAdmin)
@@ -860,9 +1064,20 @@ function CreateSession() {
       fetchTemplates()
     } else {
       console.log('Employee detected - fetching assignments')
+      // Also fetch templates to use with assignments
+      fetchTemplates()
       fetchAssignments()
     }
   }, [organization?.id, profile?.id, userRole.isAdmin])
+
+  // Fetch assignment sessions when an assignment is selected
+  useEffect(() => {
+    if (selectedAssignment && profile?.id) {
+      fetchAssignmentSessions(selectedAssignment.id, profile.id)
+    } else {
+      setAssignmentSessions([])
+    }
+  }, [selectedAssignment, profile?.id])
 
   // Auto-scroll transcript to bottom when new messages arrive
   useEffect(() => {
@@ -884,21 +1099,21 @@ function CreateSession() {
   // Template script previews removed - using direct template script content
 
   const cardBg = useColorModeValue('rgba(255, 255, 255, 0.9)', 'rgba(26, 32, 44, 0.9)')
-  const borderColor = useColorModeValue('purple.100', 'gray.700')
+  const borderColor = useColorModeValue('gray.200', 'gray.700')
   const headerBg = useColorModeValue('rgba(255, 255, 255, 0.8)', 'rgba(26, 32, 44, 0.8)')
-  const accentColor = useColorModeValue('purple.600', 'purple.400')
+  const accentColor = useColorModeValue('#f26f25', '#ff7d31')
   
   // Pre-define all color mode values to avoid conditional hook calls
   const textPrimary = useColorModeValue('gray.900', 'white')
   const textSecondary = useColorModeValue('gray.500', 'gray.400')
   const textMuted = useColorModeValue('gray.400', 'gray.500')
   const hoverBorder = useColorModeValue('gray.300', 'gray.600')
-  const hoverBgSelected = useColorModeValue('blue.50/70', 'blue.900/30')
+  const hoverBgSelected = useColorModeValue('orange.50/70', 'orange.900/30')
   const hoverBgUnselected = useColorModeValue('gray.50/50', 'gray.700')
 
   return (
     <Box 
-      bgGradient={useColorModeValue('linear(to-br, purple.50, pink.50, blue.50)', 'linear(to-br, gray.900, gray.800)')}
+      bgGradient={useColorModeValue('linear(to-br, orange.50, white, orange.50)', 'linear(to-br, gray.900, gray.800)')}
       h="calc(100vh - 88px)" 
       overflow="hidden"
     >
@@ -929,7 +1144,7 @@ function CreateSession() {
                     fontSize="sm" 
                     color={textSecondary}
                   >
-                    {isCallActive ? "🟢 Session active" : "Choose a template to practice"}
+                    {isCallActive ? "Session active" : "Choose a template to practice"}
                   </Text>
                 </VStack>
               </Box>
@@ -940,13 +1155,15 @@ function CreateSession() {
                   <Button
                     size="sm"
                     onClick={() => setLeftSideTab('playground')}
-                    colorScheme="purple"
+                    colorScheme="orange"
                     variant={leftSideTab === 'playground' ? 'solid' : 'ghost'}
                     borderRadius="lg"
                     fontWeight="600"
                     flex={1}
+                    bg={leftSideTab === 'playground' ? '#f26f25' : 'transparent'}
                     _hover={{
                       transform: leftSideTab === 'playground' ? 'none' : 'translateY(-1px)',
+                      bg: leftSideTab === 'playground' ? '#d95e1e' : undefined
                     }}
                   >
                     Playground
@@ -954,13 +1171,15 @@ function CreateSession() {
                   <Button
                     size="sm"
                     onClick={() => setLeftSideTab('assignments')}
-                    colorScheme="purple"
+                    colorScheme="orange"
                     variant={leftSideTab === 'assignments' ? 'solid' : 'ghost'}
                     borderRadius="lg"
                     fontWeight="600"
                     flex={1}
+                    bg={leftSideTab === 'assignments' ? '#f26f25' : 'transparent'}
                     _hover={{
                       transform: leftSideTab === 'assignments' ? 'none' : 'translateY(-1px)',
+                      bg: leftSideTab === 'assignments' ? '#d95e1e' : undefined
                     }}
                   >
                     Assignments
@@ -1007,13 +1226,13 @@ function CreateSession() {
                           />
                         </InputGroup>
                         
-                        <Tabs variant="soft-rounded" colorScheme="blue" size="sm">
+                        <Tabs variant="soft-rounded" colorScheme="orange" size="sm">
                           <TabList mb={4} gap={2}>
                             <Tab fontWeight="600" fontSize="xs">
                               Built-In ({filteredBuiltInTemplates.length}{templateSearchQuery && ` of ${ALL_BUILT_IN_TEMPLATES.length}`})
                             </Tab>
                             <Tab fontWeight="600" fontSize="xs">
-                              Custom ({filteredCustomTemplates.length}{templateSearchQuery && ` of ${templates.length}`})
+                              Custom ({filteredCustomTemplates.length}{templateSearchQuery && ` of ${orgSpecificTemplates.length}`})
                             </Tab>
                           </TabList>
 
@@ -1030,7 +1249,7 @@ function CreateSession() {
                                   <Card
                                     key={template.id}
                                     bg={selectedTemplate === template.id.toString() ? 
-                                      useColorModeValue('linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))', 'rgba(102, 126, 234, 0.15)') : 
+                                      useColorModeValue('linear-gradient(135deg, rgba(242, 111, 37, 0.1), rgba(217, 94, 30, 0.1))', 'rgba(242, 111, 37, 0.15)') : 
                                       cardBg
                                     }
                                     border="2px solid"
@@ -1043,11 +1262,11 @@ function CreateSession() {
                                     }}
                                     backdropFilter="blur(10px)"
                                     _hover={{
-                                      borderColor: selectedTemplate === template.id.toString() ? accentColor : useColorModeValue('purple.300', 'purple.600'),
+                                      borderColor: selectedTemplate === template.id.toString() ? accentColor : useColorModeValue('orange.300', 'orange.600'),
                                       transform: 'translateY(-2px) scale(1.01)',
                                       shadow: 'xl',
                                       bg: selectedTemplate === template.id.toString() ? 
-                                        useColorModeValue('linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15))', 'rgba(102, 126, 234, 0.2)') : 
+                                        useColorModeValue('linear-gradient(135deg, rgba(242, 111, 37, 0.15), rgba(217, 94, 30, 0.15))', 'rgba(242, 111, 37, 0.2)') : 
                                         useColorModeValue('white', 'gray.750')
                                     }}
                                     transition="all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)"
@@ -1108,7 +1327,7 @@ function CreateSession() {
                                       Loading templates...
                                     </Text>
                                   </Box>
-                                ) : templates.length === 0 ? (
+                                ) : orgSpecificTemplates.length === 0 ? (
                                   <Box p={4} textAlign="center">
                                     <Text color={textSecondary}>
                                       No custom templates found. Create some in Admin Tools!
@@ -1123,7 +1342,7 @@ function CreateSession() {
                             <Card
                               key={template.id}
                               bg={selectedTemplate === template.id.toString() ? 
-                                useColorModeValue('linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))', 'rgba(102, 126, 234, 0.15)') : 
+                                useColorModeValue('linear-gradient(135deg, rgba(242, 111, 37, 0.1), rgba(217, 94, 30, 0.1))', 'rgba(242, 111, 37, 0.15)') : 
                                 cardBg
                               }
                               border="2px solid"
@@ -1136,11 +1355,11 @@ function CreateSession() {
                               }}
                               backdropFilter="blur(10px)"
                               _hover={{
-                                borderColor: selectedTemplate === template.id.toString() ? accentColor : useColorModeValue('purple.300', 'purple.600'),
+                                borderColor: selectedTemplate === template.id.toString() ? accentColor : useColorModeValue('orange.300', 'orange.600'),
                                 transform: 'translateY(-2px) scale(1.01)',
                                 shadow: 'xl',
                                 bg: selectedTemplate === template.id.toString() ? 
-                                  useColorModeValue('linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15))', 'rgba(102, 126, 234, 0.2)') : 
+                                  useColorModeValue('linear-gradient(135deg, rgba(242, 111, 37, 0.15), rgba(217, 94, 30, 0.15))', 'rgba(242, 111, 37, 0.2)') : 
                                   useColorModeValue('white', 'gray.750')
                               }}
                               transition="all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)"
@@ -1213,38 +1432,8 @@ function CreateSession() {
 
                   {/* Assignments Section - Only show when on assignments tab */}
                   {!userRole.isAdmin && leftSideTab === 'assignments' && (
-                    <Box>
-                      <>
-                        <HStack spacing={2} mb={4}>
-                          <Button
-                            size="sm"
-                            variant={assignmentTab === 'current' ? 'solid' : 'outline'}
-                            colorScheme="blue"
-                            onClick={() => setAssignmentTab('current')}
-                            borderRadius="full"
-                            fontWeight="600"
-                            flex={1}
-                            _hover={{
-                              transform: assignmentTab === 'current' ? 'none' : 'translateY(-1px)',
-                            }}
-                          >
-                            Current
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={assignmentTab === 'completed' ? 'solid' : 'outline'}
-                            colorScheme="green"
-                            onClick={() => setAssignmentTab('completed')}
-                            borderRadius="full"
-                            fontWeight="600"
-                            flex={1}
-                            _hover={{
-                              transform: assignmentTab === 'completed' ? 'none' : 'translateY(-1px)',
-                            }}
-                          >
-                            Completed
-                          </Button>
-                        </HStack>
+                    <Box display="flex" flexDirection="column" h="full">
+                      <Box flex="1" overflowY="auto" pb="80px">
                         <VStack spacing={3} align="stretch">
                           {isLoadingAssignments ? (
                             <Box p={4} textAlign="center">
@@ -1260,11 +1449,18 @@ function CreateSession() {
                             </Box>
                           ) : (
                             assignments
-                              .filter(() => assignmentTab === 'current') // TODO: add completed filter
+                              .filter((assignment) => {
+                                if (assignmentTab === 'current') {
+                                  return assignment.status !== 'complete'
+                                } else {
+                                  return assignment.status === 'complete'
+                                }
+                              })
                               .map((assignment) => {
                               const assignmentTemplate = templates.find(t => t.id === assignment.template)
                               const isSelected = selectedAssignment?.id === assignment.id
                               const isOverdue = assignment.due && new Date(assignment.due) < new Date()
+                              const isGrading = gradingAssignmentId === assignment.id
                               
                               return (
                                 <Card
@@ -1297,67 +1493,171 @@ function CreateSession() {
                                   overflow="hidden"
                                   shadow={isSelected ? 'md' : 'sm'}
                                 >
-                                  <CardBody p={5}>
-                                    <VStack align="start" spacing={3}>
-                                      <HStack justify="space-between" w="full" align="start">
-                                        <VStack align="start" spacing={1} flex="1">
+                                  <CardBody p={4}>
+                                    <VStack align="start" spacing={2}>
+                                      <HStack justify="space-between" w="full">
                                           <Heading 
-                                            size="md" 
+                                          size="sm" 
                                             color={textPrimary}
                                             fontWeight="600"
-                                            letterSpacing="-0.01em"
                                           >
                                             {assignment.title}
                                           </Heading>
-                                          <Text fontSize="sm" color={textSecondary} lineHeight="1.4">
-                                            {assignment.description}
+                                          <HStack spacing={2}>
+                                            {isGrading && (
+                                              <Badge 
+                                                size="sm" 
+                                                colorScheme="orange"
+                                                variant="solid"
+                                                fontSize="xs"
+                                                display="flex"
+                                                alignItems="center"
+                                                gap={1}
+                                              >
+                                                <Box
+                                                  as="span"
+                                                  display="inline-block"
+                                                  w="8px"
+                                                  h="8px"
+                                                  borderRadius="full"
+                                                  border="2px solid"
+                                                  borderColor="white"
+                                                  borderTopColor="transparent"
+                                                  animation="spin 0.6s linear infinite"
+                                                  sx={{
+                                                    '@keyframes spin': {
+                                                      '0%': { transform: 'rotate(0deg)' },
+                                                      '100%': { transform: 'rotate(360deg)' }
+                                                    }
+                                                  }}
+                                                />
+                                                Grading...
+                                              </Badge>
+                                            )}
+                                            <Badge 
+                                            size="sm" 
+                                              colorScheme={
+                                              assignment.status === 'complete' ? 'green' :
+                                              assignment.status === 'in progress' ? 'blue' : 'gray'
+                                              } 
+                                            variant="solid"
+                                              fontSize="xs"
+                                            >
+                                            {assignment.status === 'in progress' ? 'In Progress' : 
+                                             assignment.status === 'complete' ? 'Completed' : 
+                                             'Not Started'}
+                                            </Badge>
+                                          </HStack>
+                                      </HStack>
+                                      
+                                      {assignment.description && (
+                                        <Text fontSize="xs" color={textSecondary} noOfLines={2}>
+                                          {assignment.description}
+                                        </Text>
+                                      )}
+                                      
+                                      <HStack spacing={2} fontSize="xs" color={textSecondary}>
+                                        {assignment.due && (
+                                          <Text>
+                                            Due {new Date(assignment.due).toLocaleDateString()}
                                           </Text>
-                                        </VStack>
-                                        {assignmentTemplate && (
-                                          <Badge 
-                                            colorScheme={
-                                              assignmentTemplate.difficulty === 'easy' ? 'green' : 
-                                              assignmentTemplate.difficulty === 'medium' ? 'yellow' : 
-                                              assignmentTemplate.difficulty === 'hard' ? 'orange' : 'red'
-                                            } 
-                                            variant="subtle"
-                                            textTransform="capitalize"
-                                            fontSize="xs"
-                                            px={2}
-                                            py={1}
-                                            borderRadius="full"
-                                            fontWeight="500"
-                                          >
-                                            {assignmentTemplate.difficulty}
-                                          </Badge>
                                         )}
                                       </HStack>
                                       
-                                      <HStack spacing={2} w="full">
-                                        {assignmentTemplate && (
-                                          <Badge 
-                                            size="sm" 
-                                            colorScheme="purple" 
-                                            variant="outline" 
-                                            textTransform="capitalize"
-                                            borderRadius="full"
-                                            fontSize="xs"
-                                          >
-                                            {assignmentTemplate.title}
+                                      {/* Show recent sessions for selected assignment */}
+                                      {isSelected && (
+                                        <Box w="full" mt={3}>
+                                          <HStack justify="space-between" mb={2}>
+                                            <Text fontSize="xs" fontWeight="600" color={textPrimary}>
+                                              Recent Practice Sessions ({assignmentSessions.length})
+                                            </Text>
+                                            <IconButton
+                                              aria-label="Refresh sessions"
+                                              icon={<Icon as={RefreshCw} boxSize={3} />}
+                                              size="xs"
+                                              variant="ghost"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                if (profile?.id) {
+                                                  fetchAssignmentSessions(assignment.id, profile.id)
+                                                }
+                                              }}
+                                              isLoading={isLoadingSessions}
+                                            />
+                                          </HStack>
+                                          
+                                          {isLoadingSessions ? (
+                                            <Box textAlign="center" py={2}>
+                                              <Text fontSize="xs" color={textSecondary}>Loading...</Text>
+                                            </Box>
+                                          ) : assignmentSessions.length === 0 ? (
+                                            <Box 
+                                              p={3} 
+                                              bg={useColorModeValue('gray.50', 'gray.800')}
+                                              borderRadius="lg"
+                                              textAlign="center"
+                                            >
+                                              <Text fontSize="xs" color={textSecondary}>
+                                                No practice sessions yet. Click "Start Training" to begin!
+                                              </Text>
+                                            </Box>
+                                          ) : (
+                                            <VStack spacing={2} align="stretch">
+                                              {assignmentSessions.slice(0, 5).map((session) => (
+                                                <Box
+                                                  key={session.id}
+                                                  p={3}
+                                                  bg={session.submitted_for_review ? 
+                                                    useColorModeValue('green.50', 'green.900/20') :
+                                                    useColorModeValue('gray.50', 'gray.800')
+                                                  }
+                                                  borderRadius="lg"
+                                                  border="1px solid"
+                                                  borderColor={session.submitted_for_review ?
+                                                    useColorModeValue('green.200', 'green.800') :
+                                                    useColorModeValue('gray.200', 'gray.700')
+                                                  }
+                                                >
+                                                  <HStack justify="space-between" align="start" spacing={2}>
+                                                    <VStack align="start" spacing={0} flex={1}>
+                                                      <Text fontSize="xs" fontWeight="600" color={textPrimary}>
+                                                        {new Date(session.end_time).toLocaleDateString()} at {new Date(session.end_time).toLocaleTimeString()}
+                                                      </Text>
+                                                      <Text fontSize="xs" color={textSecondary}>
+                                                        Duration: {Math.floor(session.duration_seconds / 60)}m {session.duration_seconds % 60}s
+                                                      </Text>
+                                                      {session.grade && (
+                                                        <Text fontSize="xs" color={textSecondary}>
+                                                          Score: {Math.round(session.grade.percentage)}%
+                                                        </Text>
+                                                      )}
+                                                      {session.submitted_for_review && (
+                                                        <Badge colorScheme="green" size="sm" mt={1}>
+                                                          Submitted ✓
                                           </Badge>
                                         )}
-                                        {assignment.due && (
-                                          <Badge 
-                                            size="sm" 
-                                            colorScheme="orange" 
-                                            variant="outline"
-                                            borderRadius="full"
-                                            fontSize="xs"
-                                          >
-                                            Due: {new Date(assignment.due).toLocaleDateString()}
-                                          </Badge>
+                                                    </VStack>
+                                                    {!session.submitted_for_review && (
+                                                      <Button
+                                                        size="xs"
+                                                        colorScheme="orange"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation()
+                                                          submitSessionForReview(session.id)
+                                                        }}
+                                                        isLoading={submittingSessionId === session.id}
+                                                        borderRadius="md"
+                                                      >
+                                                        Submit
+                                                      </Button>
                                         )}
                                       </HStack>
+                                                </Box>
+                                              ))}
+                                            </VStack>
+                                          )}
+                                        </Box>
+                                      )}
                                     </VStack>
                                   </CardBody>
                                 </Card>
@@ -1365,7 +1665,52 @@ function CreateSession() {
                             })
                           )}
                         </VStack>
-                      </>
+                      </Box>
+                      
+                      {/* Tabs at bottom - Fixed to physical bottom of screen */}
+                      <Box
+                        position="fixed"
+                        bottom="0"
+                        left="0"
+                        right="50%"
+                        p={4}
+                        bg={cardBg}
+                        backdropFilter="blur(10px)"
+                        zIndex={10}
+                      >
+                        <HStack spacing={2}>
+                          <Button
+                            size="sm"
+                            variant={assignmentTab === 'current' ? 'solid' : 'outline'}
+                            colorScheme="orange"
+                            bg={assignmentTab === 'current' ? '#f26f25' : 'transparent'}
+                            onClick={() => setAssignmentTab('current')}
+                            borderRadius="full"
+                            fontWeight="600"
+                            flex={1}
+                            _hover={{
+                              transform: assignmentTab === 'current' ? 'none' : 'translateY(-1px)',
+                              bg: assignmentTab === 'current' ? '#d95e1e' : undefined
+                            }}
+                          >
+                            Current
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={assignmentTab === 'completed' ? 'solid' : 'outline'}
+                            colorScheme="green"
+                            onClick={() => setAssignmentTab('completed')}
+                            borderRadius="full"
+                            fontWeight="600"
+                            flex={1}
+                            _hover={{
+                              transform: assignmentTab === 'completed' ? 'none' : 'translateY(-1px)',
+                            }}
+                          >
+                            Completed
+                          </Button>
+                        </HStack>
+                      </Box>
                     </Box>
                   )}
                 </VStack>
@@ -1430,7 +1775,7 @@ function CreateSession() {
                       size="sm"
                       variant="ghost"
                       color={useColorModeValue('gray.600', 'gray.400')}
-                      bg={isOpen ? useColorModeValue('blue.50', 'blue.900/30') : 'transparent'}
+                      bg={isOpen ? useColorModeValue('orange.50', 'orange.900/30') : 'transparent'}
                 _hover={{
                         bg: useColorModeValue('gray.100/70', 'gray.700/70'),
                         color: useColorModeValue('gray.800', 'gray.200')
@@ -1463,11 +1808,11 @@ function CreateSession() {
                     loadingText="Starting..."
                     isDisabled={
                       !vapiPublicKey || 
-                      (userRole.isAdmin ? !selectedTemplate : !selectedAssignment)
+                      (userRole.isAdmin ? !selectedTemplate : (!selectedTemplate && !selectedAssignment))
                     }
                     bg={isCallActive 
                       ? 'linear-gradient(135deg, #ef4444, #dc2626)' 
-                      : 'linear-gradient(135deg, #3b82f6, #2563eb)'
+                      : 'linear-gradient(135deg, #f26f25, #d95e1e)'
                     }
                     color="white"
                     _hover={{
@@ -1475,7 +1820,7 @@ function CreateSession() {
                       shadow: '2xl',
                       bg: isCallActive 
                         ? 'linear-gradient(135deg, #dc2626, #b91c1c)' 
-                        : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                        : 'linear-gradient(135deg, #d95e1e, #b84e19)',
                       _before: {
                         left: '100%'
                       }
@@ -1587,14 +1932,14 @@ function CreateSession() {
                                 </HStack>
                                 <Box 
                                   bg={segment.speaker === 'You' 
-                                    ? useColorModeValue('blue.50/50', 'blue.900/20') 
+                                    ? useColorModeValue('orange.50/50', 'orange.900/20') 
                                     : useColorModeValue('green.50/50', 'green.900/20')
                                   }
                                   p={5}
                                   borderRadius="2xl"
                                   border="1px solid"
                                   borderColor={segment.speaker === 'You' 
-                                    ? useColorModeValue('blue.100', 'blue.800/50') 
+                                    ? useColorModeValue('orange.100', 'orange.800/50') 
                                     : useColorModeValue('green.100', 'green.800/50')
                                   }
                                   position="relative"
@@ -1653,10 +1998,10 @@ function CreateSession() {
             <HStack spacing={5} flex="1">
               <Box 
                 p={4} 
-                bg={useColorModeValue('blue.50/70', 'blue.900/30')} 
+                bg={useColorModeValue('orange.50/70', 'orange.900/30')} 
                 borderRadius="2xl"
                 border="1px solid"
-                borderColor={useColorModeValue('blue.100', 'blue.800/50')}
+                borderColor={useColorModeValue('orange.100', 'orange.800/50')}
               >
                 <Icon as={FileText} color={accentColor} boxSize={7} />
               </Box>
@@ -1738,7 +2083,7 @@ function CreateSession() {
                     '& h2': {
                       fontSize: 'lg',
                       fontWeight: 'semibold',
-                      color: useColorModeValue('blue.600', 'blue.300'),
+                      color: useColorModeValue('#f26f25', '#ff7d31'),
                       mt: 6,
                       mb: 3
                     },
@@ -1776,7 +2121,7 @@ function CreateSession() {
                         if (speakerMatch) {
                           return (
                             <Box mb={2}>
-                              <Text as="span" fontWeight="bold" color="blue.500">
+                              <Text as="span" fontWeight="bold" color="#f26f25">
                                 {speakerMatch[1]}:
                             </Text>
                               <Text as="span" ml={2}>

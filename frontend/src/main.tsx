@@ -38,16 +38,16 @@ const theme = extendTheme({
   },
   colors: {
     brand: {
-      50: '#e6f3ff',
-      100: '#b3d9ff',
-      200: '#80bfff',
-      300: '#4da6ff',
-      400: '#1a8cff',
-      500: '#0073e6',
-      600: '#005bb3',
-      700: '#004280',
-      800: '#002a4d',
-      900: '#00111a',
+      50: '#fff5ed',
+      100: '#ffe5d1',
+      200: '#ffc9a3',
+      300: '#ffa76b',
+      400: '#ff7d31',
+      500: '#f26f25',
+      600: '#d95e1e',
+      700: '#b84e19',
+      800: '#943f14',
+      900: '#6b2e0f',
     },
   },
   fonts: {
@@ -63,12 +63,15 @@ const theme = extendTheme({
           boxShadow: 'outline',
         },
       },
+      defaultProps: {
+        colorScheme: 'orange',
+      },
       variants: {
         solid: (props: any) => ({
-          bg: props.colorMode === 'dark' ? 'brand.500' : 'brand.600',
+          bg: props.colorScheme === 'orange' || !props.colorScheme ? '#f26f25' : undefined,
           color: 'white',
           _hover: {
-            bg: props.colorMode === 'dark' ? 'brand.400' : 'brand.700',
+            bg: props.colorScheme === 'orange' || !props.colorScheme ? '#d95e1e' : undefined,
             transform: 'translateY(-1px)',
             boxShadow: 'lg',
           },
@@ -79,19 +82,19 @@ const theme = extendTheme({
         }),
         outline: (props: any) => ({
           bg: 'transparent',
-          borderColor: props.colorMode === 'dark' ? 'gray.600' : 'gray.300',
-          color: props.colorMode === 'dark' ? 'gray.100' : 'gray.900',
+          borderColor: props.colorScheme === 'orange' || !props.colorScheme ? '#f26f25' : (props.colorMode === 'dark' ? 'gray.600' : 'gray.300'),
+          color: props.colorScheme === 'orange' || !props.colorScheme ? '#f26f25' : (props.colorMode === 'dark' ? 'gray.100' : 'gray.900'),
           _hover: {
-            bg: props.colorMode === 'dark' ? 'gray.700' : 'gray.50',
-            borderColor: props.colorMode === 'dark' ? 'gray.500' : 'gray.400',
+            bg: props.colorScheme === 'orange' || !props.colorScheme ? 'rgba(242, 111, 37, 0.1)' : (props.colorMode === 'dark' ? 'gray.700' : 'gray.50'),
+            borderColor: props.colorScheme === 'orange' || !props.colorScheme ? '#d95e1e' : (props.colorMode === 'dark' ? 'gray.500' : 'gray.400'),
           },
         }),
         ghost: (props: any) => ({
           bg: 'transparent',
-          color: props.colorMode === 'dark' ? 'gray.400' : 'gray.600',
+          color: props.colorScheme === 'orange' || !props.colorScheme ? '#f26f25' : (props.colorMode === 'dark' ? 'gray.400' : 'gray.600'),
           _hover: {
-            bg: props.colorMode === 'dark' ? 'gray.700' : 'gray.100',
-            color: props.colorMode === 'dark' ? 'gray.100' : 'gray.900',
+            bg: props.colorScheme === 'orange' || !props.colorScheme ? 'rgba(242, 111, 37, 0.1)' : (props.colorMode === 'dark' ? 'gray.700' : 'gray.100'),
+            color: props.colorScheme === 'orange' || !props.colorScheme ? '#d95e1e' : (props.colorMode === 'dark' ? 'gray.100' : 'gray.900'),
           },
         }),
       },

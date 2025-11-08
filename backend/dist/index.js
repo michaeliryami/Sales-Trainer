@@ -23,6 +23,7 @@ const profiles_1 = __importDefault(require("./routes/profiles"));
 const ai_1 = __importDefault(require("./routes/ai"));
 const export_1 = __importDefault(require("./routes/export"));
 const analytics_1 = __importDefault(require("./routes/analytics"));
+const assignments_1 = __importDefault(require("./routes/assignments"));
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3002;
 app.use((0, cors_1.default)());
@@ -45,6 +46,7 @@ app.use('/api/profiles', profiles_1.default);
 app.use('/api/ai', ai_1.default);
 app.use('/api/export', export_1.default);
 app.use('/api/analytics', analytics_1.default);
+app.use('/api/assignments', assignments_1.default);
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ error: 'Something went wrong!' });

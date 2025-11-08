@@ -93,7 +93,7 @@ const Analytics: React.FC = () => {
   const cardBg = useColorModeValue('white', 'gray.800')
   const borderColor = useColorModeValue('gray.200', 'gray.700')
   const headerBg = useColorModeValue('white', 'gray.800')
-  const accentColor = useColorModeValue('blue.500', 'blue.400')
+  const accentColor = useColorModeValue('#f26f25', '#ff7d31')
 
   // Fetch real analytics data from API
   useEffect(() => {
@@ -519,7 +519,7 @@ const Analytics: React.FC = () => {
                             <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
                               {template.name}
                             </Text>
-                            <Badge colorScheme="blue" variant="outline" borderRadius="full" px={3} py={1}>
+                            <Badge colorScheme="orange" variant="outline" borderRadius="full" px={3} py={1}>
                               {template.sessions} sessions
                             </Badge>
                           </Flex>
@@ -690,7 +690,7 @@ const Analytics: React.FC = () => {
                   .map((session: any, index: number) => (
                   <Card 
                     key={index}
-                    bg={selectedSession?.id === session.id ? useColorModeValue('blue.50', 'blue.900/20') : cardBg}
+                    bg={selectedSession?.id === session.id ? useColorModeValue('orange.50', 'orange.900/20') : cardBg}
                     border="1px solid"
                     borderColor={selectedSession?.id === session.id ? accentColor : borderColor}
                     borderRadius="2xl"
@@ -744,7 +744,7 @@ const Analytics: React.FC = () => {
                               download
                               size="xs"
                               leftIcon={<Icon as={FileDown} boxSize={3} />}
-                              colorScheme="blue"
+                              colorScheme="orange"
                               variant="ghost"
                             >
                               PDF
@@ -773,7 +773,7 @@ const Analytics: React.FC = () => {
                                 download
                                 leftIcon={<Icon as={FileDown} />}
                                 size="sm"
-                                colorScheme="blue"
+                                colorScheme="orange"
                                 variant="outline"
                               >
                                 Download PDF Report
@@ -782,7 +782,7 @@ const Analytics: React.FC = () => {
                               <Button
                                 leftIcon={<Icon as={FileDown} />}
                                 size="sm"
-                                colorScheme="blue"
+                                colorScheme="orange"
                                 variant="outline"
                                 onClick={generatePdf}
                                 isLoading={generatingPdf}
@@ -860,7 +860,7 @@ const Analytics: React.FC = () => {
                                   <Divider />
                                   
                                   {/* Manual Override for this Criterion */}
-                                  <Box p={3} bg={useColorModeValue('blue.50', 'blue.900/10')} borderRadius="md">
+                                  <Box p={3} bg={useColorModeValue('orange.50', 'orange.900/10')} borderRadius="md">
                                     <VStack align="stretch" spacing={2}>
                                       <Text fontSize="xs" fontWeight="600" color={useColorModeValue('gray.700', 'gray.300')}>
                                         Override:
