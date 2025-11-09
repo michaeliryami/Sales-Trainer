@@ -547,7 +547,7 @@ const MyAnalytics: React.FC = () => {
           <Box 
             w="1px" 
             h="full" 
-            bg={borderColor}
+            bg={useColorModeValue('gray.100', 'gray.750')}
             _hover={{ 
               bg: accentColor,
               w: "3px",
@@ -556,27 +556,24 @@ const MyAnalytics: React.FC = () => {
             transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
             cursor="col-resize"
             position="relative"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
           >
-            <Box
+            {/* Decorative handle dots */}
+            <Box 
               position="absolute"
-              top="50%"
-              left="50%"
-              transform="translate(-50%, -50%)"
-              w="24px"
-              h="48px"
-              bg={cardBg}
-              border="1px solid"
-              borderColor={borderColor}
-              borderRadius="xl"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              opacity={0}
-              _hover={{ opacity: 1, shadow: 'md' }}
-              transition="all 0.3s"
-              backdropFilter="blur(10px)"
+              bg={useColorModeValue('white', 'gray.800')}
+              borderRadius="full"
+              p={1}
+              shadow="sm"
+              opacity={0.7}
+              _hover={{ opacity: 1 }}
+              transition="opacity 0.2s"
             >
-              <VStack spacing="2px">
+              <VStack spacing={0.5}>
+                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
+                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
                 <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
                 <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
                 <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />

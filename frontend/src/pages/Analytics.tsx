@@ -614,20 +614,44 @@ const Analytics: React.FC = () => {
           </Box>
         </Panel>
 
-        {/* Resize Handle - Invisible but functional */}
+        {/* Resize Handle */}
         <PanelResizeHandle>
           <Box 
             w="1px" 
             h="full" 
-            bg="transparent"
+            bg={useColorModeValue('gray.100', 'gray.750')}
             _hover={{ 
-              bg: useColorModeValue('gray.200', 'gray.700'),
-              w: "2px"
+              bg: accentColor,
+              w: "3px",
+              shadow: 'lg'
             }}
-            transition="all 0.2s"
+            transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
             cursor="col-resize"
             position="relative"
-          />
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            {/* Decorative handle dots */}
+            <Box 
+              position="absolute"
+              bg={useColorModeValue('white', 'gray.800')}
+              borderRadius="full"
+              p={1}
+              shadow="sm"
+              opacity={0.7}
+              _hover={{ opacity: 1 }}
+              transition="opacity 0.2s"
+            >
+              <VStack spacing={0.5}>
+                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
+                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
+                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
+                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
+                <Box w="3px" h="3px" bg={useColorModeValue('gray.400', 'gray.500')} borderRadius="full" />
+              </VStack>
+            </Box>
+          </Box>
         </PanelResizeHandle>
 
         {/* Right Panel - Recent Activity */}

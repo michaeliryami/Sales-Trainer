@@ -1,45 +1,116 @@
+import { useState, useEffect, useRef } from 'react'
 import {
   Box,
-  Button,
-  Container,
-  Flex,
   Heading,
   Text,
+  Button,
+  Container,
   VStack,
   HStack,
-  Icon,
   SimpleGrid,
-  Stack,
-  Badge,
-  useColorModeValue,
   Image,
-  Link,
-  List,
-  ListItem,
-  ListIcon,
+  Icon,
+  Flex,
+  Stack,
+  useColorModeValue,
+  Grid,
+  GridItem,
+  Badge,
 } from '@chakra-ui/react'
-import {
-  Target,
-  Zap,
-  TrendingUp,
-  Users,
-  BarChart3,
-  Clock,
-  CheckCircle,
-  Phone,
-  MessageSquare,
-  Award,
-  Sparkles,
-} from 'lucide-react'
+import { FiPhone, FiBarChart2, FiTarget, FiZap, FiTrendingUp, FiUsers, FiCheck, FiStar, FiChevronDown } from 'react-icons/fi'
 
 function App() {
-  const bg = useColorModeValue('white', 'gray.900')
-  const textPrimary = useColorModeValue('gray.900', 'white')
-  const textSecondary = useColorModeValue('gray.600', 'gray.400')
-  const borderColor = useColorModeValue('gray.200', 'gray.700')
+  const [rotatingText, setRotatingText] = useState(0)
+  const [showScrollButton, setShowScrollButton] = useState(true)
+  const [visibleMessages, setVisibleMessages] = useState<number[]>([])
+  const [timer, setTimer] = useState(0)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  
+  const rotatingWords = [
+    'Revenue Driver',
+    'Quota Breaker',
+    'Closing Machine',
+    'Sales Champion'
+  ]
+
+  const conversationTurns = [
+    { speaker: 'prospect', text: "I'm not sure if this is the right time..." },
+    { speaker: 'rep', text: "I understand. Let's talk about what's important to you right now..." },
+    { speaker: 'prospect', text: "That makes sense. Tell me more..." },
+    { speaker: 'rep', text: "Of course! We help teams close 3x more deals through AI practice..." },
+    { speaker: 'prospect', text: "Interesting. How does that work exactly?" },
+    { speaker: 'rep', text: "Great question! Your reps practice unlimited roleplay scenarios..." }
+  ]
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRotatingText((prev) => (prev + 1) % rotatingWords.length)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > window.innerHeight * 0.8) {
+        setShowScrollButton(false)
+      } else {
+        setShowScrollButton(true)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  useEffect(() => {
+    // Animate conversation in a loop
+    const animateConversation = () => {
+      setVisibleMessages([])
+      setTimer(0)
+      const delays = [500, 3000, 5500, 8000, 10500, 13000]
+      const timeouts: NodeJS.Timeout[] = []
+
+      delays.forEach((delay, index) => {
+        const timeout = setTimeout(() => {
+          setVisibleMessages(prev => [...prev, index])
+        }, delay)
+        timeouts.push(timeout)
+      })
+
+      // Reset and loop after all messages shown
+      const loopTimeout = setTimeout(() => {
+        animateConversation()
+      }, 16000)
+      timeouts.push(loopTimeout)
+
+      return timeouts
+    }
+
+    const timeouts = animateConversation()
+    return () => timeouts.forEach(t => clearTimeout(t))
+  }, [])
+
+  useEffect(() => {
+    // Animate timer
+    const interval = setInterval(() => {
+      setTimer(prev => {
+        if (prev >= 15) return 0
+        return prev + 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    // Auto-scroll only the messages container (not the page)
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+    }
+  }, [visibleMessages])
 
   return (
-    <Box bg={bg} minH="100vh">
+    <Box minH="100vh" bg="white">
       {/* Navigation */}
       <Box
         as="nav"
@@ -47,614 +118,847 @@ function App() {
         top={0}
         left={0}
         right={0}
-        bg={useColorModeValue('rgba(255, 255, 255, 0.8)', 'rgba(0, 0, 0, 0.8)')}
+        bg="rgba(255, 255, 255, 0.95)"
         backdropFilter="blur(10px)"
-        borderBottom="1px"
-        borderColor={borderColor}
+        boxShadow="sm"
         zIndex={1000}
       >
-        <Container maxW="7xl">
-          <Flex h={20} alignItems="center" justifyContent="space-between">
-            <HStack spacing={3}>
-              <Icon as={Sparkles} boxSize={8} color="brand.500" />
-              <Text fontSize="2xl" fontWeight="bold" color={textPrimary}>
-                Clozone
-              </Text>
-            </HStack>
-            <HStack spacing={8}>
-              <Link href="#features" fontSize="md" fontWeight="500" color={textSecondary} _hover={{ color: 'brand.500' }}>
-                Features
-              </Link>
-              <Link href="#pricing" fontSize="md" fontWeight="500" color={textSecondary} _hover={{ color: 'brand.500' }}>
-                Pricing
-              </Link>
+        <Container maxW="7xl" py={4}>
+          <Flex justify="space-between" align="center">
+            <Image src="/logolong.png" alt="Clozone" h="50px" />
+            <HStack spacing={6}>
               <Button
                 as="a"
                 href="https://app.clozone.ai"
                 variant="ghost"
-                colorScheme="brand"
+                size="lg"
+                color="gray.700"
+                _hover={{ color: 'brand.500' }}
               >
                 Sign In
               </Button>
               <Button
                 as="a"
                 href="https://calendly.com/your-link"
-                bg="linear-gradient(135deg, #f26f25, #d95e1e)"
+                target="_blank"
+                size="lg"
+                h="50px"
+                px={8}
+                bg="brand.500"
                 color="white"
-                _hover={{ bg: 'linear-gradient(135deg, #d95e1e, #b84e19)' }}
-                shadow="lg"
+                fontWeight="bold"
+                _hover={{
+                  bg: 'brand.600',
+                  transform: 'translateY(-2px)',
+                  boxShadow: 'lg',
+                }}
+                transition="all 0.2s"
               >
-                Book Demo
+                Book a Demo
               </Button>
             </HStack>
           </Flex>
         </Container>
       </Box>
 
-      {/* Hero Section */}
-      <Box pt={32} pb={20} bgGradient="linear(to-br, orange.50, white, orange.50)">
-        <Container maxW="7xl">
-          <VStack spacing={8} textAlign="center" mx="auto" maxW="4xl">
-            <Badge
-              colorScheme="brand"
-              fontSize="md"
-              px={4}
-              py={2}
-              borderRadius="full"
-              fontWeight="600"
-            >
-              AI-Powered Sales Training
-            </Badge>
-            
-            <Heading
-              as="h1"
-              fontSize={{ base: '4xl', md: '5xl', lg: '6xl' }}
-              fontWeight="800"
-              lineHeight="1.1"
-              color={textPrimary}
-              letterSpacing="-0.02em"
-            >
-              Turn Every Rep Into an
-              <Text as="span" color="brand.500" display="block">
-                Objection-Handling Machine
-              </Text>
-            </Heading>
-            
-            <Text
-              fontSize={{ base: 'lg', md: 'xl' }}
-              color={textSecondary}
-              maxW="2xl"
-              lineHeight="1.7"
-            >
-              24/7 AI role-play training for life insurance agents. 
-              Practice unlimited scenarios, get instant feedback, and close more deals.
-            </Text>
-            
-            <HStack spacing={4} pt={4}>
-              <Button
-                size="lg"
-                fontSize="lg"
-                px={8}
-                h={14}
-                bg="linear-gradient(135deg, #f26f25, #d95e1e)"
-                color="white"
-                _hover={{
-                  bg: 'linear-gradient(135deg, #d95e1e, #b84e19)',
-                  transform: 'translateY(-2px)',
-                  shadow: 'xl',
-                }}
-                shadow="lg"
-                transition="all 0.3s"
-                as="a"
-                href="https://calendly.com/your-link"
-              >
-                Get Started Free
-              </Button>
-              <Button
-                size="lg"
-                fontSize="lg"
-                px={8}
-                h={14}
-                variant="outline"
-                colorScheme="brand"
-                borderWidth="2px"
-                _hover={{
-                  transform: 'translateY(-2px)',
-                  shadow: 'lg',
-                }}
-                transition="all 0.3s"
-                as="a"
-                href="#demo"
-              >
-                Watch Demo
-              </Button>
-            </HStack>
-
-            <HStack spacing={8} pt={8} color={textSecondary} fontSize="sm">
-              <HStack>
-                <Icon as={CheckCircle} color="brand.500" />
-                <Text>14-day free trial</Text>
-              </HStack>
-              <HStack>
-                <Icon as={CheckCircle} color="brand.500" />
-                <Text>No credit card required</Text>
-              </HStack>
-              <HStack>
-                <Icon as={CheckCircle} color="brand.500" />
-                <Text>Cancel anytime</Text>
-              </HStack>
-            </HStack>
-          </VStack>
-
-          {/* Demo Screenshot Placeholder */}
-          <Box
-            mt={16}
-            borderRadius="2xl"
-            overflow="hidden"
-            shadow="2xl"
-            borderWidth="1px"
-            borderColor={borderColor}
-            bg={useColorModeValue('white', 'gray.800')}
-          >
-            <Box
-              h="500px"
-              bgGradient="linear(to-br, brand.100, white)"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-            >
-              <VStack spacing={4}>
-                <Icon as={MessageSquare} boxSize={20} color="brand.500" />
-                <Text fontSize="xl" fontWeight="600" color={textSecondary}>
-                  Dashboard Screenshot / Demo Video
-                </Text>
-              </VStack>
-            </Box>
-          </Box>
-        </Container>
-      </Box>
-
-      {/* Features Section */}
-      <Box id="features" py={20} bg={useColorModeValue('white', 'gray.900')}>
-        <Container maxW="7xl">
-          <VStack spacing={4} textAlign="center" mb={16}>
-            <Badge colorScheme="brand" fontSize="sm" px={3} py={1}>
-              Features
-            </Badge>
-            <Heading fontSize="4xl" fontWeight="700" color={textPrimary}>
-              Everything You Need to Train Winners
-            </Heading>
-            <Text fontSize="lg" color={textSecondary} maxW="2xl">
-              Give your team the tools they need to master objections, 
-              close more deals, and hit quota consistently.
-            </Text>
-          </VStack>
-
-          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={10}>
-            {[
-              {
-                icon: Phone,
-                title: 'AI Role-Play Calls',
-                description: 'Practice with realistic AI prospects that mirror your real customer conversations. Available 24/7.',
-              },
-              {
-                icon: Target,
-                title: 'Custom Scenarios',
-                description: 'Create scenarios for your specific products, objections, and sales processes. Make training relevant.',
-              },
-              {
-                icon: BarChart3,
-                title: 'Instant AI Grading',
-                description: 'Get detailed feedback on every call. See exactly what worked and what needs improvement.',
-              },
-              {
-                icon: Users,
-                title: 'Team Management',
-                description: 'Assign scenarios, track progress, and identify coaching opportunities across your entire team.',
-              },
-              {
-                icon: TrendingUp,
-                title: 'Performance Analytics',
-                description: 'Track improvement over time. See which reps are ready to sell and which need more coaching.',
-              },
-              {
-                icon: Clock,
-                title: 'Save Manager Time',
-                description: 'Stop spending hours on role-plays. Let AI handle practice while managers focus on selling.',
-              },
-            ].map((feature, idx) => (
-              <Box
-                key={idx}
-                p={8}
-                borderRadius="2xl"
-                borderWidth="1px"
-                borderColor={borderColor}
-                bg={useColorModeValue('white', 'gray.800')}
-                transition="all 0.3s"
-                _hover={{
-                  borderColor: 'brand.500',
-                  transform: 'translateY(-4px)',
-                  shadow: 'xl',
-                }}
-              >
-                <Icon
-                  as={feature.icon}
-                  boxSize={12}
-                  color="brand.500"
-                  mb={4}
-                />
-                <Heading fontSize="xl" fontWeight="600" mb={3} color={textPrimary}>
-                  {feature.title}
+      {/* Hero Section - Split Layout */}
+      <Box 
+        as="section"
+        minH="100vh" 
+        position="relative" 
+        overflow="hidden"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        w="100vw"
+      >
+        {/* Background gradient orb */}
+        <Box
+          position="absolute"
+          top="-20%"
+          right="-10%"
+          w="800px"
+          h="800px"
+          bg="brand.500"
+          opacity="0.08"
+          borderRadius="full"
+          filter="blur(100px)"
+        />
+        
+        <Container maxW="7xl" position="relative">
+          <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={16} alignItems="center">
+            <GridItem>
+              <VStack align="flex-start" spacing={8}>
+                <Heading
+                  fontSize={{ base: '5xl', md: '6xl', lg: '7xl' }}
+                  fontWeight="black"
+                  lineHeight="1.1"
+                  letterSpacing="-0.02em"
+                  className="fade-in-up"
+                >
+                  Turn Every Rep Into a{' '}
+                  <Box
+                    as="span"
+                    bgGradient="linear(to-r, brand.500, brand.600)"
+                    bgClip="text"
+                    className="rotate-text"
+                    key={rotatingText}
+                  >
+                    {rotatingWords[rotatingText]}
+                  </Box>
                 </Heading>
-                <Text color={textSecondary} lineHeight="1.7">
-                  {feature.description}
+                
+                <Text 
+                  fontSize={{ base: 'lg', md: 'xl' }} 
+                  color="gray.600" 
+                  lineHeight="tall"
+                  className="fade-in-up delay-1"
+                >
+                  Practice unlimited AI sales calls. Get instant feedback. Close more deals.
                 </Text>
+
+                <VStack align="flex-start" spacing={3} className="fade-in-up delay-2">
+                  <HStack spacing={3}>
+                    <Icon as={FiCheck} w={6} h={6} color="brand.500" />
+                    <Text fontSize="lg" color="gray.700">Practice 24/7 with realistic AI</Text>
+                  </HStack>
+                  <HStack spacing={3}>
+                    <Icon as={FiCheck} w={6} h={6} color="brand.500" />
+                    <Text fontSize="lg" color="gray.700">Master objection handling</Text>
+                  </HStack>
+                  <HStack spacing={3}>
+                    <Icon as={FiCheck} w={6} h={6} color="brand.500" />
+                    <Text fontSize="lg" color="gray.700">Track team performance</Text>
+                  </HStack>
+                </VStack>
+
+                <Box pt={4} className="fade-in-up delay-3">
+                  <Button
+                    as="a"
+                    href="https://calendly.com/your-link"
+                    target="_blank"
+                    size="xl"
+                    h="65px"
+                    px={12}
+                    fontSize="xl"
+                    fontWeight="bold"
+                    bg="brand.500"
+                    color="white"
+                    _hover={{
+                      bg: 'brand.600',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 20px 40px rgba(242, 111, 37, 0.3)',
+                    }}
+                    transition="all 0.3s"
+                  >
+                    Book Your Demo
+                  </Button>
+                </Box>
+              </VStack>
+            </GridItem>
+
+            <GridItem display={{ base: 'none', lg: 'flex' }} justifyContent="center">
+              <Box position="relative" className="fade-in-right" w="500px" h="500px">
+                {/* Floating stat badges around logo */}
+                <Box
+                  position="absolute"
+                  top="5%"
+                  right="10%"
+                  bg="white"
+                  p={4}
+                  rounded="xl"
+                  boxShadow="xl"
+                  className="float"
+                  style={{ animationDelay: '0.5s' }}
+                >
+                  <VStack spacing={1}>
+                    <Text fontSize="2xl" fontWeight="black" color="brand.500">40+</Text>
+                    <Text fontSize="xs" color="gray.600">Templates</Text>
+                  </VStack>
+                </Box>
+
+                <Box
+                  position="absolute"
+                  bottom="10%"
+                  right="10%"
+                  bg="white"
+                  p={4}
+                  rounded="xl"
+                  boxShadow="xl"
+                  className="float"
+                  style={{ animationDelay: '1s' }}
+                >
+                  <VStack spacing={1}>
+                    <Text fontSize="2xl" fontWeight="black" color="brand.500">24/7</Text>
+                    <Text fontSize="xs" color="gray.600">AI Training</Text>
+                  </VStack>
+                </Box>
+
+                <Box
+                  position="absolute"
+                  top="35%"
+                  left="-5%"
+                  bg="white"
+                  p={4}
+                  rounded="xl"
+                  boxShadow="xl"
+                  className="float"
+                  style={{ animationDelay: '1.5s' }}
+                >
+                  <VStack spacing={1}>
+                    <Text fontSize="2xl" fontWeight="black" color="brand.500">∞</Text>
+                    <Text fontSize="xs" color="gray.600">Practice Calls</Text>
+                  </VStack>
+                </Box>
+
+                <Box
+                  position="absolute"
+                  bottom="10%"
+                  left="5%"
+                  bg="white"
+                  p={4}
+                  rounded="xl"
+                  boxShadow="xl"
+                  className="float"
+                  style={{ animationDelay: '2s' }}
+                >
+                  <VStack spacing={1}>
+                    <Text fontSize="2xl" fontWeight="black" color="brand.500">AI</Text>
+                    <Text fontSize="xs" color="gray.600">Grading</Text>
+                  </VStack>
+                </Box>
+
+                {/* Main logo */}
+                <Box
+                  position="relative"
+                  w="full"
+                  h="full"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  className="float"
+                >
+                  <Box
+                    position="absolute"
+                    w="full"
+                    h="full"
+                    bg="brand.500"
+                    opacity="0.15"
+                    borderRadius="full"
+                    filter="blur(80px)"
+                    className="pulse-glow"
+                  />
+                  <Image
+                    src="/logo.png"
+                    alt="Clozone"
+                    w="350px"
+                    h="350px"
+                    position="relative"
+                    zIndex={1}
+                  />
+                </Box>
               </Box>
-            ))}
-          </SimpleGrid>
+            </GridItem>
+          </Grid>
+
         </Container>
       </Box>
 
-      {/* Stats Section */}
-      <Box py={20} bgGradient="linear(to-br, brand.500, brand.600)">
+      {/* Scroll Down Arrow - Only on Hero Section */}
+      {showScrollButton && (
+        <Box
+          position="fixed"
+          bottom={8}
+          left={0}
+          right={0}
+          w="100%"
+          display="flex"
+          justifyContent="center"
+          cursor="pointer"
+          onClick={() => {
+            document.getElementById('demo-section')?.scrollIntoView({ 
+              behavior: 'smooth' 
+            })
+          }}
+          className="bounce"
+          zIndex={10}
+          pointerEvents="auto"
+        >
+          <VStack spacing={2}>
+            <Text fontSize="sm" color="gray.500" fontWeight="500">
+              See it in action
+            </Text>
+            <Icon as={FiChevronDown} w={8} h={8} color="brand.500" />
+          </VStack>
+        </Box>
+      )}
+
+      {/* Demo Section - Full Screen */}
+      <Box
+        as="section"
+        id="demo-section"
+        minH="100vh"
+        bg="gray.50"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        py={20}
+      >
         <Container maxW="7xl">
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={10} textAlign="center">
-            {[
-              { number: '80%', label: 'Reduction in Training Time' },
-              { number: '3.5x', label: 'Faster Ramp-Up for New Reps' },
-              { number: '24/7', label: 'Practice Availability' },
-            ].map((stat, idx) => (
-              <VStack key={idx} spacing={2}>
-                <Heading fontSize="5xl" fontWeight="800" color="white">
-                  {stat.number}
-                </Heading>
-                <Text fontSize="lg" color="whiteAlpha.900" fontWeight="500">
-                  {stat.label}
-                </Text>
+          <VStack spacing={8}>
+            <VStack spacing={4} textAlign="center">
+              <Heading
+                fontSize={{ base: '4xl', md: '5xl' }}
+                fontWeight="black"
+                letterSpacing="-0.02em"
+              >
+                See Clozone in Action
+              </Heading>
+              <Text fontSize={{ base: 'lg', md: 'xl' }} color="gray.600" maxW="2xl">
+                Watch how our AI helps your reps practice real conversations
+              </Text>
+            </VStack>
+
+            <Box
+              position="relative"
+              w="full"
+              maxW="900px"
+              h={{ base: '400px', md: '450px' }}
+              bg="white"
+              rounded="3xl"
+              boxShadow="2xl"
+              overflow="hidden"
+              borderWidth="1px"
+              borderColor="gray.200"
+            >
+              {/* Browser chrome */}
+              <Box
+                position="absolute"
+                top="0"
+                left="0"
+                right="0"
+                h="50px"
+                bg="gray.50"
+                borderBottomWidth="1px"
+                borderColor="gray.200"
+                display="flex"
+                alignItems="center"
+                px={6}
+              >
+                <HStack spacing={2}>
+                  <Box w="10px" h="10px" rounded="full" bg="red.400" />
+                  <Box w="10px" h="10px" rounded="full" bg="yellow.400" />
+                  <Box w="10px" h="10px" rounded="full" bg="green.400" />
+                </HStack>
+              </Box>
+
+              {/* Call interface */}
+              <Box h="full" pt="50px" bg="white" overflow="hidden" display="flex" flexDirection="column">
+                <Box p={6} pb={4}>
+                  <HStack spacing={3}>
+                    <Box 
+                      w="50px" 
+                      h="50px" 
+                      rounded="full" 
+                      bg="brand.100" 
+                      display="flex" 
+                      alignItems="center" 
+                      justifyContent="center"
+                    >
+                      <Icon as={FiPhone} w={5} h={5} color="brand.500" />
+                    </Box>
+                    <VStack align="start" spacing={0}>
+                      <Text fontWeight="bold" fontSize="md">Active Training Call</Text>
+                      <HStack spacing={2}>
+                        <Box w="2" h="2" rounded="full" bg="green.500" className="pulse-dot" />
+                        <Text color="gray.500" fontSize="xs">
+                          00:{String(Math.floor(timer / 60)).padStart(2, '0')}:{String(timer % 60).padStart(2, '0')}
+                        </Text>
+                      </HStack>
+                    </VStack>
+                  </HStack>
+                </Box>
+
+                {/* Conversation bubbles with scroll */}
+                <Box 
+                  ref={messagesContainerRef}
+                  flex="1" 
+                  overflowY="auto" 
+                  px={6} 
+                  pb={6}
+                  css={{
+                    '&::-webkit-scrollbar': {
+                      width: '4px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: 'transparent',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: '#CBD5E0',
+                      borderRadius: '2px',
+                    },
+                  }}
+                >
+                  <VStack align="stretch" spacing={4} w="full">
+                    {conversationTurns.map((turn, index) => (
+                      visibleMessages.includes(index) && (
+                        <Box
+                          key={index}
+                          bg={turn.speaker === 'prospect' ? 'gray.100' : 'brand.500'}
+                          color={turn.speaker === 'prospect' ? 'gray.700' : 'white'}
+                          p={4}
+                          rounded="2xl"
+                          roundedBottomLeft={turn.speaker === 'prospect' ? 'md' : '2xl'}
+                          roundedBottomRight={turn.speaker === 'rep' ? 'md' : '2xl'}
+                          maxW="70%"
+                          alignSelf={turn.speaker === 'rep' ? 'flex-end' : 'flex-start'}
+                          className="message-pop-in"
+                        >
+                          <Text fontSize="sm">{turn.text}</Text>
+                        </Box>
+                      )
+                    ))}
+                  </VStack>
+                </Box>
+              </Box>
+            </Box>
+
+            <Button
+              as="a"
+              href="https://calendly.com/your-link"
+              target="_blank"
+              size="lg"
+              h="55px"
+              px={10}
+              fontSize="lg"
+              fontWeight="bold"
+              bg="brand.500"
+              color="white"
+              _hover={{
+                bg: 'brand.600',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 10px 25px rgba(242, 111, 37, 0.3)',
+              }}
+              transition="all 0.3s"
+            >
+              Watch Demo
+            </Button>
+          </VStack>
+        </Container>
+      </Box>
+
+      {/* How It Works */}
+      <Box as="section" bg="gray.50" py={24}>
+        <Container maxW="7xl">
+          <VStack spacing={16}>
+            <VStack spacing={4} textAlign="center" maxW="3xl">
+              <Heading fontSize={{ base: '4xl', md: '5xl' }} fontWeight="black" letterSpacing="-0.02em">
+                Practice Makes Perfect
+              </Heading>
+              <Text fontSize={{ base: 'lg', md: 'xl' }} color="gray.600">
+                Your reps get better with every conversation. Our AI adapts to your industry, products, and sales methodology.
+              </Text>
+            </VStack>
+
+            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={12} w="full">
+              <VStack
+                spacing={6}
+                p={10}
+                bg="white"
+                rounded="3xl"
+                boxShadow="xl"
+                borderWidth="1px"
+                borderColor="gray.100"
+                transition="all 0.3s"
+                _hover={{
+                  transform: 'translateY(-8px)',
+                  boxShadow: '2xl',
+                }}
+              >
+                <Box
+                  w="70px"
+                  h="70px"
+                  bg="brand.500"
+                  rounded="2xl"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Icon as={FiPhone} w={8} h={8} color="white" />
+                </Box>
+                <VStack spacing={3}>
+                  <Heading size="lg" textAlign="center">Start a Call</Heading>
+                  <Text color="gray.600" textAlign="center" lineHeight="tall">
+                    Choose from pre-built scenarios or create custom situations based on your actual products and prospects.
+                  </Text>
+                </VStack>
               </VStack>
-            ))}
-          </SimpleGrid>
+
+              <VStack
+                spacing={6}
+                p={10}
+                bg="white"
+                rounded="3xl"
+                boxShadow="xl"
+                borderWidth="1px"
+                borderColor="gray.100"
+                transition="all 0.3s"
+                _hover={{
+                  transform: 'translateY(-8px)',
+                  boxShadow: '2xl',
+                }}
+              >
+                <Box
+                  w="70px"
+                  h="70px"
+                  bg="brand.500"
+                  rounded="2xl"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Icon as={FiZap} w={8} h={8} color="white" />
+                </Box>
+                <VStack spacing={3}>
+                  <Heading size="lg" textAlign="center">AI Responds</Heading>
+                  <Text color="gray.600" textAlign="center" lineHeight="tall">
+                    Our AI acts like a real prospect—asking questions, raising objections, and pushing back just like in real life.
+                  </Text>
+                </VStack>
+              </VStack>
+
+              <VStack
+                spacing={6}
+                p={10}
+                bg="white"
+                rounded="3xl"
+                boxShadow="xl"
+                borderWidth="1px"
+                borderColor="gray.100"
+                transition="all 0.3s"
+                _hover={{
+                  transform: 'translateY(-8px)',
+                  boxShadow: '2xl',
+                }}
+              >
+                <Box
+                  w="70px"
+                  h="70px"
+                  bg="brand.500"
+                  rounded="2xl"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Icon as={FiBarChart2} w={8} h={8} color="white" />
+                </Box>
+                <VStack spacing={3}>
+                  <Heading size="lg" textAlign="center">Get Feedback</Heading>
+                  <Text color="gray.600" textAlign="center" lineHeight="tall">
+                    Instant AI grading on objection handling, rapport building, discovery, and closing with actionable tips.
+                  </Text>
+                </VStack>
+              </VStack>
+            </SimpleGrid>
+          </VStack>
+        </Container>
+      </Box>
+
+      {/* Features Grid */}
+      <Box as="section" py={24}>
+        <Container maxW="7xl">
+          <VStack spacing={16}>
+            <VStack spacing={4} textAlign="center" maxW="3xl">
+              <Heading fontSize={{ base: '4xl', md: '5xl' }} fontWeight="black" letterSpacing="-0.02em">
+                Everything Your Team Needs
+              </Heading>
+              <Text fontSize={{ base: 'lg', md: 'xl' }} color="gray.600">
+                Built for modern sales teams who want to win more deals
+              </Text>
+            </VStack>
+
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8} w="full">
+              <Box
+                p={8}
+                bg="white"
+                border="1px solid"
+                borderColor="gray.200"
+                rounded="2xl"
+                _hover={{ borderColor: 'brand.500', boxShadow: 'md' }}
+                transition="all 0.3s"
+              >
+                <HStack spacing={4} align="start">
+                  <Icon as={FiTarget} w={8} h={8} color="brand.500" flexShrink={0} />
+                  <VStack align="start" spacing={2}>
+                    <Heading size="md">Custom Scenarios</Heading>
+                    <Text color="gray.600">
+                      Upload your playbook, product docs, or call recordings. We'll create tailored practice scenarios for your exact use case.
+                    </Text>
+                  </VStack>
+                </HStack>
+              </Box>
+
+              <Box
+                p={8}
+                bg="white"
+                border="1px solid"
+                borderColor="gray.200"
+                rounded="2xl"
+                _hover={{ borderColor: 'brand.500', boxShadow: 'md' }}
+                transition="all 0.3s"
+              >
+                <HStack spacing={4} align="start">
+                  <Icon as={FiTrendingUp} w={8} h={8} color="brand.500" flexShrink={0} />
+                  <VStack align="start" spacing={2}>
+                    <Heading size="md">Performance Tracking</Heading>
+                    <Text color="gray.600">
+                      See improvement over time with detailed analytics on key skills. Identify team weaknesses and track training completion.
+                    </Text>
+                  </VStack>
+                </HStack>
+              </Box>
+
+              <Box
+                p={8}
+                bg="white"
+                border="1px solid"
+                borderColor="gray.200"
+                rounded="2xl"
+                _hover={{ borderColor: 'brand.500', boxShadow: 'md' }}
+                transition="all 0.3s"
+              >
+                <HStack spacing={4} align="start">
+                  <Icon as={FiUsers} w={8} h={8} color="brand.500" flexShrink={0} />
+                  <VStack align="start" spacing={2}>
+                    <Heading size="md">Team Management</Heading>
+                    <Text color="gray.600">
+                      Assign training modules, monitor completion, and ensure consistent skill development across your entire organization.
+                    </Text>
+                  </VStack>
+                </HStack>
+              </Box>
+
+              <Box
+                p={8}
+                bg="white"
+                border="1px solid"
+                borderColor="gray.200"
+                rounded="2xl"
+                _hover={{ borderColor: 'brand.500', boxShadow: 'md' }}
+                transition="all 0.3s"
+              >
+                <HStack spacing={4} align="start">
+                  <Icon as={FiZap} w={8} h={8} color="brand.500" flexShrink={0} />
+                  <VStack align="start" spacing={2}>
+                    <Heading size="md">Unlimited Practice</Heading>
+                    <Text color="gray.600">
+                      No scheduling, no manager time required. Your team practices whenever they want, as much as they want.
+                    </Text>
+                  </VStack>
+                </HStack>
+              </Box>
+            </SimpleGrid>
+          </VStack>
         </Container>
       </Box>
 
       {/* Pricing Section */}
-      <Box id="pricing" py={20} bg={useColorModeValue('gray.50', 'gray.900')}>
-        <Container maxW="7xl">
-          <VStack spacing={4} textAlign="center" mb={16}>
-            <Badge colorScheme="brand" fontSize="sm" px={3} py={1}>
-              Pricing
-            </Badge>
-            <Heading fontSize="4xl" fontWeight="700" color={textPrimary}>
-              Simple, Transparent Pricing
-            </Heading>
-            <Text fontSize="lg" color={textSecondary} maxW="2xl">
-              Start training your team today. Cancel anytime.
-            </Text>
-          </VStack>
+      <Box as="section" bg="gray.50" py={24}>
+        <Container maxW="5xl">
+          <VStack spacing={16}>
+            <VStack spacing={4} textAlign="center" maxW="3xl">
+              <Heading fontSize={{ base: '4xl', md: '5xl' }} fontWeight="black" letterSpacing="-0.02em">
+                Simple, Transparent Pricing
+              </Heading>
+              <Text fontSize={{ base: 'lg', md: 'xl' }} color="gray.600">
+                One price, unlimited potential
+              </Text>
+            </VStack>
 
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={8} maxW="6xl" mx="auto">
-            {/* Pricing Card */}
             <Box
-              p={8}
-              borderRadius="2xl"
-              borderWidth="2px"
-              borderColor={borderColor}
-              bg={useColorModeValue('white', 'gray.800')}
-              position="relative"
-            >
-              <VStack align="stretch" spacing={6}>
-                <Box>
-                  <Text fontSize="sm" fontWeight="600" color="brand.500" mb={2}>
-                    PER AGENT
-                  </Text>
-                  <HStack align="baseline">
-                    <Heading fontSize="5xl" fontWeight="800" color={textPrimary}>
-                      $99
-                    </Heading>
-                    <Text fontSize="lg" color={textSecondary}>
-                      /month
-                    </Text>
-                  </HStack>
-                  <Text mt={2} fontSize="sm" color={textSecondary}>
-                    + $2,000 one-time setup fee
-                  </Text>
-                </Box>
-
-                <List spacing={4}>
-                  {[
-                    'Unlimited AI practice calls',
-                    'Custom scenarios & templates',
-                    'Instant AI grading & feedback',
-                    'Performance analytics',
-                    'Team management dashboard',
-                    'PDF reports & exports',
-                    'Email support',
-                  ].map((feature, idx) => (
-                    <ListItem key={idx}>
-                      <HStack align="start">
-                        <ListIcon as={CheckCircle} color="brand.500" mt={1} />
-                        <Text color={textSecondary}>{feature}</Text>
-                      </HStack>
-                    </ListItem>
-                  ))}
-                </List>
-
-                <Button
-                  size="lg"
-                  w="full"
-                  bg="linear-gradient(135deg, #f26f25, #d95e1e)"
-                  color="white"
-                  _hover={{ bg: 'linear-gradient(135deg, #d95e1e, #b84e19)' }}
-                  as="a"
-                  href="https://calendly.com/your-link"
-                >
-                  Get Started
-                </Button>
-
-                <Text fontSize="xs" color={textSecondary} textAlign="center">
-                  14-day free trial • No credit card required
-                </Text>
-              </VStack>
-            </Box>
-
-            {/* Enterprise Card */}
-            <Box
-              p={8}
-              borderRadius="2xl"
+              w="full"
+              maxW="lg"
+              p={12}
+              bg="white"
+              rounded="3xl"
+              boxShadow="2xl"
               borderWidth="2px"
               borderColor="brand.500"
-              bg={useColorModeValue('white', 'gray.800')}
               position="relative"
-              transform="scale(1.05)"
-              shadow="xl"
+              overflow="hidden"
             >
-              <Badge
+              {/* Popular badge */}
+              <Box
                 position="absolute"
-                top={-3}
-                left="50%"
-                transform="translateX(-50%)"
-                colorScheme="brand"
-                fontSize="sm"
+                top={6}
+                right={6}
+                bg="brand.500"
+                color="white"
                 px={4}
                 py={1}
+                rounded="full"
+                fontSize="sm"
+                fontWeight="bold"
               >
                 Most Popular
-              </Badge>
+              </Box>
 
-              <VStack align="stretch" spacing={6}>
-                <Box>
-                  <Text fontSize="sm" fontWeight="600" color="brand.500" mb={2}>
-                    VOLUME DISCOUNT
-                  </Text>
-                  <HStack align="baseline">
-                    <Heading fontSize="5xl" fontWeight="800" color={textPrimary}>
-                      $79
+              <VStack spacing={8} align="stretch">
+                <VStack align="start" spacing={4}>
+                  <Heading size="lg" color="gray.700">
+                    Per Representative
+                  </Heading>
+                  <HStack align="baseline" spacing={2}>
+                    <Heading fontSize="6xl" fontWeight="black" color="brand.500">
+                      $99
                     </Heading>
-                    <Text fontSize="lg" color={textSecondary}>
-                      /month
-                    </Text>
+                    <Text fontSize="2xl" color="gray.500">/month</Text>
                   </HStack>
-                  <Text mt={2} fontSize="sm" color={textSecondary}>
-                    For 26-50 agents (20% off)
+                  <Text color="gray.600" fontSize="md">
+                    Plus one-time $2,000 setup fee
                   </Text>
-                </Box>
+                </VStack>
 
-                <List spacing={4}>
-                  {[
-                    'Everything in Standard',
-                    'Dedicated account manager',
-                    'Custom branding',
-                    'Priority support',
-                    'Quarterly business reviews',
-                    'API access',
-                  ].map((feature, idx) => (
-                    <ListItem key={idx}>
-                      <HStack align="start">
-                        <ListIcon as={CheckCircle} color="brand.500" mt={1} />
-                        <Text color={textSecondary}>{feature}</Text>
-                      </HStack>
-                    </ListItem>
-                  ))}
-                </List>
+                <Box h="1px" bg="gray.200" />
+
+                <VStack align="start" spacing={4}>
+                  <PricingFeature text="Unlimited AI practice calls" />
+                  <PricingFeature text="Instant performance feedback" />
+                  <PricingFeature text="Custom scenario creation" />
+                  <PricingFeature text="Team analytics dashboard" />
+                  <PricingFeature text="Progress tracking & reporting" />
+                  <PricingFeature text="Priority customer support" />
+                  <PricingFeature text="Weekly product updates" />
+                </VStack>
 
                 <Button
-                  size="lg"
-                  w="full"
-                  bg="linear-gradient(135deg, #f26f25, #d95e1e)"
-                  color="white"
-                  _hover={{ bg: 'linear-gradient(135deg, #d95e1e, #b84e19)' }}
                   as="a"
                   href="https://calendly.com/your-link"
-                >
-                  Contact Sales
-                </Button>
-
-                <Text fontSize="xs" color={textSecondary} textAlign="center">
-                  Custom contract • Volume discounts available
-                </Text>
-              </VStack>
-            </Box>
-
-            {/* Enterprise Card */}
-            <Box
-              p={8}
-              borderRadius="2xl"
-              borderWidth="2px"
-              borderColor={borderColor}
-              bg={useColorModeValue('white', 'gray.800')}
-            >
-              <VStack align="stretch" spacing={6}>
-                <Box>
-                  <Text fontSize="sm" fontWeight="600" color="brand.500" mb={2}>
-                    ENTERPRISE
-                  </Text>
-                  <Heading fontSize="5xl" fontWeight="800" color={textPrimary}>
-                    Custom
-                  </Heading>
-                  <Text mt={2} fontSize="sm" color={textSecondary}>
-                    For 51+ agents
-                  </Text>
-                </Box>
-
-                <List spacing={4}>
-                  {[
-                    'Everything in Pro',
-                    'White-label solution',
-                    'SSO & advanced security',
-                    'Custom integrations',
-                    'Dedicated success team',
-                    'SLA guarantees',
-                  ].map((feature, idx) => (
-                    <ListItem key={idx}>
-                      <HStack align="start">
-                        <ListIcon as={CheckCircle} color="brand.500" mt={1} />
-                        <Text color={textSecondary}>{feature}</Text>
-                      </HStack>
-                    </ListItem>
-                  ))}
-                </List>
-
-                <Button
-                  size="lg"
+                  target="_blank"
+                  size="xl"
+                  h="65px"
+                  fontSize="xl"
+                  fontWeight="bold"
+                  bg="brand.500"
+                  color="white"
                   w="full"
-                  variant="outline"
-                  colorScheme="brand"
-                  borderWidth="2px"
-                  as="a"
-                  href="mailto:sales@clozone.ai"
+                  _hover={{
+                    bg: 'brand.600',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 20px 40px rgba(242, 111, 37, 0.3)',
+                  }}
+                  transition="all 0.3s"
                 >
-                  Contact Sales
+                  Book Your Demo
                 </Button>
-
-                <Text fontSize="xs" color={textSecondary} textAlign="center">
-                  Custom pricing & features
-                </Text>
               </VStack>
             </Box>
-          </SimpleGrid>
+          </VStack>
         </Container>
       </Box>
 
       {/* CTA Section */}
-      <Box py={20} bgGradient="linear(to-br, orange.50, white)">
-        <Container maxW="4xl">
-          <VStack spacing={8} textAlign="center">
-            <Icon as={Award} boxSize={16} color="brand.500" />
-            <Heading fontSize="4xl" fontWeight="700" color={textPrimary}>
-              Ready to Transform Your Sales Training?
-            </Heading>
-            <Text fontSize="lg" color={textSecondary} maxW="2xl">
-              Join leading life insurance agencies using Clozone to train 
-              better reps, faster.
-            </Text>
-            <HStack spacing={4}>
-              <Button
-                size="lg"
-                fontSize="lg"
-                px={8}
-                h={14}
-                bg="linear-gradient(135deg, #f26f25, #d95e1e)"
+      <Box
+        as="section"
+        py={32}
+        position="relative"
+        overflow="hidden"
+        bgGradient="linear(to-br, brand.500, brand.600)"
+      >
+        {/* Decorative elements */}
+        <Box
+          position="absolute"
+          top="-10%"
+          left="-5%"
+          w="400px"
+          h="400px"
+          bg="white"
+          opacity="0.05"
+          borderRadius="full"
+        />
+        <Box
+          position="absolute"
+          bottom="-10%"
+          right="-5%"
+          w="500px"
+          h="500px"
+          bg="white"
+          opacity="0.05"
+          borderRadius="full"
+        />
+
+        <Container maxW="5xl" position="relative" zIndex={1}>
+          <VStack spacing={10} textAlign="center">
+            <VStack spacing={6}>
+              <Heading
+                fontSize={{ base: '4xl', md: '5xl', lg: '6xl' }}
                 color="white"
-                _hover={{
-                  bg: 'linear-gradient(135deg, #d95e1e, #b84e19)',
-                  transform: 'translateY(-2px)',
-                  shadow: 'xl',
-                }}
-                shadow="lg"
-                transition="all 0.3s"
-                as="a"
-                href="https://calendly.com/your-link"
+                fontWeight="black"
+                letterSpacing="-0.02em"
+                maxW="4xl"
               >
-                Book a Demo
-              </Button>
-              <Button
-                size="lg"
-                fontSize="lg"
-                px={8}
-                h={14}
-                variant="outline"
-                colorScheme="brand"
-                borderWidth="2px"
-                as="a"
-                href="https://app.clozone.ai"
-              >
-                Start Free Trial
-              </Button>
-            </HStack>
+                Ready to 10x Your Sales Team?
+              </Heading>
+              <Text fontSize={{ base: 'lg', md: 'xl' }} color="whiteAlpha.900" maxW="2xl" lineHeight="tall">
+                Join leading sales organizations using Clozone to cut onboarding time, improve win rates, and scale their teams faster.
+              </Text>
+            </VStack>
+
+            <Button
+              as="a"
+              href="https://calendly.com/your-link"
+              target="_blank"
+              size="xl"
+              h="70px"
+              px={16}
+              fontSize="2xl"
+              fontWeight="bold"
+              bg="white"
+              color="brand.500"
+              _hover={{
+                bg: 'gray.100',
+                transform: 'translateY(-4px)',
+                boxShadow: '0 30px 60px rgba(0, 0, 0, 0.3)',
+              }}
+              transition="all 0.3s"
+            >
+              Schedule Your Demo
+            </Button>
           </VStack>
         </Container>
       </Box>
 
       {/* Footer */}
-      <Box py={12} bg={useColorModeValue('gray.50', 'gray.900')} borderTop="1px" borderColor={borderColor}>
+      <Box bg="gray.900" py={12}>
         <Container maxW="7xl">
-          <SimpleGrid columns={{ base: 1, md: 4 }} spacing={8}>
-            <VStack align="start" spacing={4}>
-              <HStack>
-                <Icon as={Sparkles} boxSize={6} color="brand.500" />
-                <Text fontSize="xl" fontWeight="bold" color={textPrimary}>
-                  Clozone
-                </Text>
-              </HStack>
-              <Text fontSize="sm" color={textSecondary}>
-                AI-powered sales training for life insurance agencies.
-              </Text>
-            </VStack>
-
-            <VStack align="start" spacing={3}>
-              <Text fontSize="sm" fontWeight="600" color={textPrimary}>
-                Product
-              </Text>
-              <Link href="#features" fontSize="sm" color={textSecondary} _hover={{ color: 'brand.500' }}>
-                Features
-              </Link>
-              <Link href="#pricing" fontSize="sm" color={textSecondary} _hover={{ color: 'brand.500' }}>
-                Pricing
-              </Link>
-              <Link href="https://app.clozone.ai" fontSize="sm" color={textSecondary} _hover={{ color: 'brand.500' }}>
-                Sign In
-              </Link>
-            </VStack>
-
-            <VStack align="start" spacing={3}>
-              <Text fontSize="sm" fontWeight="600" color={textPrimary}>
-                Company
-              </Text>
-              <Link href="mailto:hello@clozone.ai" fontSize="sm" color={textSecondary} _hover={{ color: 'brand.500' }}>
-                Contact
-              </Link>
-              <Link href="/privacy" fontSize="sm" color={textSecondary} _hover={{ color: 'brand.500' }}>
-                Privacy Policy
-              </Link>
-              <Link href="/terms" fontSize="sm" color={textSecondary} _hover={{ color: 'brand.500' }}>
-                Terms of Service
-              </Link>
-            </VStack>
-
-            <VStack align="start" spacing={3}>
-              <Text fontSize="sm" fontWeight="600" color={textPrimary}>
-                Get Started
-              </Text>
-              <Button
-                as="a"
-                href="https://calendly.com/your-link"
-                colorScheme="brand"
-                size="sm"
-                w="full"
-              >
-                Book a Demo
-              </Button>
-            </VStack>
-          </SimpleGrid>
-
-          <Box mt={12} pt={8} borderTop="1px" borderColor={borderColor}>
-            <Text fontSize="sm" color={textSecondary} textAlign="center">
-              © {new Date().getFullYear()} Clozone. All rights reserved.
+          <VStack spacing={6}>
+            <Image src="/logolong.png" alt="Clozone" h="40px" filter="brightness(0) invert(1)" />
+            <Text color="gray.400" textAlign="center">
+              © 2025 Clozone AI. All rights reserved.
             </Text>
-          </Box>
+            <HStack spacing={6}>
+              <Text
+                as="a"
+                href="mailto:contact@clozone.ai"
+                color="gray.400"
+                _hover={{ color: 'white' }}
+              >
+                contact@clozone.ai
+              </Text>
+            </HStack>
+          </VStack>
         </Container>
       </Box>
     </Box>
+  )
+}
+
+function PricingFeature({ text }: { text: string }) {
+  return (
+    <HStack spacing={3} align="start">
+      <Icon as={FiCheck} w={6} h={6} color="brand.500" flexShrink={0} mt={0.5} />
+      <Text fontSize="lg" color="gray.700">{text}</Text>
+    </HStack>
   )
 }
 
