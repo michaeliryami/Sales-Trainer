@@ -413,6 +413,7 @@ function Assignments() {
         .from('profiles')
         .select('*')
         .eq('org', organization?.id)
+        .neq('role', 'admin') // Exclude admins - they don't do assignments
         .order('display_name', { ascending: true })
 
       if (error) {
