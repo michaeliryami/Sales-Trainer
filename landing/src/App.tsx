@@ -10,7 +10,6 @@ import {
   SimpleGrid,
   Image,
   Icon,
-  Flex,
   Grid,
   GridItem,
 } from '@chakra-ui/react'
