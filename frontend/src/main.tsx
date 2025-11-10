@@ -4,6 +4,19 @@ import { ChakraProvider, extendTheme, ColorModeScript } from '@chakra-ui/react'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
 import { ThemeProvider } from './contexts/ThemeContext.tsx'
+import { apiFetch } from './utils/api.ts'
+
+// Override global fetch for API calls
+// This automatically uses the correct backend URL in production
+const originalFetch = window.fetch
+window.fetch = function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  // If it's an API call (starts with /api/), use our wrapper
+  if (typeof input === 'string' && input.startsWith('/api/')) {
+    return apiFetch(input, init)
+  }
+  // Otherwise use original fetch
+  return originalFetch(input, init)
+}
 
 // Professional SaaS theme - light mode only
 const theme = extendTheme({
