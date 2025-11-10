@@ -1,8 +1,7 @@
-// Load environment variables FIRST
-import dotenv from 'dotenv'
-import path from 'path'
-dotenv.config({ path: path.resolve(__dirname, '../.env') })
+// CRITICAL: Load environment variables FIRST
+import './setup-env'
 
+// NOW import everything else (after env vars are loaded)
 import express from 'express'
 import cors from 'cors'
 import { config } from './config/environment'

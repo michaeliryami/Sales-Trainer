@@ -35,8 +35,13 @@ const validateConfig = () => {
     ];
     const missing = required.filter(key => !process.env[key]);
     if (missing.length > 0) {
-        console.error(`❌ Missing required environment variables: ${missing.join(', ')}`);
-        console.error('Please check your .env file');
+        console.error(`\n❌ Missing required environment variables: ${missing.join(', ')}`);
+        console.error('Please check your .env file in the backend folder');
+        console.error('Current values:');
+        required.forEach(key => {
+            console.error(`   ${key}: ${process.env[key] ? '✓ SET' : '✗ MISSING'}`);
+        });
+        console.error('');
         process.exit(1);
     }
 };
