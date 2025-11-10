@@ -22,6 +22,7 @@ import {
   InputGroup,
   InputLeftElement,
   useToast,
+  Spinner,
 } from '@chakra-ui/react'
 import React, { useState, useRef, useEffect } from 'react'
 import { FileText, MessageSquare, Search, RefreshCw, Award } from 'lucide-react'
