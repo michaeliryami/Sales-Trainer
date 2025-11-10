@@ -116,6 +116,7 @@ function CreateSession() {
   const [isLoadingSessions, setIsLoadingSessions] = useState(false)
   const [submittingSessionId, setSubmittingSessionId] = useState<number | null>(null)
   const [gradingAssignmentId, setGradingAssignmentId] = useState<number | null>(null)
+  const [isGradingSession, setIsGradingSession] = useState(false) // General grading indicator for all sessions
   const [playgroundSessionGrade, setPlaygroundSessionGrade] = useState<{ percentage: number, totalScore: number, maxScore: number, sessionId?: number, criteriaGrades?: any[] } | null>(null)
   const [showPlaygroundGradeDetails, setShowPlaygroundGradeDetails] = useState(false)
   const transcriptEndRef = useRef<HTMLDivElement>(null)
@@ -636,7 +637,8 @@ function CreateSession() {
                   if (rubricToUse?.grading && Array.isArray(rubricToUse.grading)) {
                     console.log('🎯 Grading session against rubric...')
                     
-                    // Set grading indicator if this is an assignment
+                    // Set grading indicators
+                    setIsGradingSession(true)
                     if (assignmentId) {
                       setGradingAssignmentId(assignmentId)
                     }
@@ -661,6 +663,14 @@ function CreateSession() {
                       console.log('✅ Session graded:', gradeResult)
                       console.log(`📊 Score: ${Math.round(gradeResult.data.percentage)}%`)
                       
+                      toast({
+                        title: 'Session Graded!',
+                        description: `Your score: ${Math.round(gradeResult.data.percentage)}%`,
+                        status: 'success',
+                        duration: 5000,
+                        isClosable: true,
+                      })
+                      
                       // If this is a playground session (no assignment), store the grade in state
                       if (!assignmentId && gradeResult.data) {
                         setPlaygroundSessionGrade({
@@ -674,9 +684,17 @@ function CreateSession() {
                       }
                     } else {
                       console.error('Failed to grade session')
+                      toast({
+                        title: 'Grading Failed',
+                        description: 'Could not grade your session. Please try again.',
+                        status: 'error',
+                        duration: 5000,
+                        isClosable: true,
+                      })
                       }
                     } finally {
-                      // Clear grading indicator
+                      // Clear grading indicators
+                      setIsGradingSession(false)
                       setGradingAssignmentId(null)
                     }
                   }
@@ -1117,7 +1135,49 @@ function CreateSession() {
       bgGradient={useColorModeValue('linear(to-br, orange.50, white, orange.50)', 'linear(to-br, gray.900, gray.800)')}
       h="calc(100vh - 88px)" 
       overflow="hidden"
+      position="relative"
     >
+      {/* Grading Indicator Overlay */}
+      {isGradingSession && (
+        <Box
+          position="fixed"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          bg="blackAlpha.600"
+          backdropFilter="blur(4px)"
+          zIndex="9999"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
+          <VStack
+            bg={useColorModeValue('white', 'gray.800')}
+            p={8}
+            borderRadius="2xl"
+            boxShadow="2xl"
+            spacing={4}
+          >
+            <Spinner
+              thickness="4px"
+              speed="0.65s"
+              emptyColor={useColorModeValue('gray.200', 'gray.600')}
+              color="orange.500"
+              size="xl"
+            />
+            <VStack spacing={1}>
+              <Heading size="md" color={useColorModeValue('gray.800', 'white')}>
+                Grading Your Performance
+              </Heading>
+              <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+                Please wait while we analyze your session...
+              </Text>
+            </VStack>
+          </VStack>
+        </Box>
+      )}
+      
       <PanelGroup direction="horizontal">
           {/* Left Panel - Template/Assignment Selection with Call Controls */}
         <Panel 
