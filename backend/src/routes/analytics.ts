@@ -133,9 +133,10 @@ router.get('/admin/:orgId', async (req, res) => {
       const template = templates?.find(t => t.id === session.template_id)
       const grade = grades?.find(g => g.session_id === session.id)
       
-      // Get template name - check metadata for built-in templates if template_id is null
+      // Get template name - check database first, then metadata for built-in templates
       let templateName = template?.title
       if (!templateName && session.metadata?.builtInTemplateTitle) {
+        // Built-in template stored in metadata (template_id is null due to FK constraint)
         templateName = session.metadata.builtInTemplateTitle
       }
       if (!templateName) {
@@ -322,17 +323,19 @@ router.get('/employee/:userId', async (req, res) => {
         const grade = grades?.find(g => g.session_id === session.id)
         const isPlayground = !session.assignment_id // Playground if no assignment
         
-        // Get template name - check built-in templates first, then database, then metadata
-        let templateName = getTemplateName(session.template_id)
-        if (!templateName && session.template_id) {
-          // Numeric ID - look up in database
+        // Get template name - check database first, then metadata for built-in templates
+        let templateName: string | null = null
+        
+        if (session.template_id) {
           const template = templates?.find(t => t.id === session.template_id)
-          templateName = template?.title
+          templateName = template?.title || null
         }
+        
         if (!templateName && session.metadata?.builtInTemplateTitle) {
-          // Check metadata for built-in template info (when template_id is null)
+          // Built-in template stored in metadata (template_id is null due to FK constraint)
           templateName = session.metadata.builtInTemplateTitle
         }
+        
         if (!templateName) {
           templateName = 'Unknown Template'
         }
@@ -390,19 +393,23 @@ router.get('/employee/:userId', async (req, res) => {
     const playgroundSessionsByTemplate: any = {}
     sessions?.forEach(session => {
       if (!session.assignment_id) { // Playground session
-        // Get template name - check built-in templates first, then database, then metadata
-        let templateName = getTemplateName(session.template_id)
-        if (!templateName && session.template_id) {
+        // Get template name - check database first, then metadata for built-in templates
+        let templateName: string | null = null
+        
+        if (session.template_id) {
           const template = templates?.find(t => t.id === session.template_id)
-          templateName = template?.title
+          templateName = template?.title || null
         }
+        
         if (!templateName && session.metadata?.builtInTemplateTitle) {
-          // Check metadata for built-in template info (when template_id is null)
+          // Built-in template stored in metadata (template_id is null due to FK constraint)
           templateName = session.metadata.builtInTemplateTitle
         }
+        
         if (!templateName) {
           templateName = 'Unknown Template'
         }
+        
         const grade = grades?.find(g => g.session_id === session.id)
         
         if (!playgroundSessionsByTemplate[templateName]) {

@@ -74,6 +74,19 @@ const findBuiltInTemplateByTitle = (title: string) => {
 
 function CreateSession() {
   const { organization, profile, userRole } = useProfile()
+  
+  // Convert string template IDs to consistent numeric IDs for database storage
+  const stringToNumericId = (str: string): number => {
+    let hash = 0
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash // Convert to 32-bit integer
+    }
+    // Use negative numbers for built-in templates to avoid conflicts with DB auto-increment IDs
+    return Math.abs(hash) * -1
+  }
+  
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [templates, setTemplates] = useState<Template[]>([])
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
@@ -582,11 +595,10 @@ function CreateSession() {
                   templateTitle = customTemplate.title
                   console.log('Playground - using custom template ID:', templateIdForDb)
                 } else {
-                  // Built-in template - store NULL in template_id (DB expects numeric)
-                  // Track the built-in template ID in metadata instead
+                  // Built-in template - set NULL (built-in templates don't exist in DB due to FK constraint)
                   const builtInTemplate = ALL_BUILT_IN_TEMPLATES.find(t => t.id === selectedTemplate)
                   if (builtInTemplate) {
-                    templateIdForDb = null // NULL for built-in templates (can't store string in bigint column)
+                    templateIdForDb = null // NULL for built-in templates (FK constraint requires template exists in DB)
                     templateTitle = builtInTemplate.title
                     console.log('Playground - built-in template (storing in metadata):', selectedTemplate, templateTitle)
                   }
@@ -608,10 +620,11 @@ function CreateSession() {
                   : 0,
                 transcript: chunks,
                 transcriptClean: chunks.map(c => `${c.speaker}: ${c.text}`).join('\n'),
-                metadata: templateIdForDb === null ? {
-                  builtInTemplateId: selectedTemplate,
-                  builtInTemplateTitle: templateTitle
-                } : {}
+                metadata: {
+                  // Store built-in template info when template_id is null (built-in templates not in DB)
+                  builtInTemplateId: templateIdForDb === null ? selectedTemplate : undefined,
+                  builtInTemplateTitle: templateIdForDb === null ? templateTitle : undefined
+                }
               }
 
               console.log('📤 Sending session data to backend:', sessionData)

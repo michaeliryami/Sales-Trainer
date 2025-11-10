@@ -5,7 +5,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const supabase_1 = require("../config/supabase");
-const builtInTemplates_1 = require("../config/builtInTemplates");
 const router = express_1.default.Router();
 router.get('/admin/:orgId', async (req, res) => {
     try {
@@ -259,10 +258,10 @@ router.get('/employee/:userId', async (req, res) => {
             .map(session => {
             const grade = grades?.find(g => g.session_id === session.id);
             const isPlayground = !session.assignment_id;
-            let templateName = (0, builtInTemplates_1.getTemplateName)(session.template_id);
-            if (!templateName && session.template_id) {
+            let templateName = null;
+            if (session.template_id) {
                 const template = templates?.find(t => t.id === session.template_id);
-                templateName = template?.title;
+                templateName = template?.title || null;
             }
             if (!templateName && session.metadata?.builtInTemplateTitle) {
                 templateName = session.metadata.builtInTemplateTitle;
@@ -315,10 +314,10 @@ router.get('/employee/:userId', async (req, res) => {
         const playgroundSessionsByTemplate = {};
         sessions?.forEach(session => {
             if (!session.assignment_id) {
-                let templateName = (0, builtInTemplates_1.getTemplateName)(session.template_id);
-                if (!templateName && session.template_id) {
+                let templateName = null;
+                if (session.template_id) {
                     const template = templates?.find(t => t.id === session.template_id);
-                    templateName = template?.title;
+                    templateName = template?.title || null;
                 }
                 if (!templateName && session.metadata?.builtInTemplateTitle) {
                     templateName = session.metadata.builtInTemplateTitle;
