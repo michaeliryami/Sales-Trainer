@@ -37,7 +37,13 @@ import {
   Radio,
   RadioGroup,
   Stack,
-  Portal
+  Portal,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay
 } from '@chakra-ui/react'
 import { Users, UserPlus, Mail, Shield, Edit2, Trash2, MoreVertical } from 'lucide-react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
@@ -63,6 +69,11 @@ const Organization: React.FC = () => {
   const [inviteRole, setInviteRole] = useState<'admin' | 'employee'>('employee')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState('')
+  
+  // Delete user confirmation dialog state
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
+  const [userToDelete, setUserToDelete] = useState<{ id: string, name: string } | null>(null)
+  const cancelRef = React.useRef<HTMLButtonElement>(null)
   
   const toast = useToast()
   
@@ -307,8 +318,8 @@ const Organization: React.FC = () => {
     }
   }
 
-  const handleRemoveUser = async (userId: string) => {
-    if (!organization || !profile) return
+  const confirmRemoveUser = async () => {
+    if (!organization || !profile || !userToDelete) return
 
     try {
       const response = await apiFetch('/api/invites/user', {
@@ -317,7 +328,7 @@ const Organization: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: userId,
+          userId: userToDelete.id,
           organizationId: organization.id,
           adminUserId: profile.id
         }),
@@ -333,17 +344,22 @@ const Organization: React.FC = () => {
           duration: 3000,
           isClosable: true,
         })
+        onDeleteClose()
+        setUserToDelete(null)
         return
       }
 
       // Success
       toast({
         title: 'User Removed',
-        description: `Successfully removed user from organization`,
+        description: `User account has been permanently deleted`,
         status: 'success',
         duration: 3000,
         isClosable: true,
       })
+      
+      onDeleteClose()
+      setUserToDelete(null)
       
       // Refresh the users list
       await fetchOrganizationUsers()
@@ -357,6 +373,8 @@ const Organization: React.FC = () => {
         duration: 3000,
         isClosable: true,
       })
+      onDeleteClose()
+      setUserToDelete(null)
     }
   }
 
@@ -655,7 +673,15 @@ const Organization: React.FC = () => {
                                       <MenuItem 
                                         icon={<Icon as={Trash2} />} 
                                         color="red.500"
-                                        onClick={() => item.user && handleRemoveUser(item.user.id)}
+                                        onClick={() => {
+                                          if (item.user) {
+                                            setUserToDelete({
+                                              id: item.user.id,
+                                              name: item.user.display_name || item.user.email
+                                            })
+                                            onDeleteOpen()
+                                          }
+                                        }}
                                       >
                                         Remove User
                                       </MenuItem>
@@ -1006,6 +1032,46 @@ const Organization: React.FC = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      {/* Delete User Confirmation Dialog */}
+      <AlertDialog
+        isOpen={isDeleteOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onDeleteClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Delete User Account
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              Are you sure you want to remove <strong>{userToDelete?.name}</strong> from your organization?
+              <br /><br />
+              <Text color="red.500" fontWeight="semibold">
+                ⚠️ This action is permanent and cannot be undone.
+              </Text>
+              <br />
+              Their account will be completely deleted including:
+              <br />
+              • Profile and login credentials
+              <br />
+              • All training sessions and grades
+              <br />
+              • All associated data
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onDeleteClose}>
+                Cancel
+              </Button>
+              <Button colorScheme="red" onClick={confirmRemoveUser} ml={3}>
+                Delete Account
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   )
 }

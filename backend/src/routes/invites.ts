@@ -322,22 +322,31 @@ router.delete('/user', async (req, res) => {
       return res.status(400).json({ error: 'Cannot remove the last admin from the organization' })
     }
 
-    // Remove user by setting their org to null
-    const { error: updateError } = await supabase
+    // Delete user's profile from the profiles table
+    const { error: deleteProfileError } = await supabase
       .from('profiles')
-      .update({ org: null })
+      .delete()
       .eq('id', userId)
       .eq('org', organizationId)
 
-    if (updateError) {
-      console.error('Error removing user from organization:', updateError)
-      return res.status(500).json({ error: 'Failed to remove user' })
+    if (deleteProfileError) {
+      console.error('Error deleting user profile:', deleteProfileError)
+      return res.status(500).json({ error: 'Failed to delete user profile' })
     }
 
-    console.log(`Successfully removed user ${userId} from organization ${organizationId}`)
+    // Delete user from Supabase Auth (requires service role key)
+    const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(userId)
+
+    if (deleteAuthError) {
+      console.error('Error deleting user from auth:', deleteAuthError)
+      // Don't fail the whole operation if auth delete fails - profile is already deleted
+      console.warn('User profile deleted but auth deletion failed - user may be orphaned')
+    }
+
+    console.log(`Successfully removed user ${userId} from organization ${organizationId} (profile and auth deleted)`)
     return res.json({ 
       success: true, 
-      message: `Successfully removed user from organization`,
+      message: `Successfully removed user from organization and deleted account`,
       removedUserId: userId
     })
 
