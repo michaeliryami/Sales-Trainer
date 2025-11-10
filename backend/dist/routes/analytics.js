@@ -94,11 +94,13 @@ router.get('/admin/:orgId', async (req, res) => {
             ?.filter(s => s.assignment_id !== null)
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             .slice(0, 10) || [];
-        const userIds = [...new Set(recentSessionsData.map(s => s.user_id))];
+        const recentSessionUserIds = recentSessionsData.map(s => s.user_id);
+        const metricsUserIds = userMetrics?.map(m => m.user_id) || [];
+        const allUserIds = [...new Set([...recentSessionUserIds, ...metricsUserIds])];
         const { data: profiles } = await supabase_1.supabase
             .from('profiles')
             .select('id, display_name, email')
-            .in('id', userIds);
+            .in('id', allUserIds);
         const recentSessions = recentSessionsData.map(session => {
             const profile = profiles?.find(p => p.id === session.user_id);
             const template = templates?.find(t => t.id === session.template_id);
