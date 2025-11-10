@@ -62,6 +62,9 @@ const MyAnalytics: React.FC = () => {
         const response = await apiFetch(`/api/analytics/employee/${profile.id}?period=${timeRange}`)
         const result = await response.json()
         
+        console.log('📊 Analytics data received:', result)
+        console.log('📋 Recent sessions:', result?.data?.recentSessions)
+        
         if (result.success) {
           setAnalyticsData(result.data)
         } else {
@@ -83,12 +86,17 @@ const MyAnalytics: React.FC = () => {
   const fetchSessionGrade = async (sessionId: number) => {
     setLoadingGrade(true)
     try {
+      console.log('Fetching grade for session ID:', sessionId)
       const response = await apiFetch(`/api/analytics/session-grade/${sessionId}`)
       const result = await response.json()
       
+      console.log('Grade fetch result:', result)
+      
       if (result.success) {
+        console.log('Setting session grade:', result.data)
         setSessionGrade(result.data)
       } else {
+        console.log('No grade found in result')
         setSessionGrade(null)
       }
     } catch (error) {
@@ -100,6 +108,9 @@ const MyAnalytics: React.FC = () => {
   }
 
   const handleSessionClick = (session: any) => {
+    console.log('Session clicked:', session)
+    console.log('Has grade?', session.hasGrade)
+    
     // Toggle selection - if clicking the same session, deselect it
     if (selectedSession?.id === session.id) {
       setSelectedSession(null)
@@ -109,8 +120,10 @@ const MyAnalytics: React.FC = () => {
     
     setSelectedSession(session)
     if (session.hasGrade) {
+      console.log('Fetching grade for session:', session.id)
       fetchSessionGrade(session.id)
     } else {
+      console.log('No grade for this session')
       setSessionGrade(null)
     }
   }
