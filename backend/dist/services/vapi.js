@@ -281,10 +281,9 @@ Customer: Says they guess but won't sign anything today`
         return scripts[templateId] || 'Script not available for this template.';
     }
     async updateAssistantWithTemplate(data) {
-        const HARDCODED_ASSISTANT_ID = '7d12ec26-6ea8-4483-bd49-0598c9043331';
         try {
             const { template, accountType } = data;
-            console.log('📝 Updating VAPI assistant with template:', {
+            console.log('📝 Creating new VAPI assistant with template:', {
                 title: template.title,
                 difficulty: template.difficulty,
                 scriptLength: template.script?.length || 0,
@@ -296,7 +295,7 @@ Customer: Says they guess but won't sign anything today`
                 includesScript: systemPrompt.includes('REFERENCE SCRIPT')
             });
             const assistantData = {
-                name: `${template.type} Insurance Customer - ${template.difficulty}`,
+                name: `${template.title} - ${template.difficulty}`,
                 model: {
                     provider: "anthropic",
                     model: "claude-3-5-sonnet-20241022",
@@ -308,24 +307,26 @@ Customer: Says they guess but won't sign anything today`
                     ],
                     temperature: 0.3
                 },
+                voice: {
+                    provider: "11labs",
+                    voiceId: "sarah"
+                },
                 firstMessage: this.generateFirstMessage('customer', template.type)
             };
-            const response = await axios_1.default.patch(`${this.baseUrl}/assistant/${HARDCODED_ASSISTANT_ID}`, assistantData, { headers: this.getHeaders() });
-            return {
-                ...(response.data || {}),
-                id: HARDCODED_ASSISTANT_ID
-            };
+            const response = await axios_1.default.post(`${this.baseUrl}/assistant`, assistantData, { headers: this.getHeaders() });
+            console.log('✅ New assistant created with ID:', response.data?.id);
+            return response.data;
         }
         catch (error) {
-            console.error('Error updating VAPI assistant with template:', error);
+            console.error('Error creating VAPI assistant with template:', error);
             if (error.response) {
+                console.error('VAPI API Error Response:', error.response.data);
                 throw new Error(`VAPI API Error: ${error.response.data?.message || error.message}`);
             }
             throw error;
         }
     }
     async updateAssistant(request) {
-        const HARDCODED_ASSISTANT_ID = '7d12ec26-6ea8-4483-bd49-0598c9043331';
         try {
             const templateConfig = this.getTemplateConfig(request.template);
             const script = this.getTemplateScript(request.template);
@@ -343,20 +344,23 @@ Customer: Says they guess but won't sign anything today`
                     ],
                     temperature: 0.3
                 },
+                voice: {
+                    provider: "11labs",
+                    voiceId: "sarah"
+                },
                 firstMessage: this.generateFirstMessage(templateConfig.persona, templateConfig.insuranceType)
             };
-            const response = await axios_1.default.patch(`${this.baseUrl}/assistant/${HARDCODED_ASSISTANT_ID}`, assistantData, { headers: this.getHeaders() });
-            return {
-                ...(response.data || {}),
-                id: HARDCODED_ASSISTANT_ID
-            };
+            const response = await axios_1.default.post(`${this.baseUrl}/assistant`, assistantData, { headers: this.getHeaders() });
+            console.log('✅ New assistant created with ID:', response.data?.id);
+            return response.data;
         }
         catch (error) {
-            console.error('Error updating VAPI assistant:', error);
+            console.error('Error creating VAPI assistant:', error);
             if (error.response) {
+                console.error('VAPI API Error Response:', error.response.data);
                 throw new Error(`VAPI API Error: ${error.response.data?.message || error.message}`);
             }
-            throw new Error('Failed to update assistant');
+            throw new Error('Failed to create assistant');
         }
     }
     generateFirstMessage(persona, insuranceType) {
