@@ -663,14 +663,7 @@ Only return the JSON response, nothing else.`
     // Parse the JSON response
     const gradingResult = JSON.parse(response)
 
-    // Calculate percentage
-    const percentage = gradingResult.maxPossibleScore > 0 
-      ? (gradingResult.totalScore / gradingResult.maxPossibleScore) * 100 
-      : 0
-
-    console.log('Calculated percentage:', percentage, 'from', gradingResult.totalScore, '/', gradingResult.maxPossibleScore)
-
-    // Save to database
+    // Save to database (percentage is auto-calculated as a generated column)
     const { data: grade, error: gradeError } = await supabase
       .from('session_grades')
       .insert([{
@@ -680,7 +673,6 @@ Only return the JSON response, nothing else.`
         rubric_id: rubricId,
         total_score: gradingResult.totalScore,
         max_possible_score: gradingResult.maxPossibleScore,
-        percentage: percentage,
         criteria_grades: gradingResult.criteriaGrades,
         grading_model: 'gpt-4o-mini'
       }])
@@ -825,10 +817,7 @@ router.post('/manual-grade', async (req, res) => {
       throw checkError
     }
 
-    // Calculate percentage
-    const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0
-
-    // Update or insert the grade with manual override
+    // Update or insert the grade with manual override (percentage is auto-calculated)
     if (existingGrade) {
       // Update existing grade
       const { error: updateError } = await supabase
@@ -836,7 +825,6 @@ router.post('/manual-grade', async (req, res) => {
         .update({
           total_score: totalScore,
           max_possible_score: maxScore,
-          percentage: percentage,
           criteria_grades: criteriaGrades || [],
           is_manual_override: isManualOverride,
           updated_at: new Date().toISOString()
@@ -854,7 +842,6 @@ router.post('/manual-grade', async (req, res) => {
           assignment_id: assignmentId,
           total_score: totalScore,
           max_possible_score: maxScore,
-          percentage: percentage,
           criteria_grades: criteriaGrades || [],
           is_manual_override: isManualOverride
         })
@@ -899,10 +886,7 @@ router.post('/grade', async (req, res) => {
       maxPossibleScore
     })
 
-    // Calculate percentage
-    const percentage = maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0
-
-    // Insert grade
+    // Insert grade (percentage is auto-calculated as a generated column)
     const { data: grade, error: gradeError } = await supabase
       .from('session_grades')
       .insert([{
@@ -912,7 +896,6 @@ router.post('/grade', async (req, res) => {
         rubric_id: rubricId,
         total_score: totalScore,
         max_possible_score: maxPossibleScore,
-        percentage: percentage,
         criteria_grades: criteriaGrades,
         grading_model: gradingModel || 'gpt-4o-mini'
       }])
