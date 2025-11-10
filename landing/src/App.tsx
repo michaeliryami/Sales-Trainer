@@ -14,7 +14,7 @@ import {
   Grid,
   GridItem,
 } from '@chakra-ui/react'
-import { FiPhone, FiBarChart2, FiTarget, FiZap, FiTrendingUp, FiUsers, FiCheck, FiChevronDown } from 'react-icons/fi'
+import { Phone, BarChart2, Target, Zap, TrendingUp, Users, Check, ChevronDown } from 'lucide-react'
 
 function App() {
   const [rotatingText, setRotatingText] = useState(0)
@@ -216,15 +216,15 @@ function App() {
 
                 <VStack align="flex-start" spacing={3} className="fade-in-up delay-2">
                   <HStack spacing={3}>
-                    <Icon as={FiCheck} w={6} h={6} color="brand.500" />
+                    <Icon as={Check} w={6} h={6} color="brand.500" />
                     <Text fontSize="lg" color="gray.700">Practice 24/7 with realistic AI</Text>
                   </HStack>
                   <HStack spacing={3}>
-                    <Icon as={FiCheck} w={6} h={6} color="brand.500" />
+                    <Icon as={Check} w={6} h={6} color="brand.500" />
                     <Text fontSize="lg" color="gray.700">Master objection handling</Text>
                   </HStack>
                   <HStack spacing={3}>
-                    <Icon as={FiCheck} w={6} h={6} color="brand.500" />
+                    <Icon as={Check} w={6} h={6} color="brand.500" />
                     <Text fontSize="lg" color="gray.700">Track team performance</Text>
                   </HStack>
                 </VStack>
@@ -385,7 +385,7 @@ function App() {
             <Text fontSize="sm" color="gray.500" fontWeight="500">
               See it in action
             </Text>
-            <Icon as={FiChevronDown} w={8} h={8} color="brand.500" />
+            <Icon as={ChevronDown} w={8} h={8} color="brand.500" />
           </VStack>
         </Box>
       )}
@@ -462,7 +462,7 @@ function App() {
                       alignItems="center" 
                       justifyContent="center"
                     >
-                      <Icon as={FiPhone} w={5} h={5} color="brand.500" />
+                      <Icon as={Phone} w={5} h={5} color="brand.500" />
                     </Box>
                     <VStack align="start" spacing={0}>
                       <Text fontWeight="bold" fontSize="md">Active Training Call</Text>
@@ -581,7 +581,7 @@ function App() {
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Icon as={FiPhone} w={8} h={8} color="white" />
+                  <Icon as={Phone} w={8} h={8} color="white" />
                 </Box>
                 <VStack spacing={3}>
                   <Heading size="lg" textAlign="center">Start a Call</Heading>
@@ -614,7 +614,7 @@ function App() {
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Icon as={FiZap} w={8} h={8} color="white" />
+                  <Icon as={Zap} w={8} h={8} color="white" />
                 </Box>
                 <VStack spacing={3}>
                   <Heading size="lg" textAlign="center">AI Responds</Heading>
@@ -647,7 +647,7 @@ function App() {
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Icon as={FiBarChart2} w={8} h={8} color="white" />
+                  <Icon as={BarChart2} w={8} h={8} color="white" />
                 </Box>
                 <VStack spacing={3}>
                   <Heading size="lg" textAlign="center">Get Feedback</Heading>
@@ -685,7 +685,7 @@ function App() {
                 transition="all 0.3s"
               >
                 <HStack spacing={4} align="start">
-                  <Icon as={FiTarget} w={8} h={8} color="brand.500" flexShrink={0} />
+                  <Icon as={Target} w={8} h={8} color="brand.500" flexShrink={0} />
                   <VStack align="start" spacing={2}>
                     <Heading size="md">Custom Scenarios</Heading>
                     <Text color="gray.600">
@@ -705,7 +705,7 @@ function App() {
                 transition="all 0.3s"
               >
                 <HStack spacing={4} align="start">
-                  <Icon as={FiTrendingUp} w={8} h={8} color="brand.500" flexShrink={0} />
+                  <Icon as={TrendingUp} w={8} h={8} color="brand.500" flexShrink={0} />
                   <VStack align="start" spacing={2}>
                     <Heading size="md">Performance Tracking</Heading>
                     <Text color="gray.600">
@@ -725,7 +725,7 @@ function App() {
                 transition="all 0.3s"
               >
                 <HStack spacing={4} align="start">
-                  <Icon as={FiUsers} w={8} h={8} color="brand.500" flexShrink={0} />
+                  <Icon as={Users} w={8} h={8} color="brand.500" flexShrink={0} />
                   <VStack align="start" spacing={2}>
                     <Heading size="md">Team Management</Heading>
                     <Text color="gray.600">
@@ -745,7 +745,7 @@ function App() {
                 transition="all 0.3s"
               >
                 <HStack spacing={4} align="start">
-                  <Icon as={FiZap} w={8} h={8} color="brand.500" flexShrink={0} />
+                  <Icon as={Zap} w={8} h={8} color="brand.500" flexShrink={0} />
                   <VStack align="start" spacing={2}>
                     <Heading size="md">Unlimited Practice</Heading>
                     <Text color="gray.600">
@@ -953,7 +953,7 @@ function App() {
 function PricingFeature({ text }: { text: string }) {
   return (
     <HStack spacing={3} align="start">
-      <Icon as={FiCheck} w={6} h={6} color="brand.500" flexShrink={0} mt={0.5} />
+      <Icon as={Check} w={6} h={6} color="brand.500" flexShrink={0} mt={0.5} />
       <Text fontSize="lg" color="gray.700">{text}</Text>
     </HStack>
   )
