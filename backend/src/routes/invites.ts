@@ -1,5 +1,6 @@
 import express from 'express'
 import { supabase } from '../config/supabase'
+import { sendInvitationEmail } from '../services/email'
 
 const router = express.Router()
 
@@ -106,7 +107,7 @@ router.post('/invite', async (req, res) => {
 
     const { data: organization, error: orgError } = await supabase
       .from('organizations')
-      .select('users, invited_roles')
+      .select('users, invited_roles, name')
       .eq('id', organizationId)
       .single()
 
@@ -117,6 +118,18 @@ router.post('/invite', async (req, res) => {
 
     if (!organization) {
       return res.status(404).json({ error: 'Organization not found' })
+    }
+
+    // Fetch admin profile for inviter name
+    const { data: adminProfile, error: adminError } = await supabase
+      .from('profiles')
+      .select('display_name, email')
+      .eq('id', adminUserId)
+      .single()
+
+    if (adminError) {
+      console.error('Error fetching admin profile:', adminError)
+      return res.status(500).json({ error: 'Failed to fetch admin profile' })
     }
 
     // Parse existing users list - PostgreSQL returns arrays directly
@@ -170,6 +183,27 @@ router.post('/invite', async (req, res) => {
     }
 
     console.log(`Successfully invited ${email} to organization ${organizationId} with role ${role}`)
+
+    // Send invitation email
+    try {
+      const inviterName = adminProfile?.display_name || adminProfile?.email || 'Your team'
+      const inviteUrl = `https://app.clozone.ai/auth?invite=${encodeURIComponent(email)}&org=${organizationId}`
+      
+      await sendInvitationEmail({
+        to: email,
+        organizationName: organization.name || 'the organization',
+        inviterName: inviterName,
+        role: role as 'admin' | 'employee',
+        inviteUrl: inviteUrl
+      })
+
+      console.log(`✅ Invitation email sent to ${email}`)
+    } catch (emailError) {
+      // Log error but don't fail the invitation - it was already created
+      console.error('❌ Failed to send invitation email:', emailError)
+      // Continue with success response since the DB update succeeded
+    }
+
     return res.json({ 
       success: true, 
       message: `Successfully invited ${email}`,

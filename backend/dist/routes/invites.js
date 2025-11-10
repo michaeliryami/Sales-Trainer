@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const supabase_1 = require("../config/supabase");
+const email_1 = require("../services/email");
 const router = express_1.default.Router();
 async function isUserAdmin(userId, organizationId) {
     const { data: profile, error } = await supabase_1.supabase
@@ -82,7 +83,7 @@ router.post('/invite', async (req, res) => {
         }
         const { data: organization, error: orgError } = await supabase_1.supabase
             .from('organizations')
-            .select('users, invited_roles')
+            .select('users, invited_roles, name')
             .eq('id', organizationId)
             .single();
         if (orgError) {
@@ -91,6 +92,15 @@ router.post('/invite', async (req, res) => {
         }
         if (!organization) {
             return res.status(404).json({ error: 'Organization not found' });
+        }
+        const { data: adminProfile, error: adminError } = await supabase_1.supabase
+            .from('profiles')
+            .select('display_name, email')
+            .eq('id', adminUserId)
+            .single();
+        if (adminError) {
+            console.error('Error fetching admin profile:', adminError);
+            return res.status(500).json({ error: 'Failed to fetch admin profile' });
         }
         let usersList = [];
         console.log('Organization users field:', organization.users, 'Type:', typeof organization.users);
@@ -131,6 +141,21 @@ router.post('/invite', async (req, res) => {
             return res.status(500).json({ error: 'Failed to invite user' });
         }
         console.log(`Successfully invited ${email} to organization ${organizationId} with role ${role}`);
+        try {
+            const inviterName = adminProfile?.display_name || adminProfile?.email || 'Your team';
+            const inviteUrl = `https://app.clozone.ai/auth?invite=${encodeURIComponent(email)}&org=${organizationId}`;
+            await (0, email_1.sendInvitationEmail)({
+                to: email,
+                organizationName: organization.name || 'the organization',
+                inviterName: inviterName,
+                role: role,
+                inviteUrl: inviteUrl
+            });
+            console.log(`✅ Invitation email sent to ${email}`);
+        }
+        catch (emailError) {
+            console.error('❌ Failed to send invitation email:', emailError);
+        }
         return res.json({
             success: true,
             message: `Successfully invited ${email}`,
