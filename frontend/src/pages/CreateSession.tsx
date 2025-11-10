@@ -25,6 +25,7 @@ import {
   Spinner,
 } from '@chakra-ui/react'
 import React, { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { FileText, MessageSquare, Search, RefreshCw, Award } from 'lucide-react'
 import Vapi from '@vapi-ai/web'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
@@ -74,6 +75,7 @@ const findBuiltInTemplateByTitle = (title: string) => {
 
 function CreateSession() {
   const { organization, profile, userRole } = useProfile()
+  const navigate = useNavigate()
   
   // Convert string template IDs to consistent numeric IDs for database storage
   const stringToNumericId = (str: string): number => {
@@ -1885,7 +1887,7 @@ function CreateSession() {
                       borderRadius="lg"
                       spacing={2}
                       cursor="pointer"
-                      onClick={() => setShowPlaygroundGradeDetails(true)}
+                      onClick={() => navigate('/analytics')}
                       _hover={{ opacity: 0.8 }}
                       transition="all 0.2s"
                     >
@@ -1899,7 +1901,7 @@ function CreateSession() {
                         {Math.round(playgroundSessionGrade.percentage)}%
                       </Text>
                       <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>
-                        Click for details
+                        View in Analytics
                       </Text>
                     </HStack>
                   )}
