@@ -242,13 +242,13 @@ function App() {
                 {/* Floating stat badges around logo */}
                 <Box
                   position="absolute"
-                  top="5%"
-                  right="10%"
+                  top="-8%"
+                  right="-5%"
                   bg="white"
                   p={4}
                   rounded="xl"
                   boxShadow="xl"
-                  className="float"
+                  className="float-fade-1"
                   style={{ animationDelay: '0.5s' }}
                 >
                   <VStack spacing={1}>
@@ -259,13 +259,13 @@ function App() {
 
                 <Box
                   position="absolute"
-                  top="0%"
-                  right="35%"
+                  top="-12%"
+                  right="30%"
                   bg="white"
                   p={4}
                   rounded="xl"
                   boxShadow="xl"
-                  className="float"
+                  className="float-fade-2"
                   style={{ animationDelay: '0.8s' }}
                 >
                   <VStack spacing={1}>
@@ -276,13 +276,13 @@ function App() {
 
                 <Box
                   position="absolute"
-                  bottom="10%"
-                  right="10%"
+                  bottom="-5%"
+                  right="-8%"
                   bg="white"
                   p={4}
                   rounded="xl"
                   boxShadow="xl"
-                  className="float"
+                  className="float-fade-3"
                   style={{ animationDelay: '1s' }}
                 >
                   <VStack spacing={1}>
@@ -293,13 +293,13 @@ function App() {
 
                 <Box
                   position="absolute"
-                  top="35%"
-                  left="-5%"
+                  top="28%"
+                  left="-15%"
                   bg="white"
                   p={4}
                   rounded="xl"
                   boxShadow="xl"
-                  className="float"
+                  className="float-fade-4"
                   style={{ animationDelay: '1.5s' }}
                 >
                   <VStack spacing={1}>
@@ -310,13 +310,13 @@ function App() {
 
                 <Box
                   position="absolute"
-                  bottom="10%"
-                  left="5%"
+                  bottom="-8%"
+                  left="-5%"
                   bg="white"
                   p={4}
                   rounded="xl"
                   boxShadow="xl"
-                  className="float"
+                  className="float-fade-1"
                   style={{ animationDelay: '2s' }}
                 >
                   <VStack spacing={1}>
@@ -327,13 +327,13 @@ function App() {
 
                 <Box
                   position="absolute"
-                  top="15%"
-                  left="10%"
+                  top="5%"
+                  left="-10%"
                   bg="white"
                   p={4}
                   rounded="xl"
                   boxShadow="xl"
-                  className="float"
+                  className="float-fade-2"
                   style={{ animationDelay: '0.3s' }}
                 >
                   <VStack spacing={1}>
@@ -344,13 +344,13 @@ function App() {
 
                 <Box
                   position="absolute"
-                  top="60%"
-                  right="5%"
+                  bottom="25%"
+                  right="-12%"
                   bg="white"
                   p={4}
                   rounded="xl"
                   boxShadow="xl"
-                  className="float"
+                  className="float-fade-3"
                   style={{ animationDelay: '1.2s' }}
                 >
                   <VStack spacing={1}>
