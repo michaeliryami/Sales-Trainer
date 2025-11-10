@@ -19,11 +19,25 @@ const analytics_1 = __importDefault(require("./routes/analytics"));
 const assignments_1 = __importDefault(require("./routes/assignments"));
 const app = (0, express_1.default)();
 const corsOptions = {
-    origin: environment_1.config.corsOrigins.length > 0
-        ? environment_1.config.corsOrigins
-        : environment_1.config.isDevelopment
-            ? '*'
-            : false,
+    origin: (origin, callback) => {
+        if (!origin)
+            return callback(null, true);
+        if (environment_1.config.corsOrigins.includes('*')) {
+            return callback(null, true);
+        }
+        if (environment_1.config.corsOrigins.length === 0) {
+            if (environment_1.config.isDevelopment) {
+                return callback(null, true);
+            }
+            else {
+                return callback(new Error('CORS not configured'));
+            }
+        }
+        if (environment_1.config.corsOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
 };
 app.use((0, cors_1.default)(corsOptions));
