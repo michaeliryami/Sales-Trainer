@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import {
   Box,
   VStack,
-  HStack,
   Heading,
   Text,
   Button,
@@ -17,9 +16,9 @@ import {
   CardBody,
   Icon,
   InputGroup,
-  InputLeftElement
+  InputLeftElement,
+  Image
 } from '@chakra-ui/react'
-import ModernDivider from '../ModernDivider'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -78,36 +77,41 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
   }
 
   return (
-    <Box w="full">
+    <Box w="full" maxW="440px" mx="auto">
       <VStack spacing={8} align="stretch">
-        {/* Header */}
-        <Box textAlign="center">
-          <Heading 
-            size="2xl" 
-            color={useColorModeValue('gray.900', 'white')} 
-            mb={3}
-            fontWeight="700"
-            letterSpacing="-0.02em"
-          >
-            Welcome Back
-          </Heading>
-          <Text 
-            color={useColorModeValue('gray.600', 'gray.400')} 
-            fontSize="lg"
-            fontWeight="400"
-          >
-            Sign in to continue your training journey
-          </Text>
-        </Box>
+        {/* Clozone Branding */}
+        <VStack spacing={4} textAlign="center">
+          <Image 
+            src="/logolong.png" 
+            alt="Clozone" 
+            h="50px" 
+            objectFit="contain"
+          />
+          <Box>
+            <Heading 
+              size="lg" 
+              color={useColorModeValue('gray.900', 'white')} 
+              mb={2}
+              fontWeight="600"
+            >
+              Welcome Back
+            </Heading>
+            <Text 
+              color={useColorModeValue('gray.600', 'gray.400')} 
+              fontSize="sm"
+            >
+              Sign in to your account
+            </Text>
+          </Box>
+        </VStack>
 
         {/* Login Card */}
         <Card 
           bg={cardBg} 
-          border="1px solid" 
-          borderColor={borderColor} 
-          shadow="2xl" 
+          border="2px solid" 
+          borderColor={useColorModeValue('#f26f25', '#d95e1e')} 
+          shadow="xl" 
           borderRadius="2xl"
-          overflow="hidden"
         >
           <CardBody p={8}>
             <VStack spacing={6} align="stretch">
@@ -133,11 +137,10 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
                       color={useColorModeValue('gray.700', 'gray.300')}
                       fontSize="sm"
                       fontWeight="600"
-                      mb={2}
                     >
-                      Email Address
+                      Email
                     </FormLabel>
-                    <InputGroup size="lg">
+                    <InputGroup>
                       <InputLeftElement>
                         <Icon as={Mail} color={useColorModeValue('gray.400', 'gray.500')} boxSize={5} />
                       </InputLeftElement>
@@ -145,23 +148,17 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Enter your email"
-                        bg={useColorModeValue('gray.50', 'gray.700')}
-                        border="2px solid"
-                        borderColor={useColorModeValue('gray.200', 'gray.600')}
-                        borderRadius="xl"
-                        fontSize="md"
+                        placeholder="your@email.com"
+                        size="lg"
+                        bg={useColorModeValue('white', 'gray.700')}
+                        borderColor={useColorModeValue('gray.300', 'gray.600')}
+                        borderRadius="lg"
                         _hover={{
-                          borderColor: useColorModeValue('#ffa76b', '#f26f25'),
-                          bg: useColorModeValue('white', 'gray.600')
+                          borderColor: '#f26f25'
                         }}
                         _focus={{
                           borderColor: '#f26f25',
-                          boxShadow: '0 0 0 3px rgba(242, 111, 37, 0.1)',
-                          bg: useColorModeValue('white', 'gray.600')
-                        }}
-                        _placeholder={{
-                          color: useColorModeValue('gray.400', 'gray.500')
+                          boxShadow: '0 0 0 3px rgba(242, 111, 37, 0.1)'
                         }}
                       />
                     </InputGroup>
@@ -172,11 +169,10 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
                       color={useColorModeValue('gray.700', 'gray.300')}
                       fontSize="sm"
                       fontWeight="600"
-                      mb={2}
                     >
                       Password
                     </FormLabel>
-                    <InputGroup size="lg">
+                    <InputGroup>
                       <InputLeftElement>
                         <Icon as={Lock} color={useColorModeValue('gray.400', 'gray.500')} boxSize={5} />
                       </InputLeftElement>
@@ -184,86 +180,74 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Enter your password"
-                        bg={useColorModeValue('gray.50', 'gray.700')}
-                        border="2px solid"
-                        borderColor={useColorModeValue('gray.200', 'gray.600')}
-                        borderRadius="xl"
-                        fontSize="md"
+                        placeholder="••••••••"
+                        size="lg"
+                        bg={useColorModeValue('white', 'gray.700')}
+                        borderColor={useColorModeValue('gray.300', 'gray.600')}
+                        borderRadius="lg"
                         _hover={{
-                          borderColor: useColorModeValue('#ffa76b', '#f26f25'),
-                          bg: useColorModeValue('white', 'gray.600')
+                          borderColor: '#f26f25'
                         }}
                         _focus={{
                           borderColor: '#f26f25',
-                          boxShadow: '0 0 0 3px rgba(242, 111, 37, 0.1)',
-                          bg: useColorModeValue('white', 'gray.600')
-                        }}
-                        _placeholder={{
-                          color: useColorModeValue('gray.400', 'gray.500')
+                          boxShadow: '0 0 0 3px rgba(242, 111, 37, 0.1)'
                         }}
                       />
                       <Button
                         variant="ghost"
                         size="sm"
                         position="absolute"
-                        right={3}
+                        right={2}
                         top="50%"
                         transform="translateY(-50%)"
                         onClick={() => setShowPassword(!showPassword)}
                         zIndex={2}
-                        borderRadius="lg"
-                        _hover={{
-                          bg: useColorModeValue('gray.100', 'gray.600')
-                        }}
                       >
                         <Icon as={showPassword ? EyeOff : Eye} boxSize={4} />
                       </Button>
                     </InputGroup>
                   </FormControl>
 
-                  {/* Forgot Password Link */}
-                  <Box w="full" textAlign="right">
-                    <Link
-                      color="#f26f25"
-                      onClick={onForgotPassword}
-                      cursor="pointer"
-                      fontSize="sm"
-                      fontWeight="500"
-                      _hover={{ 
-                        textDecoration: 'underline',
-                        color: '#d95e1e'
-                      }}
-                    >
-                      Forgot password?
-                    </Link>
-                  </Box>
-
                   <Button
                     type="submit"
                     size="lg"
                     w="full"
-                    h={12}
+                    mt={2}
                     isLoading={loading}
                     loadingText="Signing in..."
-                    bg="linear-gradient(135deg, #f26f25, #d95e1e)"
+                    bg="#f26f25"
                     color="white"
-                    borderRadius="xl"
+                    borderRadius="lg"
                     fontSize="md"
                     fontWeight="600"
                     _hover={{
-                      bg: "linear-gradient(135deg, #d95e1e, #b84e19)",
+                      bg: "#d95e1e",
                       transform: 'translateY(-1px)',
-                      shadow: 'xl'
+                      shadow: 'lg'
                     }}
                     _active={{
-                      transform: 'translateY(0)',
-                      shadow: 'lg'
+                      transform: 'translateY(0)'
                     }}
                     transition="all 0.2s"
                   >
                     Sign In
                   </Button>
+                  
+                  {/* Forgot Password Link */}
+                  <Link
+                    color="#f26f25"
+                    onClick={onForgotPassword}
+                    cursor="pointer"
+                    fontSize="sm"
+                    fontWeight="500"
+                    textAlign="center"
+                    _hover={{ 
+                      textDecoration: 'underline',
+                      color: '#d95e1e'
+                    }}
+                  >
+                    Forgot password?
+                  </Link>
                 </VStack>
               </form>
             </VStack>
@@ -271,23 +255,25 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
         </Card>
 
         {/* Sign Up Link */}
-        <Box textAlign="center" py={4}>
-          <Text color={useColorModeValue('gray.600', 'gray.400')} fontSize="md">
-            Don't have an account?{' '}
-            <Link
-              color="#f26f25"
-              onClick={onToggleMode}
-              cursor="pointer"
-              fontWeight="600"
-              _hover={{ 
-                textDecoration: 'underline',
-                color: '#d95e1e'
-              }}
-            >
-              Sign up for free
-            </Link>
-          </Text>
-        </Box>
+        <Text 
+          textAlign="center" 
+          color={useColorModeValue('gray.600', 'gray.400')} 
+          fontSize="sm"
+        >
+          Don't have an account?{' '}
+          <Link
+            color="#f26f25"
+            onClick={onToggleMode}
+            cursor="pointer"
+            fontWeight="600"
+            _hover={{ 
+              textDecoration: 'underline',
+              color: '#d95e1e'
+            }}
+          >
+            Sign up
+          </Link>
+        </Text>
       </VStack>
     </Box>
   )

@@ -5,8 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const openai_1 = __importDefault(require("openai"));
-const jspdf_1 = require("jspdf");
 const supabase_1 = require("../config/supabase");
+const renderer_1 = require("@react-pdf/renderer");
+const react_1 = __importDefault(require("react"));
+const TranscriptReport_1 = require("../pdf/TranscriptReport");
 const router = express_1.default.Router();
 async function gradeTranscriptWithRubric(exportData, cleanedTranscript) {
     if (!exportData.rubricCriteria || exportData.rubricCriteria.length === 0) {
@@ -200,93 +202,46 @@ router.post('/transcript-pdf', async (req, res) => {
                 console.error('Error fetching existing grade:', error);
             }
         }
-        const doc = new jspdf_1.jsPDF();
-        doc.setFont('helvetica');
-        doc.setFontSize(18);
-        doc.text('Call Transcript', 20, 30);
-        doc.setFontSize(10);
-        let yPos = 45;
-        doc.text(`Template: ${exportData.templateTitle}`, 20, yPos);
-        yPos += 8;
-        doc.text(`Date: ${exportData.startTime.toLocaleDateString()} | Duration: ${Math.floor(exportData.duration / 60)}m ${exportData.duration % 60}s`, 20, yPos);
-        if (exportData.assignmentId && exportData.assignmentTitle) {
-            yPos += 8;
-            doc.text(`Assignment: ${exportData.assignmentTitle}`, 20, yPos);
-        }
-        yPos += 20;
-        doc.setFontSize(12);
-        doc.text('Conversation', 20, yPos);
-        yPos += 15;
-        doc.setFontSize(10);
-        const conversationLines = cleanedTranscript.split('\n').filter(line => line.trim() !== '');
-        for (const line of conversationLines) {
-            if (yPos > 270) {
-                doc.addPage();
-                yPos = 20;
-            }
-            if (line.startsWith('You:') || line.startsWith('AI Customer:')) {
-                const [speaker, ...messageParts] = line.split(':');
-                const message = messageParts.join(':').trim();
-                doc.setFont('helvetica', 'bold');
-                doc.text(`${speaker}:`, 20, yPos);
-                yPos += 7;
-                doc.setFont('helvetica', 'normal');
-                const splitText = doc.splitTextToSize(message, 170);
-                doc.text(splitText, 25, yPos);
-                yPos += splitText.length * 5 + 8;
-            }
-            else {
-                const splitText = doc.splitTextToSize(line, 170);
-                doc.text(splitText, 20, yPos);
-                yPos += splitText.length * 5 + 5;
-            }
-        }
-        if (gradingResult && exportData.assignmentId) {
-            doc.addPage();
-            yPos = 20;
-            doc.setFontSize(16);
-            doc.text('Grading Report', 20, yPos);
-            yPos += 20;
-            doc.setFontSize(12);
-            doc.text(`Overall Score: ${gradingResult.totalScore}/${gradingResult.maxPossibleScore} (${Math.round((gradingResult.totalScore / gradingResult.maxPossibleScore) * 100)}%)`, 20, yPos);
-            yPos += 15;
-            doc.setFontSize(14);
-            doc.text('Detailed Evaluation:', 20, yPos);
-            yPos += 15;
-            doc.setFontSize(10);
-            for (const criteria of gradingResult.criteriaGrades) {
-                if (yPos > 250) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-                doc.setFont('helvetica', 'bold');
-                doc.text(`${criteria.title}: ${criteria.earnedPoints}/${criteria.maxPoints} points`, 20, yPos);
-                yPos += 8;
-                doc.setFont('helvetica', 'normal');
-                const descriptionLines = doc.splitTextToSize(`Description: ${criteria.description}`, 170);
-                doc.text(descriptionLines, 20, yPos);
-                yPos += descriptionLines.length * 5 + 5;
-                if (criteria.evidence && criteria.evidence.length > 0) {
-                    doc.setFont('helvetica', 'bold');
-                    doc.text('Evidence from transcript:', 20, yPos);
-                    yPos += 8;
-                    doc.setFont('helvetica', 'normal');
-                    for (const evidence of criteria.evidence) {
-                        const evidenceLines = doc.splitTextToSize(`• "${evidence}"`, 160);
-                        doc.text(evidenceLines, 25, yPos);
-                        yPos += evidenceLines.length * 5 + 3;
-                    }
-                }
-                doc.setFont('helvetica', 'bold');
-                doc.text('Evaluation reasoning:', 20, yPos);
-                yPos += 8;
-                doc.setFont('helvetica', 'normal');
-                const reasoningLines = doc.splitTextToSize(criteria.reasoning, 170);
-                doc.text(reasoningLines, 20, yPos);
-                yPos += reasoningLines.length * 5 + 10;
-            }
-        }
-        const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+        console.log('Creating PDF element with data:', {
+            templateTitle: exportData.templateTitle,
+            hasDescription: !!exportData.templateDescription,
+            hasAssignment: !!exportData.assignmentTitle,
+            duration: exportData.duration,
+            transcriptLength: cleanedTranscript.length,
+            hasGrading: !!gradingResult,
+            isAssignment: !!exportData.assignmentId,
+        });
+        const pdfElement = react_1.default.createElement(TranscriptReport_1.TranscriptReportDocument, {
+            templateTitle: exportData.templateTitle || 'Training Session',
+            templateDescription: exportData.templateDescription || '',
+            assignmentTitle: exportData.assignmentTitle || '',
+            startTime: exportData.startTime,
+            endTime: exportData.endTime,
+            duration: exportData.duration,
+            cleanedTranscript,
+            gradingResult: gradingResult || undefined,
+            isAssignment: !!exportData.assignmentId,
+        });
+        console.log('PDF element created, starting render...');
+        const chunks = [];
+        const stream = await (0, renderer_1.renderToStream)(pdfElement);
+        console.log('Stream created, collecting chunks...');
+        await new Promise((resolve, reject) => {
+            stream.on('data', (chunk) => {
+                chunks.push(chunk);
+                console.log(`Received chunk: ${chunk.length} bytes`);
+            });
+            stream.on('end', () => {
+                console.log('Stream ended successfully');
+                resolve();
+            });
+            stream.on('error', (error) => {
+                console.error('Stream error:', error);
+                reject(error);
+            });
+        });
+        const pdfBuffer = Buffer.concat(chunks);
+        console.log(`PDF generated successfully: ${pdfBuffer.length} bytes`);
         const filename = `training-session-${exportData.templateTitle.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

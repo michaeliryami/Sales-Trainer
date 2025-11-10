@@ -99,6 +99,13 @@ const MyAnalytics: React.FC = () => {
   }
 
   const handleSessionClick = (session: any) => {
+    // Toggle selection - if clicking the same session, deselect it
+    if (selectedSession?.id === session.id) {
+      setSelectedSession(null)
+      setSessionGrade(null)
+      return
+    }
+    
     setSelectedSession(session)
     if (session.hasGrade) {
       fetchSessionGrade(session.id)

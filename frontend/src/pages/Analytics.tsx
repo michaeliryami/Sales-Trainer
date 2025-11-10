@@ -165,6 +165,13 @@ const Analytics: React.FC = () => {
   }
 
   const handleSessionClick = (session: any) => {
+    // Toggle selection - if clicking the same session, deselect it
+    if (selectedSession?.id === session.id) {
+      setSelectedSession(null)
+      setSessionGrade(null)
+      return
+    }
+    
     setSelectedSession(session)
     if (session.hasGrade && session.sessionType === 'assignment') {
       fetchSessionGrade(session.id)
@@ -712,8 +719,8 @@ const Analytics: React.FC = () => {
                 {analyticsData?.recentSessions
                   ?.filter((session: any) => !filterAssignmentId || session.assignmentId === filterAssignmentId)
                   .map((session: any, index: number) => (
+                  <React.Fragment key={index}>
                   <Card 
-                    key={index}
                     bg={selectedSession?.id === session.id ? useColorModeValue('orange.50', 'orange.900/20') : cardBg}
                     border="1px solid"
                     borderColor={selectedSession?.id === session.id ? accentColor : borderColor}
@@ -778,11 +785,10 @@ const Analytics: React.FC = () => {
                       </VStack>
                     </CardBody>
                   </Card>
-                ))}
-                
-                {/* Grade Breakdown Section */}
-                {selectedSession && sessionGrade && (
-                  <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg" mt={4}>
+                  
+                  {/* Grade Breakdown Section - Show right after selected session */}
+                  {selectedSession?.id === session.id && sessionGrade && (
+                  <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg" ml={4}>
                     <CardBody p={6}>
                       <VStack align="stretch" spacing={4}>
                         <HStack justify="space-between" align="start">
@@ -975,19 +981,22 @@ const Analytics: React.FC = () => {
                     </CardBody>
                   </Card>
                 )}
-                
-                {loadingGrade && (
-                  <Card bg={cardBg} borderRadius="2xl" mt={4}>
-                    <CardBody p={8}>
-                      <VStack>
-                        <Spinner color={accentColor} />
-                        <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
-                          Loading grade details...
-                        </Text>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                )}
+                  
+                  {/* Loading State */}
+                  {selectedSession?.id === session.id && loadingGrade && (
+                    <Card bg={cardBg} borderRadius="2xl" ml={4}>
+                      <CardBody p={8}>
+                        <VStack>
+                          <Spinner color={accentColor} />
+                          <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
+                            Loading grade details...
+                          </Text>
+                        </VStack>
+                      </CardBody>
+                    </Card>
+                  )}
+                  </React.Fragment>
+                ))}
               </VStack>
             </Box>
           </Box>

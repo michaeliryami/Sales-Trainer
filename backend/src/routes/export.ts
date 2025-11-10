@@ -2,6 +2,9 @@ import express from 'express'
 import OpenAI from 'openai'
 import { jsPDF } from 'jspdf'
 import { supabase } from '../config/supabase'
+import { renderToStream } from '@react-pdf/renderer'
+import React from 'react'
+import { TranscriptReportDocument } from '../pdf/TranscriptReport'
 
 const router = express.Router()
 
@@ -276,139 +279,54 @@ router.post('/transcript-pdf', async (req, res) => {
       }
     }
 
-    // Create PDF using jsPDF - Clean conversation transcript
-    const doc = new jsPDF()
+    // Create beautiful PDF using ReactPDF with Clozone branding
+    console.log('Creating PDF element with data:', {
+      templateTitle: exportData.templateTitle,
+      hasDescription: !!exportData.templateDescription,
+      hasAssignment: !!exportData.assignmentTitle,
+      duration: exportData.duration,
+      transcriptLength: cleanedTranscript.length,
+      hasGrading: !!gradingResult,
+      isAssignment: !!exportData.assignmentId,
+    })
     
-    // Set font
-    doc.setFont('helvetica')
-    
-    // Title
-    doc.setFontSize(18)
-    doc.text('Call Transcript', 20, 30)
-    
-    // Basic session info
-    doc.setFontSize(10)
-    let yPos = 45
-    doc.text(`Template: ${exportData.templateTitle}`, 20, yPos)
-    yPos += 8
-    doc.text(`Date: ${exportData.startTime.toLocaleDateString()} | Duration: ${Math.floor(exportData.duration / 60)}m ${exportData.duration % 60}s`, 20, yPos)
-    
-    // Add assignment info if this is an assignment
-    if (exportData.assignmentId && exportData.assignmentTitle) {
-      yPos += 8
-      doc.text(`Assignment: ${exportData.assignmentTitle}`, 20, yPos)
-    }
-    
-    yPos += 20
+    const pdfElement = React.createElement(TranscriptReportDocument, {
+      templateTitle: exportData.templateTitle || 'Training Session',
+      templateDescription: exportData.templateDescription || '',
+      assignmentTitle: exportData.assignmentTitle || '',
+      startTime: exportData.startTime,
+      endTime: exportData.endTime,
+      duration: exportData.duration,
+      cleanedTranscript,
+      gradingResult: gradingResult || undefined,
+      isAssignment: !!exportData.assignmentId,
+    })
 
-    // Clean conversation transcript
-    doc.setFontSize(12)
-    doc.text('Conversation', 20, yPos)
-    yPos += 15
+    console.log('PDF element created, starting render...')
+
+    // Generate PDF stream and convert to buffer
+    const chunks: Buffer[] = []
+    const stream = await renderToStream(pdfElement as any)
     
-    doc.setFontSize(10)
+    console.log('Stream created, collecting chunks...')
     
-    // Split the cleaned transcript into lines and format
-    const conversationLines = cleanedTranscript.split('\n').filter(line => line.trim() !== '')
+    await new Promise<void>((resolve, reject) => {
+      stream.on('data', (chunk: Buffer) => {
+        chunks.push(chunk)
+        console.log(`Received chunk: ${chunk.length} bytes`)
+      })
+      stream.on('end', () => {
+        console.log('Stream ended successfully')
+        resolve()
+      })
+      stream.on('error', (error: Error) => {
+        console.error('Stream error:', error)
+        reject(error)
+      })
+    })
     
-    for (const line of conversationLines) {
-      if (yPos > 270) {
-        doc.addPage()
-        yPos = 20
-      }
-      
-      // Check if line starts with speaker name
-      if (line.startsWith('You:') || line.startsWith('AI Customer:')) {
-        const [speaker, ...messageParts] = line.split(':')
-        const message = messageParts.join(':').trim()
-        
-        // Speaker name in bold
-        doc.setFont('helvetica', 'bold')
-        doc.text(`${speaker}:`, 20, yPos)
-        yPos += 7
-        
-        // Message text
-        doc.setFont('helvetica', 'normal')
-        const splitText = doc.splitTextToSize(message, 170)
-        doc.text(splitText, 25, yPos)
-        yPos += splitText.length * 5 + 8
-      } else {
-        // Handle any other formatting
-        const splitText = doc.splitTextToSize(line, 170)
-        doc.text(splitText, 20, yPos)
-        yPos += splitText.length * 5 + 5
-      }
-    }
-    
-    // Add grading report if this is an assignment with rubric
-    if (gradingResult && exportData.assignmentId) {
-      // Add new page for grading report
-      doc.addPage()
-      yPos = 20
-      
-      // Grading Report Title
-      doc.setFontSize(16)
-      doc.text('Grading Report', 20, yPos)
-      yPos += 20
-      
-      // Overall Score
-      doc.setFontSize(12)
-      doc.text(`Overall Score: ${gradingResult.totalScore}/${gradingResult.maxPossibleScore} (${Math.round((gradingResult.totalScore / gradingResult.maxPossibleScore) * 100)}%)`, 20, yPos)
-      yPos += 15
-      
-      // Individual Criteria Grades
-      doc.setFontSize(14)
-      doc.text('Detailed Evaluation:', 20, yPos)
-      yPos += 15
-      
-      doc.setFontSize(10)
-      
-      for (const criteria of gradingResult.criteriaGrades) {
-        // Check if we need a new page
-        if (yPos > 250) {
-          doc.addPage()
-          yPos = 20
-        }
-        
-        // Criteria title and score
-        doc.setFont('helvetica', 'bold')
-        doc.text(`${criteria.title}: ${criteria.earnedPoints}/${criteria.maxPoints} points`, 20, yPos)
-        yPos += 8
-        
-        // Criteria description
-        doc.setFont('helvetica', 'normal')
-        const descriptionLines = doc.splitTextToSize(`Description: ${criteria.description}`, 170)
-        doc.text(descriptionLines, 20, yPos)
-        yPos += descriptionLines.length * 5 + 5
-        
-        // Evidence from transcript
-        if (criteria.evidence && criteria.evidence.length > 0) {
-          doc.setFont('helvetica', 'bold')
-          doc.text('Evidence from transcript:', 20, yPos)
-          yPos += 8
-          
-          doc.setFont('helvetica', 'normal')
-          for (const evidence of criteria.evidence) {
-            const evidenceLines = doc.splitTextToSize(`• "${evidence}"`, 160)
-            doc.text(evidenceLines, 25, yPos)
-            yPos += evidenceLines.length * 5 + 3
-          }
-        }
-        
-        // Reasoning
-        doc.setFont('helvetica', 'bold')
-        doc.text('Evaluation reasoning:', 20, yPos)
-        yPos += 8
-        
-        doc.setFont('helvetica', 'normal')
-        const reasoningLines = doc.splitTextToSize(criteria.reasoning, 170)
-        doc.text(reasoningLines, 20, yPos)
-        yPos += reasoningLines.length * 5 + 10
-      }
-    }
-    
-    // Generate PDF buffer
-    const pdfBuffer = Buffer.from(doc.output('arraybuffer'))
+    const pdfBuffer = Buffer.concat(chunks)
+    console.log(`PDF generated successfully: ${pdfBuffer.length} bytes`)
 
     // Set response headers for PDF download
     const filename = `training-session-${exportData.templateTitle.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`
