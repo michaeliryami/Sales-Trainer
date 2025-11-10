@@ -22,7 +22,7 @@ const app = express()
 // Configure CORS based on environment
 const corsOptions = {
   origin: config.corsOrigins.length > 0 
-    ? config.corsOrigins 
+    ? (config.corsOrigins.includes('*') ? '*' : config.corsOrigins) // Handle wildcard specially
     : config.isDevelopment 
       ? '*' // Allow all in dev if no origins specified
       : false, // Reject all in prod if no origins specified
