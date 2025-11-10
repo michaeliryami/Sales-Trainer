@@ -117,6 +117,10 @@ function App() {
         alignItems="center"
         justifyContent="center"
         w="100vw"
+        sx={{
+          backgroundImage: 'radial-gradient(rgba(242, 111, 37, 0.35) 1.5px, transparent 1.5px)',
+          backgroundSize: '40px 40px',
+        }}
       >
         {/* Background gradient orb */}
         <Box
