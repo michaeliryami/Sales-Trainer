@@ -90,7 +90,8 @@ router.get('/admin/:orgId', async (req, res) => {
             } : null;
         }).filter(Boolean).sort((a, b) => b.sessions - a.sessions).slice(0, 5);
         const recentSessionsData = sessions
-            ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            ?.filter(s => s.assignment_id !== null && s.submitted_for_review === true)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             .slice(0, 10) || [];
         const recentSessionUserIds = recentSessionsData.map(s => s.user_id);
         const metricsUserIds = userMetrics?.map(m => m.user_id) || [];
