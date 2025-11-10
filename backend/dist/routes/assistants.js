@@ -98,6 +98,30 @@ router.post('/:id/call', async (req, res) => {
         });
     }
 });
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id: assistantId } = req.params;
+        if (!assistantId) {
+            res.status(400).json({
+                error: 'Assistant ID is required'
+            });
+            return;
+        }
+        console.log('Deleting assistant:', assistantId);
+        await vapi_1.vapiService.deleteAssistant(assistantId);
+        res.status(200).json({
+            success: true,
+            message: 'Assistant deleted successfully'
+        });
+    }
+    catch (error) {
+        console.error('Error in DELETE /api/assistants/:id:', error);
+        res.status(500).json({
+            error: 'Failed to delete assistant',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
 exports.default = router;
 router.get('/call/:callId', async (req, res) => {
     try {

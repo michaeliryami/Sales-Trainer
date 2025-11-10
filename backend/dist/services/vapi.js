@@ -307,10 +307,6 @@ Customer: Says they guess but won't sign anything today`
                     ],
                     temperature: 0.3
                 },
-                voice: {
-                    provider: "11labs",
-                    voiceId: "sarah"
-                },
                 firstMessage: this.generateFirstMessage('customer', template.type)
             };
             const response = await axios_1.default.post(`${this.baseUrl}/assistant`, assistantData, { headers: this.getHeaders() });
@@ -343,10 +339,6 @@ Customer: Says they guess but won't sign anything today`
                         }
                     ],
                     temperature: 0.3
-                },
-                voice: {
-                    provider: "11labs",
-                    voiceId: "sarah"
                 },
                 firstMessage: this.generateFirstMessage(templateConfig.persona, templateConfig.insuranceType)
             };
@@ -411,6 +403,19 @@ Customer: Says they guess but won't sign anything today`
                 throw new Error(`VAPI API Error: ${error.response.data?.message || error.message}`);
             }
             throw new Error('Failed to fetch call details');
+        }
+    }
+    async deleteAssistant(assistantId) {
+        try {
+            console.log('🗑️  Deleting VAPI assistant:', assistantId);
+            await axios_1.default.delete(`${this.baseUrl}/assistant/${assistantId}`, { headers: this.getHeaders() });
+            console.log('✅ Assistant deleted successfully');
+        }
+        catch (error) {
+            console.error('Error deleting VAPI assistant:', error);
+            if (error.response) {
+                console.error('VAPI API Error Response:', error.response.data);
+            }
         }
     }
 }

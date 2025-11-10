@@ -100,6 +100,7 @@ function CreateSession() {
   }>>([])
   const [scriptText, setScriptText] = useState<string>('')
   const [activeCallId, setActiveCallId] = useState<string | null>(null)
+  const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const toast = useToast()
@@ -515,7 +516,12 @@ function CreateSession() {
       }
 
       const data = await response.json()
-      console.log('Assistant updated:', data.assistant)
+      console.log('Assistant created:', data.assistant)
+      
+      // Store assistant ID for cleanup later
+      if (data.assistant?.id) {
+        setActiveAssistantId(data.assistant.id)
+      }
 
       // Initialize VAPI web client and start call directly
       if (!vapiRef.current && vapiPublicKey) {
@@ -770,7 +776,23 @@ function CreateSession() {
               console.warn('Error fetching finalized transcript:', err)
             }
           }
+          
+          // Clean up: delete the assistant
+          if (activeAssistantId) {
+            try {
+              console.log('🗑️  Cleaning up assistant:', activeAssistantId)
+              await apiFetch(`/api/assistants/${activeAssistantId}`, {
+                method: 'DELETE'
+              })
+              console.log('✅ Assistant cleaned up successfully')
+            } catch (deleteError) {
+              console.warn('Error deleting assistant:', deleteError)
+              // Don't throw - cleanup failures shouldn't break the flow
+            }
+          }
+          
           setActiveCallId(null)
+          setActiveAssistantId(null)
         })
 
         vapiRef.current.on('message', (message: any) => {
