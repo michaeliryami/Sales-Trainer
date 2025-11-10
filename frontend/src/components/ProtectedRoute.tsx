@@ -11,6 +11,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, loading } = useAuth()
   const location = useLocation()
 
+  // CRITICAL: Wait for auth to fully load before making any redirect decisions
   if (loading) {
     return (
       <Box 
@@ -30,8 +31,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     )
   }
 
+  // Only redirect to auth if we're certain there's no user
   if (!user) {
-    // Redirect to auth page but remember where they were trying to go
     return <Navigate to="/auth" state={{ from: location }} replace />
   }
 

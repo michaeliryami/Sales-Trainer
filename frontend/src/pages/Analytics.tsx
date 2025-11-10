@@ -45,7 +45,8 @@ import {
   Calendar,
   Activity,
   Zap,
-  FileDown
+  FileDown,
+  RefreshCw
 } from 'lucide-react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useProfile } from '../contexts/ProfileContext'
@@ -56,8 +57,10 @@ const Analytics: React.FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [timeRange, setTimeRange] = useState('7d')
   const [analyticsData, setAnalyticsData] = useState<any>(null)
+  const [lastFetch, setLastFetch] = useState<number>(0)
   const [selectedSession, setSelectedSession] = useState<any>(null)
   const [sessionGrade, setSessionGrade] = useState<any>(null)
   const [loadingGrade, setLoadingGrade] = useState(false)
@@ -67,6 +70,9 @@ const Analytics: React.FC = () => {
   const [criteriaOverrides, setCriteriaOverrides] = useState<{[key: number]: {score: number, reasoning: string, evidence: string}}>({})
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const toast = useToast()
+  
+  // Cache TTL: 2 minutes
+  const CACHE_TTL = 2 * 60 * 1000
   
   // Get assignment filter from URL
   useEffect(() => {
@@ -95,35 +101,51 @@ const Analytics: React.FC = () => {
   const headerBg = useColorModeValue('white', 'gray.800')
   const accentColor = useColorModeValue('#f26f25', '#ff7d31')
 
-  // Fetch real analytics data from API
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      if (!organization?.id) return
-      
+  // Fetch real analytics data from API with caching
+  const fetchAnalytics = async (isBackground = false) => {
+    if (!organization?.id) return
+    
+    // If background refresh, don't show loading spinner
+    if (!isBackground) {
       setLoading(true)
-      try {
-        const response = await fetch(`/api/analytics/admin/${organization.id}?period=${timeRange}`)
-        const result = await response.json()
-        
-        if (result.success) {
-          setAnalyticsData(result.data)
-        } else {
-          console.error('Failed to fetch analytics:', result.error)
-          // Set empty data on error
-          setAnalyticsData({
-            totalSessions: 0,
-            totalUsers: 0,
-            avgSessionDuration: 0,
-            completionRate: 0,
-            avgScore: 0,
-            topTemplates: [],
-            recentSessions: [],
-            topPerformers: [],
-            weeklyTrends: { sessions: [], completion: [] }
-          })
+    } else {
+      setRefreshing(true)
+    }
+    
+    try {
+      const cacheKey = `analytics_${organization.id}_${timeRange}`
+      const now = Date.now()
+      
+      // Check cache first (only for initial load, not background refresh)
+      if (!isBackground) {
+        const cached = localStorage.getItem(cacheKey)
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached)
+          if (now - timestamp < CACHE_TTL) {
+            console.log('Loading analytics from cache')
+            setAnalyticsData(data)
+            setLastFetch(timestamp)
+            setLoading(false)
+            return
+          }
         }
-      } catch (error) {
-        console.error('Error fetching analytics:', error)
+      }
+      
+      // Fetch fresh data
+      const response = await fetch(`/api/analytics/admin/${organization.id}?period=${timeRange}`)
+      const result = await response.json()
+      
+      if (result.success) {
+        setAnalyticsData(result.data)
+        setLastFetch(now)
+        
+        // Update cache
+        localStorage.setItem(cacheKey, JSON.stringify({
+          data: result.data,
+          timestamp: now
+        }))
+      } else {
+        console.error('Failed to fetch analytics:', result.error)
         // Set empty data on error
         setAnalyticsData({
           totalSessions: 0,
@@ -136,13 +158,43 @@ const Analytics: React.FC = () => {
           topPerformers: [],
           weeklyTrends: { sessions: [], completion: [] }
         })
-      } finally {
-        setLoading(false)
       }
+    } catch (error) {
+      console.error('Error fetching analytics:', error)
+      // Set empty data on error
+      setAnalyticsData({
+        totalSessions: 0,
+        totalUsers: 0,
+        avgSessionDuration: 0,
+        completionRate: 0,
+        avgScore: 0,
+        topTemplates: [],
+        recentSessions: [],
+        topPerformers: [],
+        weeklyTrends: { sessions: [], completion: [] }
+      })
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
     }
+  }
 
+  // Initial fetch
+  useEffect(() => {
     fetchAnalytics()
   }, [timeRange, organization])
+  
+  // Background refresh every 2 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (organization?.id && analyticsData) {
+        console.log('Background refresh analytics...')
+        fetchAnalytics(true)
+      }
+    }, CACHE_TTL)
+    
+    return () => clearInterval(interval)
+  }, [organization, timeRange, analyticsData])
 
   // Fetch grade details when session is selected
   const fetchSessionGrade = async (sessionId: number) => {
@@ -402,22 +454,36 @@ const Analytics: React.FC = () => {
                     fontSize="sm" 
                     color={useColorModeValue('gray.600', 'gray.400')}
                   >
-                    Training performance and insights
+                    {lastFetch > 0 && (
+                      <>Last updated {new Date(lastFetch).toLocaleTimeString()}</>
+                    )}
                   </Text>
                 </VStack>
-                <Select
-                  value={timeRange}
-                  onChange={(e) => setTimeRange(e.target.value)}
-                  size="sm"
-                  bg={cardBg}
-                  borderColor={borderColor}
-                  borderRadius="xl"
-                  w="120px"
-                >
-                  <option value="7d">Last 7 days</option>
-                  <option value="30d">Last 30 days</option>
-                  <option value="90d">Last 90 days</option>
-                </Select>
+                <HStack spacing={2}>
+                  <Button
+                    leftIcon={<Icon as={RefreshCw} boxSize={4} />}
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => fetchAnalytics()}
+                    isLoading={refreshing}
+                    loadingText="Refreshing..."
+                  >
+                    Refresh
+                  </Button>
+                  <Select
+                    value={timeRange}
+                    onChange={(e) => setTimeRange(e.target.value)}
+                    size="sm"
+                    bg={cardBg}
+                    borderColor={borderColor}
+                    borderRadius="xl"
+                    w="120px"
+                  >
+                    <option value="7d">Last 7 days</option>
+                    <option value="30d">Last 30 days</option>
+                    <option value="90d">Last 90 days</option>
+                  </Select>
+                </HStack>
               </Flex>
             </Box>
 

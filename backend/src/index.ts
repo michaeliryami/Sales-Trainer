@@ -3,14 +3,6 @@ import dotenv from 'dotenv'
 import path from 'path'
 dotenv.config({ path: path.resolve(__dirname, '../.env') })
 
-// Debug environment loading
-console.log('Environment variables loaded:', {
-  SUPABASE_URL: process.env.SUPABASE_URL ? 'Set' : 'Missing',
-  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'Set' : 'Missing',
-  VAPI_API_KEY: process.env.VAPI_API_KEY ? 'Set' : 'Missing',
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'Set' : 'Missing'
-})
-
 import express from 'express'
 import cors from 'cors'
 import runsRouter from './routes/runs'

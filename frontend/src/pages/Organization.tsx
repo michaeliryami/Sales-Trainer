@@ -33,7 +33,11 @@ import {
   FormControl,
   FormLabel,
   FormErrorMessage,
-  SimpleGrid
+  SimpleGrid,
+  Radio,
+  RadioGroup,
+  Stack,
+  Portal
 } from '@chakra-ui/react'
 import { Users, UserPlus, Mail, Shield, Edit2, Trash2, MoreVertical } from 'lucide-react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
@@ -55,6 +59,7 @@ const Organization: React.FC = () => {
   // Invite modal state
   const { isOpen: isInviteOpen, onOpen: onInviteOpen, onClose: onInviteClose } = useDisclosure()
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'admin' | 'employee'>('employee')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState('')
   
@@ -90,11 +95,11 @@ const Organization: React.FC = () => {
 
           console.log('Organization users fetched:', data)
           
-          // Sort users to show admin first
+          // Sort users to show admins first, then by created_at
           const sortedUsers = (data || []).sort((a, b) => {
-            // Admin user comes first
-            if (a.id === organization.admin) return -1
-            if (b.id === organization.admin) return 1
+            // Admins come first
+            if (a.role === 'admin' && b.role !== 'admin') return -1
+            if (a.role !== 'admin' && b.role === 'admin') return 1
             // Then sort by created_at
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           })
@@ -188,10 +193,7 @@ const Organization: React.FC = () => {
   }, [organization, profileLoading])
 
   const getUserRole = (user: Profile) => {
-    if (organization?.admin === user.id) {
-      return 'Admin'
-    }
-    return 'Member'
+    return user.role === 'admin' ? 'Admin' : 'Rep'
   }
 
   const getUserStatus = () => {
@@ -214,7 +216,8 @@ const Organization: React.FC = () => {
         body: JSON.stringify({
           email: inviteEmail.trim(),
           organizationId: organization.id,
-          adminUserId: profile.id
+          adminUserId: profile.id,
+          role: inviteRole
         }),
       })
 
@@ -228,7 +231,7 @@ const Organization: React.FC = () => {
       // Success
       toast({
         title: 'User Invited',
-        description: `Successfully invited ${inviteEmail}`,
+        description: `Successfully invited ${inviteEmail} as ${inviteRole === 'admin' ? 'Admin' : 'Rep'}`,
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -236,6 +239,7 @@ const Organization: React.FC = () => {
 
       // Clear form and close modal
       setInviteEmail('')
+      setInviteRole('employee')
       onInviteClose()
       
       // Refresh the users list
@@ -295,6 +299,113 @@ const Organization: React.FC = () => {
       toast({
         title: 'Error',
         description: 'Failed to remove invitation. Please try again.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    }
+  }
+
+  const handleRemoveUser = async (userId: string) => {
+    if (!organization || !profile) return
+
+    try {
+      const response = await fetch('/api/invites/user', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
+          organizationId: organization.id,
+          adminUserId: profile.id
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to remove user',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        })
+        return
+      }
+
+      // Success
+      toast({
+        title: 'User Removed',
+        description: `Successfully removed user from organization`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+      
+      // Refresh the users list
+      await fetchOrganizationUsers()
+
+    } catch (error) {
+      console.error('Error removing user:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to remove user. Please try again.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    }
+  }
+
+  const handleChangeRole = async (userId: string, newRole: 'admin' | 'employee') => {
+    if (!organization || !profile) return
+
+    try {
+      const response = await fetch('/api/invites/role', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
+          organizationId: organization.id,
+          adminUserId: profile.id,
+          newRole: newRole
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to update user role',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        })
+        return
+      }
+
+      // Success
+      toast({
+        title: 'Role Updated',
+        description: `Successfully ${newRole === 'admin' ? 'promoted user to admin' : 'changed user to employee'}`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+      
+      // Refresh the users list
+      await fetchOrganizationUsers()
+
+    } catch (error) {
+      console.error('Error changing user role:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to update user role. Please try again.',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -440,7 +551,7 @@ const Organization: React.FC = () => {
                       id: email,
                       display_name: email.split('@')[0], // Use email prefix as display name
                       email: email,
-                      role: 'Member',
+                      role: 'Rep',
                       status: 'Pending',
                       user: null
                     })),
@@ -450,7 +561,7 @@ const Organization: React.FC = () => {
                       id: email,
                       display_name: email.split('@')[0], // Use email prefix as display name
                       email: email,
-                      role: 'Member',
+                      role: 'Rep',
                       status: 'Accepted',
                       user: null
                     }))
@@ -489,7 +600,7 @@ const Organization: React.FC = () => {
                             
                             <HStack spacing={2}>
                               <Badge 
-                                colorScheme={item.role === 'Admin' ? 'red' : 'blue'} 
+                                colorScheme={item.role === 'Admin' ? 'orange' : 'blue'} 
                                 variant="subtle"
                                 size="sm"
                                 borderRadius="full"
@@ -527,34 +638,36 @@ const Organization: React.FC = () => {
                                 size="sm"
                                 aria-label="User actions"
                               />
-                              <MenuList>
+                              <Portal>
+                                <MenuList>
                                 {item.type === 'user' ? (
                                   <>
-                                    <MenuItem icon={<Icon as={Edit2} />}>
-                                      Edit Role
-                                    </MenuItem>
-                                    <MenuItem icon={<Icon as={Mail} />}>
-                                      Resend Invite
-                                    </MenuItem>
+                                    {item.role === 'Rep' && (
+                                      <MenuItem 
+                                        icon={<Icon as={Shield} />}
+                                        onClick={() => item.user && handleChangeRole(item.user.id, 'admin')}
+                                      >
+                                        Promote to Admin
+                                      </MenuItem>
+                                    )}
                                     {item.user?.id !== profile?.id && (
-                                      <MenuItem icon={<Icon as={Trash2} />} color="red.500">
+                                      <MenuItem 
+                                        icon={<Icon as={Trash2} />} 
+                                        color="red.500"
+                                        onClick={() => item.user && handleRemoveUser(item.user.id)}
+                                      >
                                         Remove User
                                       </MenuItem>
                                     )}
                                   </>
                                 ) : item.type === 'accepted' ? (
-                                  <>
-                                    <MenuItem icon={<Icon as={Mail} />}>
-                                      Move to Organization
-                                    </MenuItem>
-                                    <MenuItem 
-                                      icon={<Icon as={Trash2} />} 
-                                      color="red.500"
-                                      onClick={() => handleRemoveInvite(item.email)}
-                                    >
-                                      Remove Invitation
-                                    </MenuItem>
-                                  </>
+                                  <MenuItem 
+                                    icon={<Icon as={Trash2} />} 
+                                    color="red.500"
+                                    onClick={() => handleRemoveInvite(item.email)}
+                                  >
+                                    Remove Invitation
+                                  </MenuItem>
                                 ) : (
                                   <MenuItem 
                                     icon={<Icon as={Trash2} />} 
@@ -564,7 +677,8 @@ const Organization: React.FC = () => {
                                     Cancel Invitation
                                   </MenuItem>
                                 )}
-                              </MenuList>
+                                </MenuList>
+                              </Portal>
                             </Menu>
                           )}
                         </Flex>
@@ -696,7 +810,7 @@ const Organization: React.FC = () => {
                       
                       <Box textAlign="center" p={3} bg={useColorModeValue('gray.50', 'gray.700')} borderRadius="md">
                         <Text fontSize="2xl" fontWeight="bold" color={useColorModeValue('gray.900', 'white')}>
-                          {orgUsers.filter(user => getUserRole(user) === 'Admin').length}
+                          {orgUsers.filter(user => user.role === 'admin').length}
                         </Text>
                         <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.300')}>
                           Admins
@@ -705,10 +819,10 @@ const Organization: React.FC = () => {
                       
                       <Box textAlign="center" p={3} bg={useColorModeValue('gray.50', 'gray.700')} borderRadius="md">
                         <Text fontSize="2xl" fontWeight="bold" color={useColorModeValue('gray.900', 'white')}>
-                          {orgUsers.filter(user => getUserRole(user) === 'Member').length}
+                          {orgUsers.filter(user => user.role === 'employee').length}
                         </Text>
                         <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.300')}>
-                          Members
+                          Reps
                         </Text>
                       </Box>
                     </SimpleGrid>
@@ -810,29 +924,6 @@ const Organization: React.FC = () => {
                           )}
                         </HStack>
                       </Box>
-                      
-                      <Box p={4} bg={useColorModeValue('gray.50/50', 'gray.800/50')} borderRadius="xl" border="1px solid" borderColor={borderColor}>
-                        <HStack justify="space-between" align="center">
-                          <Box>
-                            <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
-                              Billing Plan
-                            </Text>
-                            <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
-                              Professional - $99/month
-                            </Text>
-                          </Box>
-                          {userRole.isAdmin && (
-                            <Button 
-                              size="xs" 
-                              variant="outline"
-                              borderRadius="lg"
-                              _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }}
-                            >
-                              Manage
-                            </Button>
-                          )}
-                        </HStack>
-                      </Box>
                     </VStack>
                   </CardBody>
                 </Card>
@@ -849,26 +940,53 @@ const Organization: React.FC = () => {
           <ModalHeader>Invite User to {organization?.name}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <FormControl isInvalid={!!inviteError}>
-              <FormLabel>Email Address</FormLabel>
-              <Input
-                type="email"
-                placeholder="Enter email address"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !inviteLoading) {
-                    handleInviteUser()
-                  }
-                }}
-              />
-              {inviteError && (
-                <FormErrorMessage>{inviteError}</FormErrorMessage>
-              )}
-            </FormControl>
-            <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')} mt={2}>
-              The user will receive an email invitation and will be able to sign up using this email address.
-            </Text>
+            <VStack spacing={4} align="stretch">
+              <FormControl isInvalid={!!inviteError}>
+                <FormLabel>Email Address</FormLabel>
+                <Input
+                  type="email"
+                  placeholder="Enter email address"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !inviteLoading) {
+                      handleInviteUser()
+                    }
+                  }}
+                />
+                {inviteError && (
+                  <FormErrorMessage>{inviteError}</FormErrorMessage>
+                )}
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>Role</FormLabel>
+                <RadioGroup value={inviteRole} onChange={(val) => setInviteRole(val as 'admin' | 'employee')}>
+                  <Stack spacing={3}>
+                    <Radio value="employee" colorScheme="orange">
+                      <HStack spacing={2}>
+                        <Text fontWeight="500">Rep</Text>
+                        <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+                          - Can take calls and view their own performance
+                        </Text>
+                      </HStack>
+                    </Radio>
+                    <Radio value="admin" colorScheme="orange">
+                      <HStack spacing={2}>
+                        <Text fontWeight="500">Admin</Text>
+                        <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+                          - Full access to manage team and assignments
+                        </Text>
+                      </HStack>
+                    </Radio>
+                  </Stack>
+                </RadioGroup>
+              </FormControl>
+              
+              <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+                The user will receive an email invitation and will be able to sign up using this email address.
+              </Text>
+            </VStack>
           </ModalBody>
 
           <ModalFooter>

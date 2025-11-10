@@ -117,8 +117,9 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
 
   if (success) {
     return (
-      <Card bg={cardBg} border="1px solid" borderColor={borderColor} shadow="lg" maxW="400px" w="full">
-        <CardBody p={8}>
+      <Box maxW="440px" mx="auto" w="full">
+        <Card bg={cardBg} border="1px solid" borderColor={borderColor} shadow="lg">
+          <CardBody p={8}>
           <VStack spacing={6} align="stretch" textAlign="center">
             <Icon as={MailCheck} boxSize={16} color="#f26f25" mx="auto" />
             <Box>
@@ -140,14 +141,16 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
               Back to Sign In
             </Button>
           </VStack>
-        </CardBody>
-      </Card>
+          </CardBody>
+        </Card>
+      </Box>
     )
   }
 
   return (
-    <Card bg={cardBg} border="1px solid" borderColor={borderColor} shadow="lg" maxW="400px" w="full">
-      <CardBody p={8}>
+    <Box maxW="440px" mx="auto" w="full">
+      <Card bg={cardBg} border="1px solid" borderColor={borderColor} shadow="lg">
+        <CardBody p={8}>
         <VStack spacing={6} align="stretch">
           {/* Header */}
           <Box textAlign="center">
@@ -389,8 +392,9 @@ const SignUp: React.FC<SignUpProps> = ({ onToggleMode }) => {
             </Text>
           </Box>
         </VStack>
-      </CardBody>
-    </Card>
+        </CardBody>
+      </Card>
+    </Box>
   )
 }
 

@@ -4,6 +4,7 @@ export interface Profile {
   email: string
   created_at: string
   org: number // int8 - references organization ID
+  role: 'admin' | 'employee' // user role within organization
 }
 
 export interface Organization {

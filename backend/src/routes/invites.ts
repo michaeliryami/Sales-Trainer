@@ -3,6 +3,19 @@ import { supabase } from '../config/supabase'
 
 const router = express.Router()
 
+// Check if user is an admin of the organization
+async function isUserAdmin(userId: string, organizationId: number): Promise<boolean> {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('role, org')
+    .eq('id', userId)
+    .eq('org', organizationId)
+    .single()
+  
+  if (error || !profile) return false
+  return profile.role === 'admin'
+}
+
 // Validate if an email is invited to any organization
 router.post('/validate', async (req, res) => {
   try {
@@ -17,7 +30,7 @@ router.post('/validate', async (req, res) => {
     // Get all organizations and check if email is in any users list
     const { data: organizations, error } = await supabase
       .from('organizations')
-      .select('id, name, users')
+      .select('id, name, users, invited_roles')
 
     if (error) {
       console.error('Error fetching organizations:', error)
@@ -42,10 +55,16 @@ router.post('/validate', async (req, res) => {
           // Check if the email exists in this organization's users list
           if (usersList.includes(email)) {
             console.log(`Email ${email} found in organization ${org.name} (ID: ${org.id})`)
+            
+            // Get the invited role for this email, default to 'employee'
+            const invitedRoles = org.invited_roles || {}
+            const role = invitedRoles[email] || 'employee'
+            
             return res.json({
               valid: true,
               organizationId: org.id,
-              organizationName: org.name
+              organizationName: org.name,
+              role: role
             })
           }
         } catch (parseError) {
@@ -67,18 +86,27 @@ router.post('/validate', async (req, res) => {
 // Invite a user to an organization
 router.post('/invite', async (req, res) => {
   try {
-    const { email, organizationId, adminUserId } = req.body
+    const { email, organizationId, adminUserId, role = 'employee' } = req.body
 
     if (!email || !organizationId || !adminUserId) {
       return res.status(400).json({ error: 'Email, organization ID, and admin user ID are required' })
     }
 
-    console.log('Inviting user:', { email, organizationId, adminUserId })
+    if (!['admin', 'employee'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Must be admin or employee' })
+    }
+
+    console.log('Inviting user:', { email, organizationId, adminUserId, role })
 
     // First, verify that the requesting user is an admin of the organization
+    const isAdmin = await isUserAdmin(adminUserId, organizationId)
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Only organization admins can invite users' })
+    }
+
     const { data: organization, error: orgError } = await supabase
       .from('organizations')
-      .select('admin, users')
+      .select('users')
       .eq('id', organizationId)
       .single()
 
@@ -89,11 +117,6 @@ router.post('/invite', async (req, res) => {
 
     if (!organization) {
       return res.status(404).json({ error: 'Organization not found' })
-    }
-
-    // Check if the requesting user is the admin
-    if (organization.admin !== adminUserId) {
-      return res.status(403).json({ error: 'Only organization admins can invite users' })
     }
 
     // Parse existing users list - PostgreSQL returns arrays directly
@@ -127,10 +150,18 @@ router.post('/invite', async (req, res) => {
     usersList.push(email)
     console.log('Updated users list after adding new user:', usersList)
 
-    // Update the organization with the new users list (PostgreSQL array format)
+    // Update invited_roles mapping
+    const invitedRoles = organization.invited_roles || {}
+    invitedRoles[email] = role
+    console.log('Updated invited_roles:', invitedRoles)
+
+    // Update the organization with the new users list and role mapping (PostgreSQL array format)
     const { error: updateError } = await supabase
       .from('organizations')
-      .update({ users: usersList }) // Pass array directly, not JSON string
+      .update({ 
+        users: usersList,
+        invited_roles: invitedRoles
+      })
       .eq('id', organizationId)
 
     if (updateError) {
@@ -138,7 +169,7 @@ router.post('/invite', async (req, res) => {
       return res.status(500).json({ error: 'Failed to invite user' })
     }
 
-    console.log(`Successfully invited ${email} to organization ${organizationId}`)
+    console.log(`Successfully invited ${email} to organization ${organizationId} with role ${role}`)
     return res.json({ 
       success: true, 
       message: `Successfully invited ${email}`,
@@ -163,9 +194,14 @@ router.delete('/invite', async (req, res) => {
     console.log('Removing invite for user:', { email, organizationId, adminUserId })
 
     // First, verify that the requesting user is an admin of the organization
+    const isAdmin = await isUserAdmin(adminUserId, organizationId)
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Only organization admins can remove invitations' })
+    }
+
     const { data: organization, error: orgError } = await supabase
       .from('organizations')
-      .select('admin, users')
+      .select('users, invited_roles')
       .eq('id', organizationId)
       .single()
 
@@ -176,11 +212,6 @@ router.delete('/invite', async (req, res) => {
 
     if (!organization) {
       return res.status(404).json({ error: 'Organization not found' })
-    }
-
-    // Check if the requesting user is the admin
-    if (organization.admin !== adminUserId) {
-      return res.status(403).json({ error: 'Only organization admins can remove invitations' })
     }
 
     // Parse existing users list - PostgreSQL returns arrays directly
@@ -207,10 +238,19 @@ router.delete('/invite', async (req, res) => {
     // Remove the email from the users list
     usersList = usersList.filter(userEmail => userEmail !== email)
 
+    // Also remove from invited_roles mapping if present
+    const invitedRoles = organization.invited_roles || {}
+    if (invitedRoles[email]) {
+      delete invitedRoles[email]
+    }
+
     // Update the organization with the updated users list (PostgreSQL array format)
     const { error: updateError } = await supabase
       .from('organizations')
-      .update({ users: usersList }) // Pass array directly, not JSON string
+      .update({ 
+        users: usersList,
+        invited_roles: invitedRoles
+      })
       .eq('id', organizationId)
 
     if (updateError) {
@@ -228,6 +268,147 @@ router.delete('/invite', async (req, res) => {
   } catch (error) {
     console.error('Error removing invitation:', error)
     return res.status(500).json({ error: 'Failed to remove invitation' })
+  }
+})
+
+// Remove a user from the organization (for existing users with profiles)
+router.delete('/user', async (req, res) => {
+  try {
+    const { userId, organizationId, adminUserId } = req.body
+
+    if (!userId || !organizationId || !adminUserId) {
+      return res.status(400).json({ error: 'User ID, organization ID, and admin user ID are required' })
+    }
+
+    console.log('Removing user from organization:', { userId, organizationId, adminUserId })
+
+    // Verify that the requesting user is an admin
+    const isAdmin = await isUserAdmin(adminUserId, organizationId)
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Only organization admins can remove users' })
+    }
+
+    // Prevent removing yourself
+    if (userId === adminUserId) {
+      return res.status(400).json({ error: 'Cannot remove yourself from the organization' })
+    }
+
+    // Check if this is the last admin
+    const { data: admins, error: adminCheckError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('org', organizationId)
+      .eq('role', 'admin')
+
+    if (adminCheckError) {
+      console.error('Error checking admins:', adminCheckError)
+      return res.status(500).json({ error: 'Failed to check organization admins' })
+    }
+
+    // If removing an admin and they're the last one, prevent it
+    const { data: userToRemove, error: userCheckError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .eq('org', organizationId)
+      .single()
+
+    if (userCheckError) {
+      console.error('Error checking user role:', userCheckError)
+      return res.status(500).json({ error: 'Failed to check user role' })
+    }
+
+    if (userToRemove?.role === 'admin' && admins && admins.length <= 1) {
+      return res.status(400).json({ error: 'Cannot remove the last admin from the organization' })
+    }
+
+    // Remove user by setting their org to null
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ org: null })
+      .eq('id', userId)
+      .eq('org', organizationId)
+
+    if (updateError) {
+      console.error('Error removing user from organization:', updateError)
+      return res.status(500).json({ error: 'Failed to remove user' })
+    }
+
+    console.log(`Successfully removed user ${userId} from organization ${organizationId}`)
+    return res.json({ 
+      success: true, 
+      message: `Successfully removed user from organization`,
+      removedUserId: userId
+    })
+
+  } catch (error) {
+    console.error('Error removing user:', error)
+    return res.status(500).json({ error: 'Failed to remove user' })
+  }
+})
+
+// Update user role (promote to admin or demote to employee)
+router.patch('/role', async (req, res) => {
+  try {
+    const { userId, organizationId, adminUserId, newRole } = req.body
+
+    if (!userId || !organizationId || !adminUserId || !newRole) {
+      return res.status(400).json({ error: 'User ID, organization ID, admin user ID, and new role are required' })
+    }
+
+    if (!['admin', 'employee'].includes(newRole)) {
+      return res.status(400).json({ error: 'Invalid role. Must be admin or employee' })
+    }
+
+    console.log('Updating user role:', { userId, organizationId, adminUserId, newRole })
+
+    // Verify that the requesting user is an admin
+    const isAdmin = await isUserAdmin(adminUserId, organizationId)
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Only organization admins can change user roles' })
+    }
+
+    // If demoting an admin, check if they're the last admin
+    if (newRole === 'employee') {
+      const { data: admins, error: adminCheckError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('org', organizationId)
+        .eq('role', 'admin')
+
+      if (adminCheckError) {
+        console.error('Error checking admins:', adminCheckError)
+        return res.status(500).json({ error: 'Failed to check organization admins' })
+      }
+
+      if (admins && admins.length <= 1) {
+        return res.status(400).json({ error: 'Cannot demote the last admin in the organization' })
+      }
+    }
+
+    // Update the user's role
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ role: newRole })
+      .eq('id', userId)
+      .eq('org', organizationId)
+
+    if (updateError) {
+      console.error('Error updating user role:', updateError)
+      return res.status(500).json({ error: 'Failed to update user role' })
+    }
+
+    console.log(`Successfully updated user ${userId} role to ${newRole}`)
+    return res.json({ 
+      success: true, 
+      message: `Successfully updated user role to ${newRole}`,
+      userId,
+      newRole
+    })
+
+  } catch (error) {
+    console.error('Error updating user role:', error)
+    return res.status(500).json({ error: 'Failed to update user role' })
   }
 })
 

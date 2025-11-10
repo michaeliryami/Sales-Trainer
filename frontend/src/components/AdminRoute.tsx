@@ -8,9 +8,11 @@ interface AdminRouteProps {
 }
 
 const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
-  const { userRole, loading } = useProfile()
+  const { userRole, loading, profile } = useProfile()
 
-  if (loading) {
+  // Show loading while profile is being fetched
+  // CRITICAL: Don't redirect until we're sure profile is loaded
+  if (loading || !profile) {
     return (
       <Box 
         display="flex" 
