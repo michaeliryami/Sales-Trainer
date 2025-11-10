@@ -3,6 +3,9 @@
  * Automatically uses the correct backend URL based on environment
  */
 
+// Store original fetch before any overrides
+const originalFetch = window.fetch
+
 // Get the API base URL
 const getApiBaseUrl = (): string => {
   // In development, use relative URLs (Vite proxy handles it)
@@ -36,17 +39,17 @@ export const getFullApiUrl = (endpoint: string): string => {
 
 /**
  * Enhanced fetch that automatically handles API URLs
- * Drop-in replacement for native fetch()
+ * Uses original fetch to avoid circular reference
  */
 export const apiFetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   // If it's a string that starts with /api/, prepend the base URL
   if (typeof input === 'string' && input.startsWith('/api/')) {
     const fullUrl = getFullApiUrl(input)
-    return fetch(fullUrl, init)
+    return originalFetch(fullUrl, init)
   }
   
-  // Otherwise, use native fetch
-  return fetch(input, init)
+  // Otherwise, use original fetch
+  return originalFetch(input, init)
 }
 
 // Export as default for easy import
