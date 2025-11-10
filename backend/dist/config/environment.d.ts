@@ -9,7 +9,6 @@ export interface AppConfig {
     supabase: {
         url: string;
         anonKey: string;
-        serviceKey: string;
     };
     openai: {
         apiKey: string;

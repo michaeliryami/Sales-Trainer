@@ -15,7 +15,6 @@ export interface AppConfig {
   supabase: {
     url: string
     anonKey: string
-    serviceKey: string
   }
   openai: {
     apiKey: string
@@ -70,7 +69,6 @@ const validateConfig = () => {
   const required = [
     'SUPABASE_URL',
     'SUPABASE_ANON_KEY',
-    'SUPABASE_SERVICE_KEY',
     'OPENAI_API_KEY',
     'VAPI_API_KEY'
   ]
@@ -97,7 +95,6 @@ export const config: AppConfig = {
   supabase: {
     url: process.env.SUPABASE_URL!,
     anonKey: process.env.SUPABASE_ANON_KEY!,
-    serviceKey: process.env.SUPABASE_SERVICE_KEY!,
   },
   openai: {
     apiKey: process.env.OPENAI_API_KEY!,
