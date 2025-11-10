@@ -252,8 +252,8 @@ function App() {
                   style={{ animationDelay: '0.5s' }}
                 >
                   <VStack spacing={1}>
-                    <Text fontSize="2xl" fontWeight="black" color="brand.500">40+</Text>
-                    <Text fontSize="xs" color="gray.600">Templates</Text>
+                    <Icon as={Zap} boxSize={6} color="brand.500" />
+                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Instant Setup</Text>
                   </VStack>
                 </Box>
 
@@ -269,8 +269,8 @@ function App() {
                   style={{ animationDelay: '0.8s' }}
                 >
                   <VStack spacing={1}>
-                    <Text fontSize="2xl" fontWeight="black" color="brand.500">95%</Text>
-                    <Text fontSize="xs" color="gray.600">Win Rate</Text>
+                    <Icon as={Phone} boxSize={6} color="brand.500" />
+                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Voice Training</Text>
                   </VStack>
                 </Box>
 
@@ -286,8 +286,8 @@ function App() {
                   style={{ animationDelay: '1s' }}
                 >
                   <VStack spacing={1}>
-                    <Text fontSize="2xl" fontWeight="black" color="brand.500">24/7</Text>
-                    <Text fontSize="xs" color="gray.600">AI Training</Text>
+                    <Icon as={Target} boxSize={6} color="brand.500" />
+                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Custom Scenarios</Text>
                   </VStack>
                 </Box>
 
@@ -303,8 +303,8 @@ function App() {
                   style={{ animationDelay: '1.5s' }}
                 >
                   <VStack spacing={1}>
-                    <Text fontSize="2xl" fontWeight="black" color="brand.500">∞</Text>
-                    <Text fontSize="xs" color="gray.600">Practice Calls</Text>
+                    <Icon as={Check} boxSize={6} color="brand.500" />
+                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Unlimited Practice</Text>
                   </VStack>
                 </Box>
 
@@ -320,8 +320,42 @@ function App() {
                   style={{ animationDelay: '2s' }}
                 >
                   <VStack spacing={1}>
-                    <Text fontSize="2xl" fontWeight="black" color="brand.500">AI</Text>
-                    <Text fontSize="xs" color="gray.600">Grading</Text>
+                    <Icon as={TrendingUp} boxSize={6} color="brand.500" />
+                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Smart Feedback</Text>
+                  </VStack>
+                </Box>
+
+                <Box
+                  position="absolute"
+                  top="15%"
+                  left="10%"
+                  bg="white"
+                  p={4}
+                  rounded="xl"
+                  boxShadow="xl"
+                  className="float"
+                  style={{ animationDelay: '0.3s' }}
+                >
+                  <VStack spacing={1}>
+                    <Icon as={Users} boxSize={6} color="brand.500" />
+                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Team Management</Text>
+                  </VStack>
+                </Box>
+
+                <Box
+                  position="absolute"
+                  top="60%"
+                  right="5%"
+                  bg="white"
+                  p={4}
+                  rounded="xl"
+                  boxShadow="xl"
+                  className="float"
+                  style={{ animationDelay: '1.2s' }}
+                >
+                  <VStack spacing={1}>
+                    <Icon as={BarChart2} boxSize={6} color="brand.500" />
+                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Real-time Analytics</Text>
                   </VStack>
                 </Box>
 
