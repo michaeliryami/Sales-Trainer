@@ -107,6 +107,16 @@ function App() {
 
   return (
     <Box minH="100vh" bg="white">
+      {/* Logo in top right */}
+      <Box
+        position="fixed"
+        top={6}
+        right={6}
+        zIndex={1000}
+      >
+        <Image src="/logolong.png" alt="Clozone" h="50px" />
+      </Box>
+
       {/* Hero Section - Split Layout */}
       <Box 
         as="section"
@@ -266,23 +276,6 @@ function App() {
 
                 <Box
                   position="absolute"
-                  top="15%"
-                  left="0%"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float"
-                  style={{ animationDelay: '0.3s' }}
-                >
-                  <VStack spacing={1}>
-                    <Text fontSize="2xl" fontWeight="black" color="brand.500">⚡</Text>
-                    <Text fontSize="xs" color="gray.600">Instant Feedback</Text>
-                  </VStack>
-                </Box>
-
-                <Box
-                  position="absolute"
                   bottom="10%"
                   right="10%"
                   bg="white"
@@ -295,23 +288,6 @@ function App() {
                   <VStack spacing={1}>
                     <Text fontSize="2xl" fontWeight="black" color="brand.500">24/7</Text>
                     <Text fontSize="xs" color="gray.600">AI Training</Text>
-                  </VStack>
-                </Box>
-
-                <Box
-                  position="absolute"
-                  bottom="5%"
-                  right="40%"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float"
-                  style={{ animationDelay: '1.3s' }}
-                >
-                  <VStack spacing={1}>
-                    <Text fontSize="2xl" fontWeight="black" color="brand.500">📊</Text>
-                    <Text fontSize="xs" color="gray.600">Analytics</Text>
                   </VStack>
                 </Box>
 
@@ -346,23 +322,6 @@ function App() {
                   <VStack spacing={1}>
                     <Text fontSize="2xl" fontWeight="black" color="brand.500">AI</Text>
                     <Text fontSize="xs" color="gray.600">Grading</Text>
-                  </VStack>
-                </Box>
-
-                <Box
-                  position="absolute"
-                  top="55%"
-                  right="-5%"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float"
-                  style={{ animationDelay: '0.2s' }}
-                >
-                  <VStack spacing={1}>
-                    <Text fontSize="2xl" fontWeight="black" color="brand.500">🎯</Text>
-                    <Text fontSize="xs" color="gray.600">Real Scenarios</Text>
                   </VStack>
                 </Box>
 
