@@ -55,6 +55,7 @@ import { supabase, Template } from '../config/supabase'
 import { useProfile } from '../contexts/ProfileContext'
 import { ALL_BUILT_IN_TEMPLATES, BuiltInTemplate } from '../config/templateLibrary'
 import { useNavigate } from 'react-router-dom'
+import apiFetch from '../utils/api'
 
 interface TemplateFormData {
   title: string
@@ -199,7 +200,7 @@ function Admin() {
     setIsGeneratingScript(true)
 
     try {
-      const response = await fetch('/api/ai/generate-script', {
+      const response = await apiFetch('/api/ai/generate-script', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -266,7 +267,7 @@ function Admin() {
     try {
       if (editingTemplate) {
         // Update existing template
-        const response = await fetch(`/api/templates/${editingTemplate.id}`, {
+        const response = await apiFetch(`/api/templates/${editingTemplate.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -291,7 +292,7 @@ function Admin() {
         setEditingTemplate(null)
       } else {
         // Create new template
-        const response = await fetch('/api/templates', {
+        const response = await apiFetch('/api/templates', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -368,7 +369,7 @@ function Admin() {
     if (!templateToDelete) return
 
     try {
-      const response = await fetch(`/api/templates/${templateToDelete.id}`, {
+      const response = await apiFetch(`/api/templates/${templateToDelete.id}`, {
         method: 'DELETE'
       })
 

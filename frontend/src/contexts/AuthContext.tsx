@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../config/supabase'
+import apiFetch from '../utils/api'
 
 interface AuthContextType {
   user: User | null
@@ -76,7 +77,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Validating invite for email:', email)
       
       // First, validate if the email is invited to any organization
-      const inviteResponse = await fetch('/api/invites/validate', {
+      const inviteResponse = await apiFetch('/api/invites/validate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

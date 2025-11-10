@@ -44,6 +44,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useProfile } from '../contexts/ProfileContext'
 import { supabase } from '../config/supabase'
 import { Profile } from '../types/database'
+import apiFetch from '../utils/api'
 
 const Organization: React.FC = () => {
   const { profile, organization, userRole, loading: profileLoading, refreshOrganization } = useProfile()
@@ -133,7 +134,7 @@ const Organization: React.FC = () => {
               
               // Use backend API to check profiles (bypasses RLS)
               try {
-                const response = await fetch('/api/profiles/check-emails', {
+                const response = await apiFetch('/api/profiles/check-emails', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
@@ -208,7 +209,7 @@ const Organization: React.FC = () => {
     setInviteError('')
 
     try {
-      const response = await fetch('/api/invites/invite', {
+      const response = await apiFetch('/api/invites/invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -257,7 +258,7 @@ const Organization: React.FC = () => {
     if (!organization || !profile) return
 
     try {
-      const response = await fetch('/api/invites/invite', {
+      const response = await apiFetch('/api/invites/invite', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -310,7 +311,7 @@ const Organization: React.FC = () => {
     if (!organization || !profile) return
 
     try {
-      const response = await fetch('/api/invites/user', {
+      const response = await apiFetch('/api/invites/user', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -363,7 +364,7 @@ const Organization: React.FC = () => {
     if (!organization || !profile) return
 
     try {
-      const response = await fetch('/api/invites/role', {
+      const response = await apiFetch('/api/invites/role', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

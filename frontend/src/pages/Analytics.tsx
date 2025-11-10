@@ -51,6 +51,7 @@ import {
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useProfile } from '../contexts/ProfileContext'
 import { useLocation, useNavigate } from 'react-router-dom'
+import apiFetch from '../utils/api'
 
 const Analytics: React.FC = () => {
   const { organization } = useProfile()
@@ -132,7 +133,7 @@ const Analytics: React.FC = () => {
       }
       
       // Fetch fresh data
-      const response = await fetch(`/api/analytics/admin/${organization.id}?period=${timeRange}`)
+      const response = await apiFetch(`/api/analytics/admin/${organization.id}?period=${timeRange}`)
       const result = await response.json()
       
       if (result.success) {
@@ -200,7 +201,7 @@ const Analytics: React.FC = () => {
   const fetchSessionGrade = async (sessionId: number) => {
     setLoadingGrade(true)
     try {
-      const response = await fetch(`/api/analytics/session-grade/${sessionId}`)
+      const response = await apiFetch(`/api/analytics/session-grade/${sessionId}`)
       const result = await response.json()
       
       if (result.success) {
@@ -241,7 +242,7 @@ const Analytics: React.FC = () => {
     setGeneratingPdf(true)
     try {
       // Fetch the full session data from backend
-      const sessionResponse = await fetch(`/api/analytics/session-data/${selectedSession.id}`)
+      const sessionResponse = await apiFetch(`/api/analytics/session-data/${selectedSession.id}`)
       const sessionResult = await sessionResponse.json()
       
       if (!sessionResult.success) {
@@ -276,7 +277,7 @@ const Analytics: React.FC = () => {
         rubricCriteria: sessionGrade.criteria_grades || []
       }
 
-      const response = await fetch('/api/export/transcript-pdf', {
+      const response = await apiFetch('/api/export/transcript-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(exportData)
@@ -302,7 +303,7 @@ const Analytics: React.FC = () => {
         
         // Refresh analytics to get updated pdfUrl
         if (organization?.id) {
-          const response = await fetch(`/api/analytics/admin/${organization.id}?period=${timeRange}`)
+          const response = await apiFetch(`/api/analytics/admin/${organization.id}?period=${timeRange}`)
           const result = await response.json()
           if (result.success) {
             setAnalyticsData(result.data)
@@ -356,7 +357,7 @@ const Analytics: React.FC = () => {
         finalMaxScore = updatedCriteriaGrades.reduce((sum: number, c: any) => sum + (c.maxPoints || 0), 0)
       }
 
-      const response = await fetch('/api/analytics/manual-grade', {
+      const response = await apiFetch('/api/analytics/manual-grade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -384,7 +385,7 @@ const Analytics: React.FC = () => {
         }
         // Refresh entire analytics data to update top performers leaderboard
         if (organization?.id) {
-          const analyticsResponse = await fetch(`/api/analytics/admin/${organization.id}?period=${timeRange}`)
+          const analyticsResponse = await apiFetch(`/api/analytics/admin/${organization.id}?period=${timeRange}`)
           const analyticsResult = await analyticsResponse.json()
           if (analyticsResult.success) {
             setAnalyticsData(analyticsResult.data)

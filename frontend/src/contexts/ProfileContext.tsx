@@ -3,6 +3,7 @@ import { User } from '@supabase/supabase-js'
 import { supabase } from '../config/supabase'
 import { Profile, Organization, UserRole } from '../types/database'
 import { useAuth } from './AuthContext'
+import apiFetch from '../utils/api'
 
 interface ProfileContextType {
   profile: Profile | null
@@ -89,7 +90,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       // Always validate the user's invite to get the correct org ID and role
       if (user.email) {
         try {
-          const response = await fetch('/api/invites/validate', {
+          const response = await apiFetch('/api/invites/validate', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -210,7 +211,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       else if (!userProfile.org && user.email) {
         console.log('Profile exists but org is NULL, checking for invite...')
         try {
-          const response = await fetch('/api/invites/validate', {
+          const response = await apiFetch('/api/invites/validate', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

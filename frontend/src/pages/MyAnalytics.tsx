@@ -33,6 +33,7 @@ import {
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useProfile } from '../contexts/ProfileContext'
 import { useToast } from '@chakra-ui/react'
+import apiFetch from '../utils/api'
 
 const MyAnalytics: React.FC = () => {
   const { profile } = useProfile()
@@ -58,7 +59,7 @@ const MyAnalytics: React.FC = () => {
       
       setLoading(true)
       try {
-        const response = await fetch(`/api/analytics/employee/${profile.id}?period=${timeRange}`)
+        const response = await apiFetch(`/api/analytics/employee/${profile.id}?period=${timeRange}`)
         const result = await response.json()
         
         if (result.success) {
@@ -82,7 +83,7 @@ const MyAnalytics: React.FC = () => {
   const fetchSessionGrade = async (sessionId: number) => {
     setLoadingGrade(true)
     try {
-      const response = await fetch(`/api/analytics/session-grade/${sessionId}`)
+      const response = await apiFetch(`/api/analytics/session-grade/${sessionId}`)
       const result = await response.json()
       
       if (result.success) {
@@ -120,7 +121,7 @@ const MyAnalytics: React.FC = () => {
     setGeneratingPdf(true)
     try {
       // Fetch the full session data from backend
-      const sessionResponse = await fetch(`/api/analytics/session-data/${selectedSession.id}`)
+      const sessionResponse = await apiFetch(`/api/analytics/session-data/${selectedSession.id}`)
       const sessionResult = await sessionResponse.json()
       
       if (!sessionResult.success) {
@@ -155,7 +156,7 @@ const MyAnalytics: React.FC = () => {
         rubricCriteria: sessionGrade.criteria_grades || []
       }
 
-      const response = await fetch('/api/export/transcript-pdf', {
+      const response = await apiFetch('/api/export/transcript-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(exportData)
@@ -181,7 +182,7 @@ const MyAnalytics: React.FC = () => {
         
         // Refresh analytics to get updated pdfUrl
         if (profile?.id) {
-          const response = await fetch(`/api/analytics/employee/${profile.id}?period=${timeRange}`)
+          const response = await apiFetch(`/api/analytics/employee/${profile.id}?period=${timeRange}`)
           const result = await response.json()
           if (result.success) {
             setAnalyticsData(result.data)

@@ -32,6 +32,7 @@ import { supabase, Template } from '../config/supabase'
 import { useProfile } from '../contexts/ProfileContext'
 import { ALL_BUILT_IN_TEMPLATES } from '../config/templateLibrary'
 import { GENERAL_LIFE_INSURANCE_RUBRIC } from '../config/rubricLibrary'
+import apiFetch from '../utils/api'
 
 interface Assignment {
   id: number
@@ -318,7 +319,7 @@ function CreateSession() {
   const fetchAssignmentSessions = async (assignmentId: number, userId: string) => {
     try {
       setIsLoadingSessions(true)
-      const response = await fetch(`/api/assignments/${assignmentId}/sessions/${userId}`)
+      const response = await apiFetch(`/api/assignments/${assignmentId}/sessions/${userId}`)
       
       if (response.ok) {
         const result = await response.json()
@@ -338,7 +339,7 @@ function CreateSession() {
     try {
       setSubmittingSessionId(sessionId)
       
-      const response = await fetch(`/api/analytics/session/${sessionId}/submit`, {
+      const response = await apiFetch(`/api/analytics/session/${sessionId}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       })
@@ -393,7 +394,7 @@ function CreateSession() {
     try {
       console.log(`📝 Updating assignment ${assignmentId} status to: ${status}`)
       
-      const response = await fetch(`/api/assignments/${assignmentId}/status`, {
+      const response = await apiFetch(`/api/assignments/${assignmentId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -493,7 +494,7 @@ function CreateSession() {
       }
       
       // Update VAPI assistant with new persona/settings
-      const response = await fetch('/api/assistants', {
+      const response = await apiFetch('/api/assistants', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -602,7 +603,7 @@ function CreateSession() {
 
               console.log('📤 Sending session data to backend:', sessionData)
               
-              const saveResponse = await fetch('/api/analytics/session', {
+              const saveResponse = await apiFetch('/api/analytics/session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(sessionData)
@@ -642,7 +643,7 @@ function CreateSession() {
                     
                     try {
                     // Call backend to grade the transcript
-                    const gradeResponse = await fetch('/api/analytics/grade-transcript', {
+                    const gradeResponse = await apiFetch('/api/analytics/grade-transcript', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
@@ -694,7 +695,7 @@ function CreateSession() {
           // Try to fetch finalized transcript from backend using call id
           if (activeCallId) {
             try {
-              const res = await fetch(`/api/assistants/call/${activeCallId}`)
+              const res = await apiFetch(`/api/assistants/call/${activeCallId}`)
               if (res.ok) {
                 const data = await res.json()
                 const call = data?.call || {}
@@ -892,7 +893,7 @@ function CreateSession() {
         })
       }
 
-      const response = await fetch('/api/export/transcript-pdf', {
+      const response = await apiFetch('/api/export/transcript-pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1009,7 +1010,7 @@ function CreateSession() {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await fetch('/api/config')
+        const response = await apiFetch('/api/config')
         const config = await response.json()
         setVapiPublicKey(config.vapiPublicKey)
       } catch (error) {
