@@ -239,34 +239,19 @@ function App() {
 
             <GridItem display={{ base: 'none', lg: 'flex' }} justifyContent="center">
               <Box position="relative" className="fade-in-right" w="500px" h="500px">
-                {/* Floating stat badges around logo */}
+                {/* Floating stat badges around logo - arranged in a circle */}
+                {/* Card 1 - Top (0 degrees) */}
                 <Box
                   position="absolute"
-                  top="-8%"
-                  right="-5%"
+                  top="-15%"
+                  left="50%"
+                  transform="translateX(-50%)"
                   bg="white"
                   p={4}
                   rounded="xl"
                   boxShadow="xl"
                   className="float-fade-1"
-                  style={{ animationDelay: '0.5s' }}
-                >
-                  <VStack spacing={1}>
-                    <Icon as={Zap} boxSize={6} color="brand.500" />
-                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Instant Setup</Text>
-                  </VStack>
-                </Box>
-
-                <Box
-                  position="absolute"
-                  top="-12%"
-                  right="30%"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float-fade-2"
-                  style={{ animationDelay: '0.8s' }}
+                  style={{ animationDelay: '0s' }}
                 >
                   <VStack spacing={1}>
                     <Icon as={Phone} boxSize={6} color="brand.500" />
@@ -274,61 +259,11 @@ function App() {
                   </VStack>
                 </Box>
 
+                {/* Card 2 - Top-right (51 degrees) */}
                 <Box
                   position="absolute"
-                  bottom="-5%"
-                  right="-8%"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float-fade-3"
-                  style={{ animationDelay: '1s' }}
-                >
-                  <VStack spacing={1}>
-                    <Icon as={Target} boxSize={6} color="brand.500" />
-                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Custom Scenarios</Text>
-                  </VStack>
-                </Box>
-
-                <Box
-                  position="absolute"
-                  top="28%"
-                  left="-15%"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float-fade-4"
-                  style={{ animationDelay: '1.5s' }}
-                >
-                  <VStack spacing={1}>
-                    <Icon as={Check} boxSize={6} color="brand.500" />
-                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Unlimited Practice</Text>
-                  </VStack>
-                </Box>
-
-                <Box
-                  position="absolute"
-                  bottom="-8%"
-                  left="-5%"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float-fade-1"
-                  style={{ animationDelay: '2s' }}
-                >
-                  <VStack spacing={1}>
-                    <Icon as={TrendingUp} boxSize={6} color="brand.500" />
-                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Smart Feedback</Text>
-                  </VStack>
-                </Box>
-
-                <Box
-                  position="absolute"
-                  top="5%"
-                  left="-10%"
+                  top="-5%"
+                  right="-12%"
                   bg="white"
                   p={4}
                   rounded="xl"
@@ -337,25 +272,98 @@ function App() {
                   style={{ animationDelay: '0.3s' }}
                 >
                   <VStack spacing={1}>
-                    <Icon as={Users} boxSize={6} color="brand.500" />
-                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Team Management</Text>
+                    <Icon as={Zap} boxSize={6} color="brand.500" />
+                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Instant Setup</Text>
                   </VStack>
                 </Box>
 
+                {/* Card 3 - Bottom-right (103 degrees) */}
                 <Box
                   position="absolute"
-                  bottom="25%"
-                  right="-12%"
+                  bottom="8%"
+                  right="-15%"
                   bg="white"
                   p={4}
                   rounded="xl"
                   boxShadow="xl"
                   className="float-fade-3"
-                  style={{ animationDelay: '1.2s' }}
+                  style={{ animationDelay: '0.6s' }}
                 >
                   <VStack spacing={1}>
                     <Icon as={BarChart2} boxSize={6} color="brand.500" />
                     <Text fontSize="xs" color="gray.600" fontWeight="semibold">Real-time Analytics</Text>
+                  </VStack>
+                </Box>
+
+                {/* Card 4 - Bottom (154 degrees) */}
+                <Box
+                  position="absolute"
+                  bottom="-10%"
+                  right="32%"
+                  bg="white"
+                  p={4}
+                  rounded="xl"
+                  boxShadow="xl"
+                  className="float-fade-4"
+                  style={{ animationDelay: '0.9s' }}
+                >
+                  <VStack spacing={1}>
+                    <Icon as={Target} boxSize={6} color="brand.500" />
+                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Custom Scenarios</Text>
+                  </VStack>
+                </Box>
+
+                {/* Card 5 - Bottom-left (206 degrees) */}
+                <Box
+                  position="absolute"
+                  bottom="-10%"
+                  left="32%"
+                  bg="white"
+                  p={4}
+                  rounded="xl"
+                  boxShadow="xl"
+                  className="float-fade-1"
+                  style={{ animationDelay: '1.2s' }}
+                >
+                  <VStack spacing={1}>
+                    <Icon as={TrendingUp} boxSize={6} color="brand.500" />
+                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Smart Feedback</Text>
+                  </VStack>
+                </Box>
+
+                {/* Card 6 - Left-bottom (257 degrees) */}
+                <Box
+                  position="absolute"
+                  bottom="8%"
+                  left="-15%"
+                  bg="white"
+                  p={4}
+                  rounded="xl"
+                  boxShadow="xl"
+                  className="float-fade-2"
+                  style={{ animationDelay: '1.5s' }}
+                >
+                  <VStack spacing={1}>
+                    <Icon as={Check} boxSize={6} color="brand.500" />
+                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Unlimited Practice</Text>
+                  </VStack>
+                </Box>
+
+                {/* Card 7 - Top-left (309 degrees) */}
+                <Box
+                  position="absolute"
+                  top="-5%"
+                  left="-12%"
+                  bg="white"
+                  p={4}
+                  rounded="xl"
+                  boxShadow="xl"
+                  className="float-fade-3"
+                  style={{ animationDelay: '1.8s' }}
+                >
+                  <VStack spacing={1}>
+                    <Icon as={Users} boxSize={6} color="brand.500" />
+                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Team Management</Text>
                   </VStack>
                 </Box>
 
