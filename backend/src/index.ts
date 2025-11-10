@@ -21,11 +21,33 @@ const app = express()
 // Middleware
 // Configure CORS based on environment
 const corsOptions = {
-  origin: config.corsOrigins.length > 0 
-    ? (config.corsOrigins.includes('*') ? '*' : config.corsOrigins) // Handle wildcard specially
-    : config.isDevelopment 
-      ? '*' // Allow all in dev if no origins specified
-      : false, // Reject all in prod if no origins specified
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true)
+    
+    // If wildcard is set, allow all origins
+    if (config.corsOrigins.includes('*')) {
+      return callback(null, true)
+    }
+    
+    // If no CORS origins configured
+    if (config.corsOrigins.length === 0) {
+      // Allow all in development, reject in production
+      if (config.isDevelopment) {
+        return callback(null, true)
+      } else {
+        return callback(new Error('CORS not configured'))
+      }
+    }
+    
+    // Check if origin is in allowed list
+    if (config.corsOrigins.includes(origin)) {
+      return callback(null, true)
+    }
+    
+    // Reject
+    callback(new Error('Not allowed by CORS'))
+  },
   credentials: true,
 }
 
