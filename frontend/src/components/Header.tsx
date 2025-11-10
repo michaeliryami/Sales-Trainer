@@ -65,7 +65,7 @@ function Header() {
             h="40px"
             objectFit="contain"
             cursor="pointer"
-            onClick={() => navigate('/')}
+            onClick={() => window.location.href = 'https://clozone.ai'}
           />
         </HStack>
 
