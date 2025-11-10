@@ -105,12 +105,19 @@ router.get('/admin/:orgId', async (req, res) => {
             const profile = profiles?.find(p => p.id === session.user_id);
             const template = templates?.find(t => t.id === session.template_id);
             const grade = grades?.find(g => g.session_id === session.id);
+            let templateName = template?.title;
+            if (!templateName && session.metadata?.builtInTemplateTitle) {
+                templateName = session.metadata.builtInTemplateTitle;
+            }
+            if (!templateName) {
+                templateName = 'Unknown Template';
+            }
             return {
                 id: session.id,
                 userId: session.user_id,
                 assignmentId: session.assignment_id,
                 user: profile?.display_name || profile?.email || 'Unknown User',
-                template: template?.title || 'Unknown Template',
+                template: templateName,
                 duration: session.duration_seconds ? `${Math.round(session.duration_seconds / 60)}m` : 'N/A',
                 score: grade ? Math.round(grade.percentage) : null,
                 date: session.created_at,
@@ -253,14 +260,20 @@ router.get('/employee/:userId', async (req, res) => {
             const grade = grades?.find(g => g.session_id === session.id);
             const isPlayground = !session.assignment_id;
             let templateName = (0, builtInTemplates_1.getTemplateName)(session.template_id);
-            if (!templateName) {
+            if (!templateName && session.template_id) {
                 const template = templates?.find(t => t.id === session.template_id);
-                templateName = template?.title || 'Unknown Template';
+                templateName = template?.title;
+            }
+            if (!templateName && session.metadata?.builtInTemplateTitle) {
+                templateName = session.metadata.builtInTemplateTitle;
+            }
+            if (!templateName) {
+                templateName = 'Unknown Template';
             }
             return {
                 id: session.id,
                 template: templateName,
-                templateId: session.template_id,
+                templateId: session.template_id || session.metadata?.builtInTemplateId || null,
                 duration: session.duration_seconds ? `${Math.round(session.duration_seconds / 60)}m` : 'N/A',
                 score: grade ? Math.round(grade.percentage) : null,
                 date: session.created_at,
@@ -303,15 +316,21 @@ router.get('/employee/:userId', async (req, res) => {
         sessions?.forEach(session => {
             if (!session.assignment_id) {
                 let templateName = (0, builtInTemplates_1.getTemplateName)(session.template_id);
-                if (!templateName) {
+                if (!templateName && session.template_id) {
                     const template = templates?.find(t => t.id === session.template_id);
-                    templateName = template?.title || 'Unknown Template';
+                    templateName = template?.title;
+                }
+                if (!templateName && session.metadata?.builtInTemplateTitle) {
+                    templateName = session.metadata.builtInTemplateTitle;
+                }
+                if (!templateName) {
+                    templateName = 'Unknown Template';
                 }
                 const grade = grades?.find(g => g.session_id === session.id);
                 if (!playgroundSessionsByTemplate[templateName]) {
                     playgroundSessionsByTemplate[templateName] = {
                         templateName,
-                        templateId: session.template_id,
+                        templateId: session.template_id || session.metadata?.builtInTemplateId || null,
                         count: 0,
                         scores: [],
                         avgScore: 0,

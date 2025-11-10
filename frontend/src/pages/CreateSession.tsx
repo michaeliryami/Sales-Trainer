@@ -582,12 +582,13 @@ function CreateSession() {
                   templateTitle = customTemplate.title
                   console.log('Playground - using custom template ID:', templateIdForDb)
                 } else {
-                  // Built-in template - store the string ID and get title from built-in templates
+                  // Built-in template - store NULL in template_id (DB expects numeric)
+                  // Track the built-in template ID in metadata instead
                   const builtInTemplate = ALL_BUILT_IN_TEMPLATES.find(t => t.id === selectedTemplate)
                   if (builtInTemplate) {
-                    templateIdForDb = selectedTemplate // Store the string ID (e.g., "objection-handling-pro")
+                    templateIdForDb = null // NULL for built-in templates (can't store string in bigint column)
                     templateTitle = builtInTemplate.title
-                    console.log('Playground - built-in template:', templateIdForDb, templateTitle)
+                    console.log('Playground - built-in template (storing in metadata):', selectedTemplate, templateTitle)
                   }
                 }
               }
@@ -606,7 +607,11 @@ function CreateSession() {
                   ? Math.round((chunks[chunks.length - 1].timestamp.getTime() - chunks[0].timestamp.getTime()) / 1000)
                   : 0,
                 transcript: chunks,
-                transcriptClean: chunks.map(c => `${c.speaker}: ${c.text}`).join('\n')
+                transcriptClean: chunks.map(c => `${c.speaker}: ${c.text}`).join('\n'),
+                metadata: templateIdForDb === null ? {
+                  builtInTemplateId: selectedTemplate,
+                  builtInTemplateTitle: templateTitle
+                } : {}
               }
 
               console.log('📤 Sending session data to backend:', sessionData)

@@ -133,12 +133,21 @@ router.get('/admin/:orgId', async (req, res) => {
       const template = templates?.find(t => t.id === session.template_id)
       const grade = grades?.find(g => g.session_id === session.id)
       
+      // Get template name - check metadata for built-in templates if template_id is null
+      let templateName = template?.title
+      if (!templateName && session.metadata?.builtInTemplateTitle) {
+        templateName = session.metadata.builtInTemplateTitle
+      }
+      if (!templateName) {
+        templateName = 'Unknown Template'
+      }
+      
       return {
         id: session.id,
         userId: session.user_id,
         assignmentId: session.assignment_id,
         user: profile?.display_name || profile?.email || 'Unknown User',
-        template: template?.title || 'Unknown Template',
+        template: templateName,
         duration: session.duration_seconds ? `${Math.round(session.duration_seconds / 60)}m` : 'N/A',
         score: grade ? Math.round(grade.percentage) : null,
         date: session.created_at,
@@ -313,18 +322,25 @@ router.get('/employee/:userId', async (req, res) => {
         const grade = grades?.find(g => g.session_id === session.id)
         const isPlayground = !session.assignment_id // Playground if no assignment
         
-        // Get template name - check built-in templates first, then database
+        // Get template name - check built-in templates first, then database, then metadata
         let templateName = getTemplateName(session.template_id)
-        if (!templateName) {
+        if (!templateName && session.template_id) {
           // Numeric ID - look up in database
           const template = templates?.find(t => t.id === session.template_id)
-          templateName = template?.title || 'Unknown Template'
+          templateName = template?.title
+        }
+        if (!templateName && session.metadata?.builtInTemplateTitle) {
+          // Check metadata for built-in template info (when template_id is null)
+          templateName = session.metadata.builtInTemplateTitle
+        }
+        if (!templateName) {
+          templateName = 'Unknown Template'
         }
         
         return {
           id: session.id,
           template: templateName,
-          templateId: session.template_id,
+          templateId: session.template_id || session.metadata?.builtInTemplateId || null,
           duration: session.duration_seconds ? `${Math.round(session.duration_seconds / 60)}m` : 'N/A',
           score: grade ? Math.round(grade.percentage) : null,
           date: session.created_at,
@@ -374,18 +390,25 @@ router.get('/employee/:userId', async (req, res) => {
     const playgroundSessionsByTemplate: any = {}
     sessions?.forEach(session => {
       if (!session.assignment_id) { // Playground session
-        // Get template name - check built-in templates first, then database
+        // Get template name - check built-in templates first, then database, then metadata
         let templateName = getTemplateName(session.template_id)
-        if (!templateName) {
+        if (!templateName && session.template_id) {
           const template = templates?.find(t => t.id === session.template_id)
-          templateName = template?.title || 'Unknown Template'
+          templateName = template?.title
+        }
+        if (!templateName && session.metadata?.builtInTemplateTitle) {
+          // Check metadata for built-in template info (when template_id is null)
+          templateName = session.metadata.builtInTemplateTitle
+        }
+        if (!templateName) {
+          templateName = 'Unknown Template'
         }
         const grade = grades?.find(g => g.session_id === session.id)
         
         if (!playgroundSessionsByTemplate[templateName]) {
           playgroundSessionsByTemplate[templateName] = {
             templateName,
-            templateId: session.template_id,
+            templateId: session.template_id || session.metadata?.builtInTemplateId || null,
             count: 0,
             scores: [],
             avgScore: 0,
