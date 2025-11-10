@@ -6,14 +6,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 dotenv_1.default.config({ path: path_1.default.resolve(__dirname, '../.env') });
-console.log('Environment variables loaded:', {
-    SUPABASE_URL: process.env.SUPABASE_URL ? 'Set' : 'Missing',
-    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'Set' : 'Missing',
-    VAPI_API_KEY: process.env.VAPI_API_KEY ? 'Set' : 'Missing',
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'Set' : 'Missing'
-});
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
+const environment_1 = require("./config/environment");
 const runs_1 = __importDefault(require("./routes/runs"));
 const webhooks_1 = __importDefault(require("./routes/webhooks"));
 const assistants_1 = __importDefault(require("./routes/assistants"));
@@ -25,16 +20,34 @@ const export_1 = __importDefault(require("./routes/export"));
 const analytics_1 = __importDefault(require("./routes/analytics"));
 const assignments_1 = __importDefault(require("./routes/assignments"));
 const app = (0, express_1.default)();
-const PORT = process.env.PORT || 3002;
-app.use((0, cors_1.default)());
+const corsOptions = {
+    origin: environment_1.config.corsOrigins.length > 0
+        ? environment_1.config.corsOrigins
+        : environment_1.config.isDevelopment
+            ? '*'
+            : false,
+    credentials: true,
+};
+app.use((0, cors_1.default)(corsOptions));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
+if (environment_1.config.isDevelopment) {
+    app.use((req, res, next) => {
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+        next();
+    });
+}
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
+    res.json({
+        status: 'ok',
+        environment: environment_1.config.env,
+        timestamp: new Date().toISOString()
+    });
 });
 app.get('/api/config', (req, res) => {
     res.json({
-        vapiPublicKey: process.env.VAPI_PUBLIC_KEY || process.env.VAPI_API_KEY
+        vapiPublicKey: environment_1.config.vapi.publicKey,
+        environment: environment_1.config.env
     });
 });
 app.use('/api/runs', runs_1.default);
@@ -48,14 +61,29 @@ app.use('/api/export', export_1.default);
 app.use('/api/analytics', analytics_1.default);
 app.use('/api/assignments', assignments_1.default);
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Something went wrong!' });
+    if (environment_1.config.isDevelopment) {
+        console.error('❌ Error:', err.stack);
+    }
+    else {
+        console.error('❌ Error:', err.message);
+    }
+    res.status(500).json({
+        error: environment_1.config.isDevelopment ? err.message : 'Something went wrong!'
+    });
 });
 app.use('*', (req, res) => {
+    if (environment_1.config.isDevelopment) {
+        console.log(`⚠️  404: ${req.method} ${req.originalUrl}`);
+    }
     res.status(404).json({ error: 'Route not found' });
 });
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+app.listen(environment_1.config.port, () => {
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`🚀 Clozone API Server - ${environment_1.config.env.toUpperCase()}`);
+    console.log(`${'='.repeat(60)}`);
+    console.log(`   Server: http://localhost:${environment_1.config.port}`);
+    console.log(`   Health: http://localhost:${environment_1.config.port}/api/health`);
+    console.log(`   Status: Ready to accept requests`);
+    console.log(`${'='.repeat(60)}\n`);
 });
 //# sourceMappingURL=index.js.map

@@ -106,7 +106,7 @@ router.post('/invite', async (req, res) => {
 
     const { data: organization, error: orgError } = await supabase
       .from('organizations')
-      .select('users')
+      .select('users, invited_roles')
       .eq('id', organizationId)
       .single()
 

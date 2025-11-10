@@ -5,6 +5,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') })
 
 import express from 'express'
 import cors from 'cors'
+import { config } from './config/environment'
 import runsRouter from './routes/runs'
 import webhooksRouter from './routes/webhooks'
 import assistantsRouter from './routes/assistants'
@@ -17,22 +18,44 @@ import analyticsRouter from './routes/analytics'
 import assignmentsRouter from './routes/assignments'
 
 const app = express()
-const PORT = process.env.PORT || 3002
 
 // Middleware
-app.use(cors())
+// Configure CORS based on environment
+const corsOptions = {
+  origin: config.corsOrigins.length > 0 
+    ? config.corsOrigins 
+    : config.isDevelopment 
+      ? '*' // Allow all in dev if no origins specified
+      : false, // Reject all in prod if no origins specified
+  credentials: true,
+}
+
+app.use(cors(corsOptions))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
+// Request logging middleware (development only)
+if (config.isDevelopment) {
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`)
+    next()
+  })
+}
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' })
+  res.json({ 
+    status: 'ok',
+    environment: config.env,
+    timestamp: new Date().toISOString()
+  })
 })
 
-// Get VAPI public key for frontend
+// Get public configuration for frontend
 app.get('/api/config', (req, res) => {
   res.json({ 
-    vapiPublicKey: process.env.VAPI_PUBLIC_KEY || process.env.VAPI_API_KEY 
+    vapiPublicKey: config.vapi.publicKey,
+    environment: config.env
   })
 })
 
@@ -50,16 +73,32 @@ app.use('/api/assignments', assignmentsRouter)
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err.stack)
-  res.status(500).json({ error: 'Something went wrong!' })
+  // Log full stack in development, minimal in production
+  if (config.isDevelopment) {
+    console.error('❌ Error:', err.stack)
+  } else {
+    console.error('❌ Error:', err.message)
+  }
+  
+  res.status(500).json({ 
+    error: config.isDevelopment ? err.message : 'Something went wrong!'
+  })
 })
 
 // 404 handler
 app.use('*', (req, res) => {
+  if (config.isDevelopment) {
+    console.log(`⚠️  404: ${req.method} ${req.originalUrl}`)
+  }
   res.status(404).json({ error: 'Route not found' })
 })
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`)
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`)
+app.listen(config.port, () => {
+  console.log(`\n${'='.repeat(60)}`)
+  console.log(`🚀 Clozone API Server - ${config.env.toUpperCase()}`)
+  console.log(`${'='.repeat(60)}`)
+  console.log(`   Server: http://localhost:${config.port}`)
+  console.log(`   Health: http://localhost:${config.port}/api/health`)
+  console.log(`   Status: Ready to accept requests`)
+  console.log(`${'='.repeat(60)}\n`)
 })
