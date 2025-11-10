@@ -108,56 +108,6 @@ function App() {
 
   return (
     <Box minH="100vh" bg="white">
-      {/* Navigation */}
-      <Box
-        as="nav"
-        position="fixed"
-        top={0}
-        left={0}
-        right={0}
-        bg="rgba(255, 255, 255, 0.95)"
-        backdropFilter="blur(10px)"
-        boxShadow="sm"
-        zIndex={1000}
-      >
-        <Container maxW="7xl" py={4}>
-          <Flex justify="space-between" align="center">
-            <Image src="/logolong.png" alt="Clozone" h="50px" />
-            <HStack spacing={6}>
-              <Button
-                as="a"
-                href="https://app.clozone.ai"
-                variant="ghost"
-                size="lg"
-                color="gray.700"
-                _hover={{ color: 'brand.500' }}
-              >
-                Sign In
-              </Button>
-              <Button
-                as="a"
-                href="https://calendly.com/your-link"
-                target="_blank"
-                size="lg"
-                h="50px"
-                px={8}
-                bg="brand.500"
-                color="white"
-                fontWeight="bold"
-                _hover={{
-                  bg: 'brand.600',
-                  transform: 'translateY(-2px)',
-                  boxShadow: 'lg',
-                }}
-                transition="all 0.2s"
-              >
-                Book a Demo
-              </Button>
-            </HStack>
-          </Flex>
-        </Container>
-      </Box>
-
       {/* Hero Section - Split Layout */}
       <Box 
         as="section"
@@ -229,7 +179,7 @@ function App() {
                   </HStack>
                 </VStack>
 
-                <Box pt={4} className="fade-in-up delay-3">
+                <HStack pt={4} spacing={4} className="fade-in-up delay-3">
                   <Button
                     as="a"
                     href="https://calendly.com/your-link"
@@ -250,7 +200,27 @@ function App() {
                   >
                     Book Your Demo
                   </Button>
-                </Box>
+                  <Button
+                    as="a"
+                    href="https://app.clozone.ai"
+                    size="xl"
+                    h="65px"
+                    px={12}
+                    fontSize="xl"
+                    fontWeight="bold"
+                    variant="outline"
+                    borderColor="brand.500"
+                    color="brand.500"
+                    _hover={{
+                      bg: 'brand.50',
+                      transform: 'translateY(-2px)',
+                      boxShadow: 'lg',
+                    }}
+                    transition="all 0.3s"
+                  >
+                    Sign In
+                  </Button>
+                </HStack>
               </VStack>
             </GridItem>
 
@@ -759,101 +729,6 @@ function App() {
         </Container>
       </Box>
 
-      {/* Pricing Section */}
-      <Box as="section" bg="gray.50" py={24}>
-        <Container maxW="5xl">
-          <VStack spacing={16}>
-            <VStack spacing={4} textAlign="center" maxW="3xl">
-              <Heading fontSize={{ base: '4xl', md: '5xl' }} fontWeight="black" letterSpacing="-0.02em">
-                Simple, Transparent Pricing
-              </Heading>
-              <Text fontSize={{ base: 'lg', md: 'xl' }} color="gray.600">
-                One price, unlimited potential
-              </Text>
-            </VStack>
-
-            <Box
-              w="full"
-              maxW="lg"
-              p={12}
-              bg="white"
-              rounded="3xl"
-              boxShadow="2xl"
-              borderWidth="2px"
-              borderColor="brand.500"
-              position="relative"
-              overflow="hidden"
-            >
-              {/* Popular badge */}
-              <Box
-                position="absolute"
-                top={6}
-                right={6}
-                bg="brand.500"
-                color="white"
-                px={4}
-                py={1}
-                rounded="full"
-                fontSize="sm"
-                fontWeight="bold"
-              >
-                Most Popular
-              </Box>
-
-              <VStack spacing={8} align="stretch">
-                <VStack align="start" spacing={4}>
-                  <Heading size="lg" color="gray.700">
-                    Per Representative
-                  </Heading>
-                  <HStack align="baseline" spacing={2}>
-                    <Heading fontSize="6xl" fontWeight="black" color="brand.500">
-                      $99
-                    </Heading>
-                    <Text fontSize="2xl" color="gray.500">/month</Text>
-                  </HStack>
-                  <Text color="gray.600" fontSize="md">
-                    Plus one-time $2,000 setup fee
-                  </Text>
-                </VStack>
-
-                <Box h="1px" bg="gray.200" />
-
-                <VStack align="start" spacing={4}>
-                  <PricingFeature text="Unlimited AI practice calls" />
-                  <PricingFeature text="Instant performance feedback" />
-                  <PricingFeature text="Custom scenario creation" />
-                  <PricingFeature text="Team analytics dashboard" />
-                  <PricingFeature text="Progress tracking & reporting" />
-                  <PricingFeature text="Priority customer support" />
-                  <PricingFeature text="Weekly product updates" />
-                </VStack>
-
-                <Button
-                  as="a"
-                  href="https://calendly.com/your-link"
-                  target="_blank"
-                  size="xl"
-                  h="65px"
-                  fontSize="xl"
-                  fontWeight="bold"
-                  bg="brand.500"
-                  color="white"
-                  w="full"
-                  _hover={{
-                    bg: 'brand.600',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 20px 40px rgba(242, 111, 37, 0.3)',
-                  }}
-                  transition="all 0.3s"
-                >
-                  Book Your Demo
-                </Button>
-              </VStack>
-            </Box>
-          </VStack>
-        </Container>
-      </Box>
-
       {/* CTA Section */}
       <Box
         as="section"
@@ -947,15 +822,6 @@ function App() {
         </Container>
       </Box>
     </Box>
-  )
-}
-
-function PricingFeature({ text }: { text: string }) {
-  return (
-    <HStack spacing={3} align="start">
-      <Icon as={Check} w={6} h={6} color="brand.500" flexShrink={0} mt={0.5} />
-      <Text fontSize="lg" color="gray.700">{text}</Text>
-    </HStack>
   )
 }
 
