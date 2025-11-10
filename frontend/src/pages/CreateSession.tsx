@@ -1179,46 +1179,6 @@ function CreateSession() {
       position="relative"
     >
       {/* Grading Indicator Overlay */}
-      {isGradingSession && (
-        <Box
-          position="fixed"
-          top="0"
-          left="0"
-          right="0"
-          bottom="0"
-          bg="blackAlpha.600"
-          backdropFilter="blur(4px)"
-          zIndex="9999"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
-          <VStack
-            bg={useColorModeValue('white', 'gray.800')}
-            p={8}
-            borderRadius="2xl"
-            boxShadow="2xl"
-            spacing={4}
-          >
-            <Spinner
-              thickness="4px"
-              speed="0.65s"
-              emptyColor={useColorModeValue('gray.200', 'gray.600')}
-              color="orange.500"
-              size="xl"
-            />
-            <VStack spacing={1}>
-              <Heading size="md" color={useColorModeValue('gray.800', 'white')}>
-                Grading Your Performance
-              </Heading>
-              <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
-                Please wait while we analyze your session...
-              </Text>
-            </VStack>
-          </VStack>
-        </Box>
-      )}
-      
       <PanelGroup direction="horizontal">
           {/* Left Panel - Template/Assignment Selection with Call Controls */}
         <Panel 
@@ -1894,6 +1854,56 @@ function CreateSession() {
                 </VStack>
                 
                 <HStack spacing={3} flexShrink={0}>
+                  {/* Grading Indicator - Show next to buttons */}
+                  {isGradingSession && (
+                    <HStack
+                      px={3}
+                      py={2}
+                      bg={useColorModeValue('orange.50', 'orange.900/30')}
+                      borderRadius="lg"
+                      spacing={2}
+                    >
+                      <Spinner size="sm" color="orange.500" thickness="2px" speed="0.65s" />
+                      <Text fontSize="sm" fontWeight="500" color={useColorModeValue('orange.600', 'orange.300')}>
+                        Grading...
+                      </Text>
+                    </HStack>
+                  )}
+                  
+                  {/* Grade Result - Show after grading completes */}
+                  {!isGradingSession && playgroundSessionGrade && (
+                    <HStack
+                      px={3}
+                      py={2}
+                      bg={
+                        playgroundSessionGrade.percentage >= 80 
+                          ? useColorModeValue('green.50', 'green.900/30')
+                          : playgroundSessionGrade.percentage >= 60
+                          ? useColorModeValue('yellow.50', 'yellow.900/30')
+                          : useColorModeValue('red.50', 'red.900/30')
+                      }
+                      borderRadius="lg"
+                      spacing={2}
+                      cursor="pointer"
+                      onClick={() => setShowPlaygroundGradeDetails(true)}
+                      _hover={{ opacity: 0.8 }}
+                      transition="all 0.2s"
+                    >
+                      <Text fontSize="sm" fontWeight="600" color={
+                        playgroundSessionGrade.percentage >= 80 
+                          ? useColorModeValue('green.700', 'green.300')
+                          : playgroundSessionGrade.percentage >= 60
+                          ? useColorModeValue('yellow.700', 'yellow.300')
+                          : useColorModeValue('red.700', 'red.300')
+                      }>
+                        {Math.round(playgroundSessionGrade.percentage)}%
+                      </Text>
+                      <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>
+                        Click for details
+                      </Text>
+                    </HStack>
+                  )}
+                  
             {/* Script Button - Show for admins with template OR employees with assignment */}
             {(selectedTemplate || (!userRole.isAdmin && selectedAssignment)) && scriptText && (
                     <Button

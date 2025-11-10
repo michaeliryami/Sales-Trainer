@@ -112,10 +112,9 @@ router.get('/admin/:orgId', async (req, res) => {
     }).filter(Boolean).sort((a: any, b: any) => b.sessions - a.sessions).slice(0, 5)
 
     // Get recent sessions with user and template details
-    // Filter out playground sessions (assignment_id is null) for admin view
+    // Show ALL sessions (both assignments and playground) for admin view
     const recentSessionsData = sessions
-      ?.filter(s => s.assignment_id !== null) // Only show assignment sessions to admin
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 10) || []
 
     // Get profiles for user names - include all users from sessions AND userMetrics
