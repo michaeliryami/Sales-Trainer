@@ -215,7 +215,7 @@ function App() {
                   </Button>
                   <Button
                     as="a"
-                    href="https://app.clozone.ai"
+                    href="https://app.clozone.ai/auth"
                     size="xl"
                     h="65px"
                     px={12}
