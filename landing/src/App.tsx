@@ -11,13 +11,10 @@ import {
   Image,
   Icon,
   Flex,
-  Stack,
-  useColorModeValue,
   Grid,
   GridItem,
-  Badge,
 } from '@chakra-ui/react'
-import { FiPhone, FiBarChart2, FiTarget, FiZap, FiTrendingUp, FiUsers, FiCheck, FiStar, FiChevronDown } from 'react-icons/fi'
+import { FiPhone, FiBarChart2, FiTarget, FiZap, FiTrendingUp, FiUsers, FiCheck, FiChevronDown } from 'react-icons/fi'
 
 function App() {
   const [rotatingText, setRotatingText] = useState(0)
@@ -68,7 +65,7 @@ function App() {
       setVisibleMessages([])
       setTimer(0)
       const delays = [500, 3000, 5500, 8000, 10500, 13000]
-      const timeouts: NodeJS.Timeout[] = []
+      const timeouts: ReturnType<typeof setTimeout>[] = []
 
       delays.forEach((delay, index) => {
         const timeout = setTimeout(() => {

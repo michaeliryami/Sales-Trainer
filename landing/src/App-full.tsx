@@ -18,7 +18,6 @@ import {
 } from '@chakra-ui/react'
 import {
   Target,
-  Zap,
   TrendingUp,
   Users,
   BarChart3,
