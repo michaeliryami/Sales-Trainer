@@ -243,7 +243,7 @@ function App() {
                 {/* Card 1 - Top (0 degrees) */}
                 <Box
                   position="absolute"
-                  top="-15%"
+                  top="-10%"
                   left="50%"
                   transform="translateX(-50%)"
                   bg="white"
@@ -262,8 +262,8 @@ function App() {
                 {/* Card 2 - Top-right (51 degrees) */}
                 <Box
                   position="absolute"
-                  top="-5%"
-                  right="-12%"
+                  top="2%"
+                  right="-8%"
                   bg="white"
                   p={4}
                   rounded="xl"
@@ -277,11 +277,11 @@ function App() {
                   </VStack>
                 </Box>
 
-                {/* Card 3 - Bottom-right (103 degrees) */}
+                {/* Card 3 - Right (103 degrees) */}
                 <Box
                   position="absolute"
-                  bottom="8%"
-                  right="-15%"
+                  bottom="20%"
+                  right="-10%"
                   bg="white"
                   p={4}
                   rounded="xl"
@@ -295,11 +295,11 @@ function App() {
                   </VStack>
                 </Box>
 
-                {/* Card 4 - Bottom (154 degrees) */}
+                {/* Card 4 - Bottom-right (154 degrees) */}
                 <Box
                   position="absolute"
-                  bottom="-10%"
-                  right="32%"
+                  bottom="-5%"
+                  right="20%"
                   bg="white"
                   p={4}
                   rounded="xl"
@@ -316,8 +316,8 @@ function App() {
                 {/* Card 5 - Bottom-left (206 degrees) */}
                 <Box
                   position="absolute"
-                  bottom="-10%"
-                  left="32%"
+                  bottom="-5%"
+                  left="20%"
                   bg="white"
                   p={4}
                   rounded="xl"
@@ -331,11 +331,11 @@ function App() {
                   </VStack>
                 </Box>
 
-                {/* Card 6 - Left-bottom (257 degrees) */}
+                {/* Card 6 - Left (257 degrees) */}
                 <Box
                   position="absolute"
-                  bottom="8%"
-                  left="-15%"
+                  bottom="20%"
+                  left="-10%"
                   bg="white"
                   p={4}
                   rounded="xl"
@@ -352,8 +352,8 @@ function App() {
                 {/* Card 7 - Top-left (309 degrees) */}
                 <Box
                   position="absolute"
-                  top="-5%"
-                  left="-12%"
+                  top="2%"
+                  left="-8%"
                   bg="white"
                   p={4}
                   rounded="xl"
