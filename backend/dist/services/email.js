@@ -77,6 +77,23 @@ async function sendInvitationEmail(data) {
                 </tr>
               </table>
 
+              <!-- Instructions -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 30px; padding: 25px; background-color: #f0f9ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                <tr>
+                  <td>
+                    <p style="margin: 0 0 10px 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">
+                      📋 How to get started:
+                    </p>
+                    <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.8;">
+                      1. Click the "Accept Invitation" button below<br>
+                      2. Click "Sign Up" to create your account<br>
+                      3. Enter <strong>${to}</strong> as your email<br>
+                      4. Complete the registration process
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
               <!-- CTA Button -->
               <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
                 <tr>
@@ -96,24 +113,6 @@ async function sendInvitationEmail(data) {
                 ${inviteUrl}
               </p>
 
-              <!-- What's Included -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 40px; padding: 25px; background-color: #f8f9fa; border-radius: 8px;">
-                <tr>
-                  <td>
-                    <p style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">
-                      What you'll get:
-                    </p>
-                    <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.8;">
-                      ✅ AI-powered role-play training<br>
-                      ✅ Real-time performance feedback<br>
-                      ✅ Detailed analytics and grading<br>
-                      ✅ Team collaboration tools<br>
-                      ${role === 'admin' ? '✅ Full administrative controls' : '✅ Personal training dashboard'}
-                    </p>
-                  </td>
-                </tr>
-              </table>
-
               <!-- Security Notice -->
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 30px; padding: 20px; background-color: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
                 <tr>
@@ -131,7 +130,7 @@ async function sendInvitationEmail(data) {
           <tr>
             <td style="padding: 30px 40px; background-color: #fafafa; border-top: 1px solid #eeeeee;">
               <p style="margin: 0 0 10px 0; color: #999999; font-size: 14px; text-align: center;">
-                Questions? Contact us at <a href="mailto:support@clozone.ai" style="color: #f26f25; text-decoration: none;">support@clozone.ai</a>
+                Questions? Contact us at <a href="mailto:michael@clozone.ai" style="color: #f26f25; text-decoration: none;">michael@clozone.ai</a>
               </p>
               <p style="margin: 0; color: #cccccc; font-size: 12px; text-align: center;">
                 © ${new Date().getFullYear()} Clozone. All rights reserved.
