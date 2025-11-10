@@ -251,12 +251,23 @@ router.get('/employee/:userId', async (req, res) => {
         const { data: templates } = await supabase_1.supabase
             .from('templates')
             .select('id, title');
+        console.log(`📊 Found ${grades?.length || 0} total grades for user`);
+        console.log(`📋 Processing ${sessions?.length || 0} total sessions`);
         const recentSessions = (sessions || [])
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             .slice(0, 10)
             .map(session => {
             const grade = grades?.find(g => g.session_id === session.id);
             const isPlayground = !session.assignment_id;
+            if (isPlayground) {
+                console.log(`🎮 Playground session ${session.id}:`, {
+                    hasGrade: !!grade,
+                    gradeId: grade?.id,
+                    percentage: grade?.percentage,
+                    totalScore: grade?.total_score,
+                    maxScore: grade?.max_possible_score
+                });
+            }
             let templateName = null;
             if (session.template_id) {
                 const template = templates?.find(t => t.id === session.template_id);
@@ -500,6 +511,10 @@ Only return the JSON response, nothing else.`;
             throw new Error('No grading response received');
         }
         const gradingResult = JSON.parse(response);
+        const percentage = gradingResult.maxPossibleScore > 0
+            ? (gradingResult.totalScore / gradingResult.maxPossibleScore) * 100
+            : 0;
+        console.log('Calculated percentage:', percentage, 'from', gradingResult.totalScore, '/', gradingResult.maxPossibleScore);
         const { data: grade, error: gradeError } = await supabase_1.supabase
             .from('session_grades')
             .insert([{
@@ -509,13 +524,16 @@ Only return the JSON response, nothing else.`;
                 rubric_id: rubricId,
                 total_score: gradingResult.totalScore,
                 max_possible_score: gradingResult.maxPossibleScore,
+                percentage: percentage,
                 criteria_grades: gradingResult.criteriaGrades,
                 grading_model: 'gpt-4o-mini'
             }])
             .select()
             .single();
-        if (gradeError)
+        if (gradeError) {
+            console.error('Error saving grade:', gradeError);
             throw gradeError;
+        }
         console.log('Grade saved successfully');
         return res.json({
             success: true,
@@ -623,12 +641,14 @@ router.post('/manual-grade', async (req, res) => {
         if (checkError && checkError.code !== 'PGRST116') {
             throw checkError;
         }
+        const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
         if (existingGrade) {
             const { error: updateError } = await supabase_1.supabase
                 .from('session_grades')
                 .update({
                 total_score: totalScore,
                 max_possible_score: maxScore,
+                percentage: percentage,
                 criteria_grades: criteriaGrades || [],
                 is_manual_override: isManualOverride,
                 updated_at: new Date().toISOString()
@@ -646,6 +666,7 @@ router.post('/manual-grade', async (req, res) => {
                 assignment_id: assignmentId,
                 total_score: totalScore,
                 max_possible_score: maxScore,
+                percentage: percentage,
                 criteria_grades: criteriaGrades || [],
                 is_manual_override: isManualOverride
             });
@@ -676,6 +697,7 @@ router.post('/grade', async (req, res) => {
             totalScore,
             maxPossibleScore
         });
+        const percentage = maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0;
         const { data: grade, error: gradeError } = await supabase_1.supabase
             .from('session_grades')
             .insert([{
@@ -685,6 +707,7 @@ router.post('/grade', async (req, res) => {
                 rubric_id: rubricId,
                 total_score: totalScore,
                 max_possible_score: maxPossibleScore,
+                percentage: percentage,
                 criteria_grades: criteriaGrades,
                 grading_model: gradingModel || 'gpt-4o-mini'
             }])

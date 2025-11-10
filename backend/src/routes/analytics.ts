@@ -112,7 +112,7 @@ router.get('/admin/:orgId', async (req, res) => {
     }).filter(Boolean).sort((a: any, b: any) => b.sessions - a.sessions).slice(0, 5)
 
     // Get recent sessions with user and template details
-    // Show BOTH assignment and playground sessions for admin view  
+    // Show ALL sessions (both assignments and playground) for admin view
     const recentSessionsData = sessions
       ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 10) || []
@@ -315,12 +315,25 @@ router.get('/employee/:userId', async (req, res) => {
       .from('templates')
       .select('id, title')
 
+    console.log(`📊 Found ${grades?.length || 0} total grades for user`)
+    console.log(`📋 Processing ${sessions?.length || 0} total sessions`)
+    
     const recentSessions = (sessions || [])
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 10)
       .map(session => {
         const grade = grades?.find(g => g.session_id === session.id)
         const isPlayground = !session.assignment_id // Playground if no assignment
+        
+        if (isPlayground) {
+          console.log(`🎮 Playground session ${session.id}:`, {
+            hasGrade: !!grade,
+            gradeId: grade?.id,
+            percentage: grade?.percentage,
+            totalScore: grade?.total_score,
+            maxScore: grade?.max_possible_score
+          })
+        }
         
         // Get template name - check database first, then metadata for built-in templates
         let templateName: string | null = null
@@ -650,23 +663,34 @@ Only return the JSON response, nothing else.`
     // Parse the JSON response
     const gradingResult = JSON.parse(response)
 
+    // Calculate percentage
+    const percentage = gradingResult.maxPossibleScore > 0 
+      ? (gradingResult.totalScore / gradingResult.maxPossibleScore) * 100 
+      : 0
+
+    console.log('Calculated percentage:', percentage, 'from', gradingResult.totalScore, '/', gradingResult.maxPossibleScore)
+
     // Save to database
     const { data: grade, error: gradeError } = await supabase
       .from('session_grades')
       .insert([{
         session_id: sessionId,
         user_id: userId,
-        assignment_id: assignmentId,
+        assignment_id: assignmentId, // Can be null for playground sessions
         rubric_id: rubricId,
         total_score: gradingResult.totalScore,
         max_possible_score: gradingResult.maxPossibleScore,
+        percentage: percentage,
         criteria_grades: gradingResult.criteriaGrades,
         grading_model: 'gpt-4o-mini'
       }])
       .select()
       .single()
 
-    if (gradeError) throw gradeError
+    if (gradeError) {
+      console.error('Error saving grade:', gradeError)
+      throw gradeError
+    }
 
     console.log('Grade saved successfully')
 
@@ -801,14 +825,18 @@ router.post('/manual-grade', async (req, res) => {
       throw checkError
     }
 
+    // Calculate percentage
+    const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0
+
     // Update or insert the grade with manual override
     if (existingGrade) {
-      // Update existing grade - only update score fields, percentage will be auto-calculated
+      // Update existing grade
       const { error: updateError } = await supabase
         .from('session_grades')
         .update({
           total_score: totalScore,
           max_possible_score: maxScore,
+          percentage: percentage,
           criteria_grades: criteriaGrades || [],
           is_manual_override: isManualOverride,
           updated_at: new Date().toISOString()
@@ -826,6 +854,7 @@ router.post('/manual-grade', async (req, res) => {
           assignment_id: assignmentId,
           total_score: totalScore,
           max_possible_score: maxScore,
+          percentage: percentage,
           criteria_grades: criteriaGrades || [],
           is_manual_override: isManualOverride
         })
@@ -870,6 +899,9 @@ router.post('/grade', async (req, res) => {
       maxPossibleScore
     })
 
+    // Calculate percentage
+    const percentage = maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0
+
     // Insert grade
     const { data: grade, error: gradeError } = await supabase
       .from('session_grades')
@@ -880,6 +912,7 @@ router.post('/grade', async (req, res) => {
         rubric_id: rubricId,
         total_score: totalScore,
         max_possible_score: maxPossibleScore,
+        percentage: percentage,
         criteria_grades: criteriaGrades,
         grading_model: gradingModel || 'gpt-4o-mini'
       }])
