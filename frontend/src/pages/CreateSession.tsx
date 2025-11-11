@@ -2048,49 +2048,32 @@ function CreateSession() {
                       </VStack>
                     </VStack>
                         ) : (
-                          <VStack align="stretch" spacing={4}>
-                            {/* One block per speaker segment */}
+                          <VStack align="stretch" spacing={3}>
+                            {/* Chat-style transcript like landing page and analytics */}
                             {transcript.map((segment, index) => (
-                              <Box key={index}>
-                                <HStack spacing={3} mb={3} align="center">
-                                  <Badge 
-                                    colorScheme={segment.speaker === 'You' ? "blue" : "green"}
-                                    variant="solid"
-                                    fontSize="xs"
-                                    px="3"
-                                    py="1"
-                                    borderRadius="full"
-                                    fontWeight="600"
-                                  >
-                                    {segment.speaker}
-                                  </Badge>
-                                  <Text fontSize="xs" color={useColorModeValue('gray.400', 'gray.500')} fontWeight="500">
-                                    {segment.timestamp.toLocaleTimeString()}
-                                  </Text>
-                                </HStack>
-                                <Box 
-                                  bg={segment.speaker === 'You' 
-                                    ? useColorModeValue('orange.50/50', 'orange.900/20') 
-                                    : useColorModeValue('green.50/50', 'green.900/20')
-                                  }
-                                  p={5}
-                                  borderRadius="2xl"
-                                  border="1px solid"
-                                  borderColor={segment.speaker === 'You' 
-                                    ? useColorModeValue('orange.100', 'orange.800/50') 
-                                    : useColorModeValue('green.100', 'green.800/50')
-                                  }
-                                  position="relative"
+                              <Box 
+                                key={index}
+                                bg={segment.speaker === 'You' 
+                                  ? accentColor
+                                  : useColorModeValue('gray.100', 'gray.700')
+                                }
+                                color={segment.speaker === 'You' 
+                                  ? 'white'
+                                  : useColorModeValue('gray.700', 'gray.200')
+                                }
+                                p={4}
+                                borderRadius="2xl"
+                                roundedBottomLeft={segment.speaker !== 'You' ? 'md' : '2xl'}
+                                roundedBottomRight={segment.speaker === 'You' ? 'md' : '2xl'}
+                                maxW="75%"
+                                alignSelf={segment.speaker === 'You' ? 'flex-end' : 'flex-start'}
+                              >
+                                <Text 
+                                  fontSize="sm" 
+                                  lineHeight="1.6"
                                 >
-                                  <Text 
-                                    fontSize="sm" 
-                                    color={useColorModeValue('gray.700', 'gray.200')}
-                                    lineHeight="1.6"
-                                    fontWeight="400"
-                                  >
-                                    {segment.text}
-                                  </Text>
-                                </Box>
+                                  {segment.text}
+                                </Text>
                               </Box>
                             ))}
                             <div ref={transcriptEndRef} />
