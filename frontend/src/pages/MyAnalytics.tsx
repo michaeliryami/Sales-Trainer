@@ -45,8 +45,12 @@ const MyAnalytics: React.FC = () => {
   const [analyticsData, setAnalyticsData] = useState<any>(null)
   const [selectedSession, setSelectedSession] = useState<any>(null)
   const [sessionGrade, setSessionGrade] = useState<any>(null)
+  const [sessionTranscript, setSessionTranscript] = useState<any>(null)
+  const [sessionSummary, setSessionSummary] = useState<string | null>(null)
   const [loadingGrade, setLoadingGrade] = useState(false)
-  const [activeView, setActiveView] = useState<'transcript' | 'grade' | null>(null)
+  const [loadingTranscript, setLoadingTranscript] = useState(false)
+  const [loadingSummary, setLoadingSummary] = useState(false)
+  const [activeView, setActiveView] = useState<'transcript' | 'grade' | 'summary' | null>(null)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const toast = useToast()
 
@@ -108,6 +112,92 @@ const MyAnalytics: React.FC = () => {
       setSessionGrade(null)
     } finally {
       setLoadingGrade(false)
+    }
+  }
+
+  // Fetch transcript for a session
+  const fetchSessionTranscript = async (sessionId: number) => {
+    setLoadingTranscript(true)
+    try {
+      const response = await apiFetch(`/api/analytics/session-transcript/${sessionId}`)
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        setSessionTranscript(result.data)
+      } else {
+        setSessionTranscript(null)
+      }
+    } catch (error) {
+      console.error('Error fetching session transcript:', error)
+      setSessionTranscript(null)
+    } finally {
+      setLoadingTranscript(false)
+    }
+  }
+
+  // Generate/fetch AI summary for a session
+  const generateSummary = async (sessionId: number) => {
+    setLoadingSummary(true)
+    try {
+      const response = await apiFetch(`/api/analytics/session-summary/${sessionId}`)
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        setSessionSummary(result.data.summary)
+      } else {
+        setSessionSummary(null)
+        toast({
+          title: 'Failed to generate summary',
+          description: result.error || 'Unknown error occurred',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        })
+      }
+    } catch (error) {
+      console.error('Error generating summary:', error)
+      setSessionSummary(null)
+      toast({
+        title: 'Failed to generate summary',
+        description: 'An error occurred while generating the summary',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    } finally {
+      setLoadingSummary(false)
+    }
+  }
+
+  // Handle view button clicks (Transcript, Grade, Summary)
+  const handleViewButtonClick = (view: 'transcript' | 'grade' | 'summary', session: any) => {
+    // If clicking the same view on the same session, deselect (toggle off)
+    if (selectedSession?.id === session.id && activeView === view) {
+      setSelectedSession(null)
+      setActiveView(null)
+      setSessionGrade(null)
+      setSessionTranscript(null)
+      setSessionSummary(null)
+      return
+    }
+
+    // Set new selection
+    setSelectedSession(session)
+    setActiveView(view)
+
+    // Fetch the appropriate data based on view
+    if (view === 'transcript') {
+      if (!sessionTranscript || sessionTranscript.id !== session.id) {
+        fetchSessionTranscript(session.id)
+      }
+    } else if (view === 'grade') {
+      if (!sessionGrade || sessionGrade.session_id !== session.id) {
+        fetchSessionGrade(session.id)
+      }
+    } else if (view === 'summary') {
+      if (!sessionSummary) {
+        generateSummary(session.id)
+      }
     }
   }
 
@@ -743,12 +833,56 @@ const MyAnalytics: React.FC = () => {
                                 </Button>
                               )}
                             </HStack>
+
+                            {/* Action Buttons */}
+                            <HStack spacing={2}>
+                              <Button
+                                size="xs"
+                                leftIcon={<Icon as={FileText} boxSize={3} />}
+                                colorScheme="orange"
+                                variant={selectedSession?.id === session.id && activeView === 'transcript' ? 'solid' : 'outline'}
+                                onClick={() => handleViewButtonClick('transcript', session)}
+                                flex={1}
+                              >
+                                Transcript
+                              </Button>
+                              <Button
+                                size="xs"
+                                leftIcon={<Icon as={ClipboardList} boxSize={3} />}
+                                colorScheme="orange"
+                                variant={selectedSession?.id === session.id && activeView === 'grade' ? 'solid' : 'outline'}
+                                onClick={() => handleViewButtonClick('grade', session)}
+                                flex={1}
+                              >
+                                Grade
+                              </Button>
+                              <Button
+                                size="xs"
+                                leftIcon={<Icon as={BarChart3} boxSize={3} />}
+                                colorScheme="orange"
+                                variant={selectedSession?.id === session.id && activeView === 'summary' ? 'solid' : 'outline'}
+                                onClick={() => handleViewButtonClick('summary', session)}
+                                flex={1}
+                              >
+                                Summary
+                              </Button>
+                              <Button
+                                size="xs"
+                                leftIcon={<Icon as={Volume2} boxSize={3} />}
+                                colorScheme="orange"
+                                variant="outline"
+                                isDisabled
+                                flex={1}
+                              >
+                                Audio
+                              </Button>
+                            </HStack>
                           </VStack>
                         </CardBody>
                       </Card>
                       
-                      {/* Grade Breakdown Section - Show right after selected session */}
-                      {selectedSession?.id === session.id && sessionGrade && !loadingGrade && (
+                      {/* Grade Breakdown Section - Show when grade button is clicked */}
+                      {selectedSession?.id === session.id && activeView === 'grade' && sessionGrade && !loadingGrade && (
                       <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg" ml={4}>
                         <CardBody p={6}>
                           <VStack align="stretch" spacing={4}>
@@ -847,6 +981,136 @@ const MyAnalytics: React.FC = () => {
                                 </Box>
                               ))}
                             </VStack>
+                          </VStack>
+                        </CardBody>
+                      </Card>
+                    )}
+                    
+                    {/* Transcript View */}
+                    {selectedSession?.id === session.id && activeView === 'transcript' && (
+                      <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg" ml={4}>
+                        <CardBody p={6}>
+                          <VStack align="stretch" spacing={4}>
+                            <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
+                              Call Transcript
+                            </Heading>
+                            {loadingTranscript ? (
+                              <VStack py={8}>
+                                <Spinner color={accentColor} />
+                                <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
+                                  Loading transcript...
+                                </Text>
+                              </VStack>
+                            ) : sessionTranscript?.transcript_clean ? (
+                              <Box 
+                                maxH="500px" 
+                                overflowY="auto" 
+                                p={4} 
+                                bg={useColorModeValue('gray.50', 'gray.900')}
+                                borderRadius="lg"
+                                border="1px solid"
+                                borderColor={borderColor}
+                              >
+                                <VStack align="stretch" spacing={4} w="full">
+                                  {sessionTranscript.transcript_clean.split('\n').filter((line: string) => line.trim() !== '').map((line: string, idx: number) => {
+                                    // Match landing page chat UI style
+                                    if (line.startsWith('You:')) {
+                                      const message = line.substring(4).trim()
+                                      if (!message) return null
+                                      return (
+                                        <Box 
+                                          key={idx} 
+                                          bg={accentColor}
+                                          color="white"
+                                          p={4}
+                                          rounded="2xl"
+                                          roundedBottomRight="md"
+                                          maxW="75%"
+                                          alignSelf="flex-end"
+                                        >
+                                          <Text fontSize="sm">{message}</Text>
+                                        </Box>
+                                      )
+                                    } else if (line.startsWith('AI Customer:')) {
+                                      const message = line.substring(12).trim()
+                                      if (!message) return null
+                                      return (
+                                        <Box 
+                                          key={idx} 
+                                          bg={useColorModeValue('gray.100', 'gray.700')}
+                                          color={useColorModeValue('gray.700', 'white')}
+                                          p={4}
+                                          rounded="2xl"
+                                          roundedBottomLeft="md"
+                                          maxW="75%"
+                                          alignSelf="flex-start"
+                                        >
+                                          <Text fontSize="sm">{message}</Text>
+                                        </Box>
+                                      )
+                                    } else {
+                                      // Display other lines centered
+                                      return (
+                                        <Box key={idx} p={2} alignSelf="center">
+                                          <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.500')} fontStyle="italic">
+                                            {line}
+                                          </Text>
+                                        </Box>
+                                      )
+                                    }
+                                  })}
+                                </VStack>
+                              </Box>
+                            ) : (
+                              <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
+                                No transcript available
+                              </Text>
+                            )}
+                          </VStack>
+                        </CardBody>
+                      </Card>
+                    )}
+                    
+                    {/* Summary View */}
+                    {selectedSession?.id === session.id && activeView === 'summary' && (
+                      <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg" ml={4}>
+                        <CardBody p={6}>
+                          <VStack align="stretch" spacing={4}>
+                            <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
+                              AI Call Summary
+                            </Heading>
+                            {loadingSummary ? (
+                              <VStack py={8}>
+                                <Spinner color={accentColor} />
+                                <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
+                                  Generating AI summary...
+                                </Text>
+                              </VStack>
+                            ) : sessionSummary ? (
+                              <VStack align="stretch" spacing={3}>
+                                <Box p={4} bg={useColorModeValue('green.50', 'green.900/20')} borderRadius="lg" border="2px solid" borderColor="green.200">
+                                  <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')} whiteSpace="pre-wrap" lineHeight="1.8">
+                                    {sessionSummary}
+                                  </Text>
+                                </Box>
+                                {sessionTranscript && (
+                                  <HStack spacing={4} fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+                                    <HStack spacing={1}>
+                                      <Icon as={Clock} boxSize={4} />
+                                      <Text>Duration: {Math.round(sessionTranscript.duration_seconds / 60)} min</Text>
+                                    </HStack>
+                                    <HStack spacing={1}>
+                                      <Icon as={Calendar} boxSize={4} />
+                                      <Text>{new Date(sessionTranscript.start_time).toLocaleString()}</Text>
+                                    </HStack>
+                                  </HStack>
+                                )}
+                              </VStack>
+                            ) : (
+                              <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
+                                No summary available
+                              </Text>
+                            )}
                           </VStack>
                         </CardBody>
                       </Card>
