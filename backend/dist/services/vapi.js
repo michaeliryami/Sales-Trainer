@@ -8,6 +8,21 @@ const axios_1 = __importDefault(require("axios"));
 const VAPI_BASE_URL = 'https://api.vapi.ai';
 class VapiService {
     constructor() {
+        this.voiceIds = [
+            'DHeSUVQvhhYeIxNUbtj3',
+            'vgsapVXnlLvlrWNbPs6y',
+            '0JRpJnrcyEVIabsZ4U5I',
+            'oWAxZDx7w5VEj9dCyTzz',
+            'Tw2LVqLUUWkxqrCfFOpw',
+            '7wZG7UyB12X3ndKa4uqi',
+            'nm1ZvXYfIcWIwMXCKoBV',
+            'VQWIG7jHNSEv826utbm8',
+            'uwjrUUgKbezCKJAv5nLd',
+            'EP3g1wv2wIp7Hc96Sf4l',
+            'ChvixV5Kt063KajV05qE',
+            '5lm1mr2qVzTTtc8lNLgo',
+            'jqVMajy0TkayOvIB8eCz'
+        ];
         this.baseUrl = VAPI_BASE_URL;
     }
     getApiKey() {
@@ -22,6 +37,10 @@ class VapiService {
             'Authorization': `Bearer ${this.getApiKey()}`,
             'Content-Type': 'application/json',
         };
+    }
+    getRandomVoiceId() {
+        const randomIndex = Math.floor(Math.random() * this.voiceIds.length);
+        return this.voiceIds[randomIndex];
     }
     generateSystemPromptFromTemplate(template) {
         const difficultyInstructions = {
@@ -45,7 +64,7 @@ ROLE:
 You are a real person (the CUSTOMER) who just answered a phone call from a life insurance agent.
 
 CONTEXT:
-You previously filled out an online form expressing interest in reviewing or purchasing life insurance coverage.
+You previously filled out an online form expressing interest in reviewing or purchasing life insurance coverage. However you do dont say this without being asked, you kind of just know why youre being called
 You may have indicated that you were shopping for new coverage or were unhappy with your current plan.
 You understand that this is a legitimate follow-up call from a licensed agent about that form.
 You are not surprised to be called and are open to hearing more.
@@ -298,6 +317,7 @@ Customer: Says they guess but won't sign anything today`
                 promptLength: systemPrompt.length,
                 includesScript: systemPrompt.includes('REFERENCE SCRIPT')
             });
+            const selectedVoiceId = this.getRandomVoiceId();
             const assistantData = {
                 name: `${template.title} - ${template.difficulty}`,
                 model: {
@@ -311,10 +331,14 @@ Customer: Says they guess but won't sign anything today`
                     ],
                     temperature: 0.3
                 },
+                voice: {
+                    provider: "11labs",
+                    voiceId: selectedVoiceId
+                },
                 firstMessage: this.generateFirstMessage('customer', template.type)
             };
             const response = await axios_1.default.post(`${this.baseUrl}/assistant`, assistantData, { headers: this.getHeaders() });
-            console.log('✅ New assistant created with ID:', response.data?.id);
+            console.log('✅ New assistant created with ID:', response.data?.id, '| Voice:', selectedVoiceId);
             return response.data;
         }
         catch (error) {
@@ -331,6 +355,7 @@ Customer: Says they guess but won't sign anything today`
             const templateConfig = this.getTemplateConfig(request.template);
             const script = this.getTemplateScript(request.template);
             const systemPrompt = this.generateSystemPrompt(templateConfig.persona, templateConfig.difficulty, templateConfig.insuranceType, script);
+            const selectedVoiceId = this.getRandomVoiceId();
             const assistantData = {
                 name: `${templateConfig.insuranceType} Insurance Customer - ${templateConfig.difficulty}`,
                 model: {
@@ -344,10 +369,14 @@ Customer: Says they guess but won't sign anything today`
                     ],
                     temperature: 0.3
                 },
+                voice: {
+                    provider: "11labs",
+                    voiceId: selectedVoiceId
+                },
                 firstMessage: this.generateFirstMessage(templateConfig.persona, templateConfig.insuranceType)
             };
             const response = await axios_1.default.post(`${this.baseUrl}/assistant`, assistantData, { headers: this.getHeaders() });
-            console.log('✅ New assistant created with ID:', response.data?.id);
+            console.log('✅ New assistant created with ID:', response.data?.id, '| Voice:', selectedVoiceId);
             return response.data;
         }
         catch (error) {

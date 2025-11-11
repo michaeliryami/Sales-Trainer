@@ -34,6 +34,23 @@ export interface VapiAssistant {
 
 export class VapiService {
   private readonly baseUrl: string
+  
+  // ElevenLabs voice IDs pool for random selection
+  private readonly voiceIds = [
+    'DHeSUVQvhhYeIxNUbtj3',
+    'vgsapVXnlLvlrWNbPs6y',
+    '0JRpJnrcyEVIabsZ4U5I',
+    'oWAxZDx7w5VEj9dCyTzz',
+    'Tw2LVqLUUWkxqrCfFOpw',
+    '7wZG7UyB12X3ndKa4uqi',
+    'nm1ZvXYfIcWIwMXCKoBV',
+    'VQWIG7jHNSEv826utbm8',
+    'uwjrUUgKbezCKJAv5nLd',
+    'EP3g1wv2wIp7Hc96Sf4l',
+    'ChvixV5Kt063KajV05qE',
+    '5lm1mr2qVzTTtc8lNLgo',
+    'jqVMajy0TkayOvIB8eCz'
+  ]
 
   constructor() {
     this.baseUrl = VAPI_BASE_URL
@@ -52,6 +69,12 @@ export class VapiService {
       'Authorization': `Bearer ${this.getApiKey()}`,
       'Content-Type': 'application/json',
     }
+  }
+
+  // Randomly select a voice ID from the pool
+  private getRandomVoiceId(): string {
+    const randomIndex = Math.floor(Math.random() * this.voiceIds.length)
+    return this.voiceIds[randomIndex] as string
   }
 
   private generateSystemPromptFromTemplate(template: Template): string {
@@ -78,7 +101,7 @@ ROLE:
 You are a real person (the CUSTOMER) who just answered a phone call from a life insurance agent.
 
 CONTEXT:
-You previously filled out an online form expressing interest in reviewing or purchasing life insurance coverage.
+You previously filled out an online form expressing interest in reviewing or purchasing life insurance coverage. However you do dont say this without being asked, you kind of just know why youre being called
 You may have indicated that you were shopping for new coverage or were unhappy with your current plan.
 You understand that this is a legitimate follow-up call from a licensed agent about that form.
 You are not surprised to be called and are open to hearing more.
@@ -346,6 +369,8 @@ Customer: Says they guess but won't sign anything today`
         includesScript: systemPrompt.includes('REFERENCE SCRIPT')
       })
 
+      const selectedVoiceId = this.getRandomVoiceId()
+      
       const assistantData = {
         name: `${template.title} - ${template.difficulty}`,
         model: {
@@ -359,6 +384,10 @@ Customer: Says they guess but won't sign anything today`
           ],
           temperature: 0.3
         },
+        voice: {
+          provider: "11labs",
+          voiceId: selectedVoiceId
+        },
         firstMessage: this.generateFirstMessage('customer', template.type)
       }
 
@@ -369,7 +398,7 @@ Customer: Says they guess but won't sign anything today`
         { headers: this.getHeaders() }
       )
 
-      console.log('✅ New assistant created with ID:', (response.data as any)?.id)
+      console.log('✅ New assistant created with ID:', (response.data as any)?.id, '| Voice:', selectedVoiceId)
 
       return response.data as VapiAssistant
     } catch (error: any) {
@@ -394,6 +423,8 @@ Customer: Says they guess but won't sign anything today`
         script
       )
 
+      const selectedVoiceId = this.getRandomVoiceId()
+      
       const assistantData = {
         name: `${templateConfig.insuranceType} Insurance Customer - ${templateConfig.difficulty}`,
         model: {
@@ -407,6 +438,10 @@ Customer: Says they guess but won't sign anything today`
           ],
           temperature: 0.3
         },
+        voice: {
+          provider: "11labs",
+          voiceId: selectedVoiceId
+        },
         firstMessage: this.generateFirstMessage(templateConfig.persona, templateConfig.insuranceType)
       }
 
@@ -417,7 +452,7 @@ Customer: Says they guess but won't sign anything today`
         { headers: this.getHeaders() }
       )
 
-      console.log('✅ New assistant created with ID:', (response.data as any)?.id)
+      console.log('✅ New assistant created with ID:', (response.data as any)?.id, '| Voice:', selectedVoiceId)
 
       return response.data as VapiAssistant
     } catch (error: any) {

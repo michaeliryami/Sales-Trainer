@@ -27,9 +27,11 @@ export interface VapiAssistant {
 }
 export declare class VapiService {
     private readonly baseUrl;
+    private readonly voiceIds;
     constructor();
     private getApiKey;
     private getHeaders;
+    private getRandomVoiceId;
     private generateSystemPromptFromTemplate;
     private generateSystemPrompt;
     private getTemplateConfig;
