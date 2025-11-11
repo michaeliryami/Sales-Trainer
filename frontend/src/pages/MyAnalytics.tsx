@@ -28,7 +28,10 @@ import {
   Calendar,
   BarChart3,
   Clock,
-  FileDown
+  FileDown,
+  FileText,
+  ClipboardList,
+  Volume2
 } from 'lucide-react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useProfile } from '../contexts/ProfileContext'
@@ -43,6 +46,7 @@ const MyAnalytics: React.FC = () => {
   const [selectedSession, setSelectedSession] = useState<any>(null)
   const [sessionGrade, setSessionGrade] = useState<any>(null)
   const [loadingGrade, setLoadingGrade] = useState(false)
+  const [activeView, setActiveView] = useState<'transcript' | 'grade' | null>(null)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const toast = useToast()
 

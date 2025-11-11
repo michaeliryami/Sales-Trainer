@@ -33,7 +33,15 @@ import {
   AlertIcon,
   Input,
   Textarea,
-  useToast
+  useToast,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure
 } from '@chakra-ui/react'
 import { 
   BarChart3, 
@@ -46,7 +54,10 @@ import {
   Activity,
   Zap,
   FileDown,
-  RefreshCw
+  RefreshCw,
+  FileText,
+  ClipboardList,
+  Volume2
 } from 'lucide-react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useProfile } from '../contexts/ProfileContext'
@@ -64,12 +75,16 @@ const Analytics: React.FC = () => {
   const [lastFetch, setLastFetch] = useState<number>(0)
   const [selectedSession, setSelectedSession] = useState<any>(null)
   const [sessionGrade, setSessionGrade] = useState<any>(null)
+  const [sessionTranscript, setSessionTranscript] = useState<any>(null)
+  const [sessionSummary, setSessionSummary] = useState<string | null>(null)
   const [loadingGrade, setLoadingGrade] = useState(false)
+  const [loadingTranscript, setLoadingTranscript] = useState(false)
+  const [loadingSummary, setLoadingSummary] = useState(false)
   const [filterAssignmentId, setFilterAssignmentId] = useState<number | null>(null)
-  const [manualGrade, setManualGrade] = useState<number>(0)
-  const [savingManualGrade, setSavingManualGrade] = useState(false)
-  const [criteriaOverrides, setCriteriaOverrides] = useState<{[key: number]: {score: number, reasoning: string, evidence: string}}>({})
+  const [activeView, setActiveView] = useState<'transcript' | 'grade' | 'summary' | null>(null)
   const [generatingPdf, setGeneratingPdf] = useState(false)
+  const [selectedCriterion, setSelectedCriterion] = useState<any>(null)
+  const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure()
   const toast = useToast()
   
   // Cache TTL: 2 minutes
@@ -217,23 +232,85 @@ const Analytics: React.FC = () => {
     }
   }
 
-  const handleSessionClick = (session: any) => {
-    // Toggle selection - if clicking the same session, deselect it
-    if (selectedSession?.id === session.id) {
-      setSelectedSession(null)
-      setSessionGrade(null)
-      return
+  // Fetch transcript details when needed
+  const fetchSessionTranscript = async (sessionId: number) => {
+    setLoadingTranscript(true)
+    try {
+      const response = await apiFetch(`/api/analytics/session-transcript/${sessionId}`)
+      const result = await response.json()
+      
+      if (result.success) {
+        setSessionTranscript(result.data)
+      } else {
+        setSessionTranscript(null)
+      }
+    } catch (error) {
+      console.error('Error fetching session transcript:', error)
+      setSessionTranscript(null)
+    } finally {
+      setLoadingTranscript(false)
     }
-    
+  }
+
+  // Generate AI summary for the call
+  const generateSummary = async (sessionId: number) => {
+    setLoadingSummary(true)
+    try {
+      const response = await apiFetch(`/api/analytics/session-summary/${sessionId}`)
+      const result = await response.json()
+      
+      if (result.success) {
+        setSessionSummary(result.data.summary)
+      } else {
+        setSessionSummary(null)
+      }
+    } catch (error) {
+      console.error('Error generating summary:', error)
+      setSessionSummary(null)
+    } finally {
+      setLoadingSummary(false)
+    }
+  }
+
+  const handleSessionClick = (session: any) => {
     setSelectedSession(session)
     if (session.hasGrade && session.sessionType === 'assignment') {
       fetchSessionGrade(session.id)
     } else {
       setSessionGrade(null)
     }
-    // Initialize manual grade fields
-    setManualGrade(Math.round(session.score || 0))
-    setCriteriaOverrides({})
+  }
+
+  const handleViewButtonClick = (view: 'transcript' | 'grade' | 'summary', session: any) => {
+    // Toggle view - if clicking the same view, deselect it
+    if (selectedSession?.id === session.id && activeView === view) {
+      setActiveView(null)
+      setSelectedSession(null)
+      setSessionGrade(null)
+      setSessionTranscript(null)
+      setSessionSummary(null)
+      return
+    }
+    
+    // Set new selection
+    setSelectedSession(session)
+    setActiveView(view)
+    
+    // Fetch data based on view
+    if (view === 'grade' && !sessionGrade) {
+      fetchSessionGrade(session.id)
+    }
+    if (view === 'transcript' && !sessionTranscript) {
+      fetchSessionTranscript(session.id)
+    }
+    if (view === 'summary') {
+      if (!sessionTranscript) {
+        fetchSessionTranscript(session.id)
+      }
+      if (!sessionSummary) {
+        generateSummary(session.id)
+      }
+    }
   }
 
   const generatePdf = async () => {
@@ -324,86 +401,6 @@ const Analytics: React.FC = () => {
       })
     } finally {
       setGeneratingPdf(false)
-    }
-  }
-
-  const saveManualGradeOverride = async () => {
-    if (!selectedSession || !sessionGrade) return
-    
-    setSavingManualGrade(true)
-    try {
-      // Apply criteria overrides to the existing criteria grades
-      const updatedCriteriaGrades = sessionGrade.criteria_grades?.map((criteria: any, idx: number) => {
-        const override = criteriaOverrides[idx]
-        if (override) {
-          return {
-            ...criteria,
-            earnedPoints: override.score,
-            reasoning: override.reasoning || criteria.reasoning,
-            evidence: override.evidence ? [override.evidence] : criteria.evidence,
-            isManualOverride: true
-          }
-        }
-        return criteria
-      }) || []
-
-      // Calculate total score from criteria (if we have overrides) or use manual grade
-      let finalTotalScore = manualGrade
-      let finalMaxScore = 100
-
-      if (Object.keys(criteriaOverrides).length > 0 && updatedCriteriaGrades.length > 0) {
-        // Calculate from criteria
-        finalTotalScore = updatedCriteriaGrades.reduce((sum: number, c: any) => sum + (c.earnedPoints || 0), 0)
-        finalMaxScore = updatedCriteriaGrades.reduce((sum: number, c: any) => sum + (c.maxPoints || 0), 0)
-      }
-
-      const response = await apiFetch('/api/analytics/manual-grade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: selectedSession.userId,
-          assignmentId: selectedSession.assignmentId,
-          totalScore: finalTotalScore,
-          maxScore: finalMaxScore,
-          criteriaGrades: updatedCriteriaGrades,
-          isManualOverride: true
-        })
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        toast({
-          title: 'Grade Saved',
-          description: 'Manual grade override has been saved successfully',
-          status: 'success',
-          duration: 3000,
-        })
-        // Refresh grade data for the selected session
-        if (selectedSession.id) {
-          fetchSessionGrade(selectedSession.id)
-        }
-        // Refresh entire analytics data to update top performers leaderboard
-        if (organization?.id) {
-          const analyticsResponse = await apiFetch(`/api/analytics/admin/${organization.id}?period=${timeRange}`)
-          const analyticsResult = await analyticsResponse.json()
-          if (analyticsResult.success) {
-            setAnalyticsData(analyticsResult.data)
-          }
-        }
-      } else {
-        throw new Error(result.error || 'Failed to save grade')
-      }
-    } catch (error) {
-      console.error('Error saving manual grade:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to save grade',
-        status: 'error',
-        duration: 3000,
-      })
-    } finally {
-      setSavingManualGrade(false)
     }
   }
 
@@ -788,14 +785,13 @@ const Analytics: React.FC = () => {
                   .map((session: any, index: number) => (
                   <React.Fragment key={index}>
                   <Card 
-                    bg={selectedSession?.id === session.id ? useColorModeValue('orange.50', 'orange.900/20') : cardBg}
+                    bg={cardBg}
                     border="1px solid"
-                    borderColor={selectedSession?.id === session.id ? accentColor : borderColor}
+                    borderColor={borderColor}
                     borderRadius="2xl"
                     shadow="sm"
-                    _hover={{ shadow: 'md', borderColor: accentColor, cursor: session.sessionType === 'assignment' ? 'pointer' : 'default' }}
+                    _hover={{ shadow: 'md', borderColor: accentColor }}
                     transition="all 0.3s"
-                    onClick={() => session.sessionType === 'assignment' && handleSessionClick(session)}
                   >
                     <CardBody p={4}>
                       <VStack align="stretch" spacing={3}>
@@ -820,234 +816,326 @@ const Analytics: React.FC = () => {
                           </Badge>
                         </HStack>
                         
-                        <HStack justify="space-between" align="center">
-                          <HStack spacing={4}>
-                            <HStack spacing={1}>
-                              <Icon as={Clock} boxSize={3} color={useColorModeValue('gray.400', 'gray.500')} />
-                              <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
-                                {session.duration}
-                              </Text>
-                            </HStack>
-                            <HStack spacing={1}>
-                              <Icon as={Calendar} boxSize={3} color={useColorModeValue('gray.400', 'gray.500')} />
-                              <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
-                                {new Date(session.date).toLocaleDateString()}
-                              </Text>
-                            </HStack>
+                        <HStack spacing={2}>
+                          <HStack spacing={1}>
+                            <Icon as={Clock} boxSize={3} color={useColorModeValue('gray.400', 'gray.500')} />
+                            <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                              {session.duration}
+                            </Text>
                           </HStack>
-                          {session.pdfUrl && (
-                            <Button
-                              as="a"
-                              href={session.pdfUrl}
-                              download
-                              size="xs"
-                              leftIcon={<Icon as={FileDown} boxSize={3} />}
-                              colorScheme="orange"
-                              variant="ghost"
-                            >
-                              PDF
-                            </Button>
-                          )}
+                          <HStack spacing={1}>
+                            <Icon as={Calendar} boxSize={3} color={useColorModeValue('gray.400', 'gray.500')} />
+                            <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                              {new Date(session.date).toLocaleDateString()}
+                            </Text>
+                          </HStack>
                         </HStack>
+
+                        {/* Action Buttons */}
+                        {session.sessionType === 'assignment' && (
+                          <HStack spacing={2}>
+                            <Button
+                              size="xs"
+                              leftIcon={<Icon as={FileText} boxSize={3} />}
+                              colorScheme="blue"
+                              variant={selectedSession?.id === session.id && activeView === 'transcript' ? 'solid' : 'outline'}
+                              onClick={() => handleViewButtonClick('transcript', session)}
+                              flex={1}
+                            >
+                              Transcript
+                            </Button>
+                            <Button
+                              size="xs"
+                              leftIcon={<Icon as={ClipboardList} boxSize={3} />}
+                              colorScheme="orange"
+                              variant={selectedSession?.id === session.id && activeView === 'grade' ? 'solid' : 'outline'}
+                              onClick={() => handleViewButtonClick('grade', session)}
+                              flex={1}
+                            >
+                              Grade
+                            </Button>
+                            <Button
+                              size="xs"
+                              leftIcon={<Icon as={BarChart3} boxSize={3} />}
+                              colorScheme="green"
+                              variant={selectedSession?.id === session.id && activeView === 'summary' ? 'solid' : 'outline'}
+                              onClick={() => handleViewButtonClick('summary', session)}
+                              flex={1}
+                            >
+                              Summary
+                            </Button>
+                            <Button
+                              size="xs"
+                              leftIcon={<Icon as={Volume2} boxSize={3} />}
+                              colorScheme="purple"
+                              variant="outline"
+                              isDisabled
+                              flex={1}
+                            >
+                              Audio
+                            </Button>
+                          </HStack>
+                        )}
                       </VStack>
                     </CardBody>
                   </Card>
                   
-                  {/* Grade Breakdown Section - Show right after selected session */}
-                  {selectedSession?.id === session.id && sessionGrade && (
-                  <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg" ml={4}>
-                    <CardBody p={6}>
-                      <VStack align="stretch" spacing={4}>
-                        <HStack justify="space-between" align="start">
-                          <VStack align="start" spacing={2}>
+                  {/* Grade Report - Show as 2-column grid */}
+                  {selectedSession?.id === session.id && activeView === 'grade' && sessionGrade && (
+                    <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg">
+                      <CardBody p={6}>
+                        <VStack align="stretch" spacing={4}>
+                          {/* Header */}
+                          <HStack justify="space-between" align="center">
                             <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
-                              Grade Breakdown
+                              Grade Report
                             </Heading>
-                            {selectedSession?.pdfUrl ? (
-                              <Button
-                                as="a"
-                                href={selectedSession.pdfUrl}
-                                download
-                                leftIcon={<Icon as={FileDown} />}
-                                size="sm"
-                                colorScheme="orange"
-                                variant="outline"
+                            <Badge 
+                              colorScheme={sessionGrade.percentage >= 85 ? 'green' : sessionGrade.percentage >= 70 ? 'blue' : 'red'}
+                              variant="solid"
+                              borderRadius="full"
+                              px={4}
+                              py={2}
+                              fontSize="lg"
+                              fontWeight="700"
+                            >
+                              {Math.round(sessionGrade.percentage)}% ({sessionGrade.total_score}/{sessionGrade.max_possible_score})
+                            </Badge>
+                          </HStack>
+                          
+                          <Divider />
+                          
+                          {/* Criteria Grid - 2 columns */}
+                          <SimpleGrid columns={2} spacing={3}>
+                            {sessionGrade.criteria_grades?.map((criteria: any, idx: number) => (
+                              <Box 
+                                key={idx} 
+                                p={3} 
+                                bg={useColorModeValue('gray.50', 'gray.800')} 
+                                borderRadius="lg" 
+                                border="1px solid" 
+                                borderColor={borderColor}
+                                cursor="pointer"
+                                _hover={{ 
+                                  borderColor: accentColor, 
+                                  shadow: 'md',
+                                  transform: 'translateY(-2px)'
+                                }}
+                                transition="all 0.2s"
+                                onClick={() => {
+                                  setSelectedCriterion(criteria)
+                                  onModalOpen()
+                                }}
                               >
-                                Download PDF Report
-                              </Button>
-                            ) : (
-                              <Button
-                                leftIcon={<Icon as={FileDown} />}
-                                size="sm"
-                                colorScheme="orange"
-                                variant="outline"
-                                onClick={generatePdf}
-                                isLoading={generatingPdf}
-                              >
-                                Generate PDF Report
-                              </Button>
-                            )}
-                          </VStack>
-                          <Badge 
-                            colorScheme={sessionGrade.percentage >= 85 ? 'green' : sessionGrade.percentage >= 70 ? 'blue' : 'red'}
-                            variant="solid"
-                            borderRadius="full"
-                            px={4}
-                            py={2}
-                            fontSize="lg"
-                            fontWeight="700"
-                          >
-                            {Math.round(sessionGrade.percentage)}%
-                          </Badge>
-                        </HStack>
-                        
-                        <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
-                          {sessionGrade.total_score} / {sessionGrade.max_possible_score} points
-                        </Text>
-                        
-                        <Divider />
-                        
-                        {/* Individual Criteria */}
-                        <VStack spacing={4} align="stretch">
-                          {sessionGrade.criteria_grades?.map((criteria: any, idx: number) => {
-                            const override = criteriaOverrides[idx]
-                            const displayScore = override?.score ?? criteria.earnedPoints
-                            
-                            return (
-                              <Box key={idx} p={4} bg={useColorModeValue('gray.50', 'gray.800')} borderRadius="xl">
-                                <VStack align="stretch" spacing={3}>
-                                  <HStack justify="space-between">
-                                    <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
+                                <VStack align="stretch" spacing={2}>
+                                  <HStack justify="space-between" align="center">
+                                    <Text fontWeight="700" color={useColorModeValue('gray.900', 'white')} fontSize="sm">
                                       {criteria.title}
                                     </Text>
                                     <Badge 
                                       colorScheme={
-                                        (displayScore / criteria.maxPoints) >= 0.85 ? 'green' : 
-                                        (displayScore / criteria.maxPoints) >= 0.70 ? 'blue' : 'orange'
+                                        (criteria.earnedPoints / criteria.maxPoints) >= 0.85 ? 'green' : 
+                                        (criteria.earnedPoints / criteria.maxPoints) >= 0.70 ? 'blue' : 'orange'
                                       }
                                       borderRadius="full"
-                                      px={3}
+                                      px={2}
                                       py={1}
+                                      fontSize="xs"
                                     >
-                                      {displayScore}/{criteria.maxPoints}
+                                      {criteria.earnedPoints}/{criteria.maxPoints}
                                     </Badge>
                                   </HStack>
                                   
-                                  <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} fontStyle="italic">
-                                    {criteria.description}
-                                  </Text>
-                                  
-                                  {criteria.evidence && criteria.evidence.length > 0 && (
-                                    <Box mt={1}>
-                                      <Text fontSize="xs" fontWeight="600" color={useColorModeValue('gray.700', 'gray.300')} mb={1}>
-                                        Evidence:
+                                  {/* Objections list for Objection Handling */}
+                                  {criteria.title.toLowerCase().includes('objection') && criteria.evidence && criteria.evidence.length > 0 && (
+                                    <VStack align="stretch" spacing={1} fontSize="xs">
+                                      <Text fontWeight="600" color={useColorModeValue('blue.600', 'blue.300')}>
+                                        Objections ({criteria.evidence.length}):
                                       </Text>
-                                      {criteria.evidence.map((ev: string, i: number) => (
-                                        <Text key={i} fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} pl={3} borderLeft="2px solid" borderColor={useColorModeValue('gray.300', 'gray.600')} mb={1}>
-                                          "{ev}"
+                                      {criteria.evidence.slice(0, 2).map((objection: string, i: number) => (
+                                        <Text key={i} color={useColorModeValue('gray.600', 'gray.400')} noOfLines={1}>
+                                          {i + 1}. "{objection}"
                                         </Text>
                                       ))}
-                                    </Box>
+                                      {criteria.evidence.length > 2 && (
+                                        <Text color={useColorModeValue('gray.500', 'gray.500')} fontStyle="italic">
+                                          +{criteria.evidence.length - 2} more
+                                        </Text>
+                                      )}
+                                    </VStack>
                                   )}
                                   
-                                  <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>
-                                    <strong>{criteria.isManualOverride ? 'Reasoning:' : 'AI Reasoning:'}</strong> {criteria.reasoning}
+                                  <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} noOfLines={2}>
+                                    {criteria.reasoning}
                                   </Text>
                                   
-                                  <Divider />
-                                  
-                                  {/* Manual Override for this Criterion */}
-                                  <Box p={3} bg={useColorModeValue('orange.50', 'orange.900/10')} borderRadius="md">
-                                    <VStack align="stretch" spacing={2}>
-                                      <Text fontSize="xs" fontWeight="600" color={useColorModeValue('gray.700', 'gray.300')}>
-                                        Override:
-                                      </Text>
-                                      
-                                      <HStack>
-                                        <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>Score:</Text>
-                                        <Input
-                                          type="number"
-                                          min="0"
-                                          max={criteria.maxPoints}
-                                          value={override?.score ?? criteria.earnedPoints}
-                                          onChange={(e) => setCriteriaOverrides(prev => ({
-                                            ...prev,
-                                            [idx]: {
-                                              score: parseInt(e.target.value) || 0,
-                                              reasoning: prev[idx]?.reasoning || '',
-                                              evidence: prev[idx]?.evidence || ''
-                                            }
-                                          }))}
-                                          size="xs"
-                                          w="80px"
-                                          bg={cardBg}
-                                        />
-                                        <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>
-                                          / {criteria.maxPoints} points
-                                        </Text>
-                                      </HStack>
-                                      
-                                      <VStack align="stretch" spacing={1}>
-                                        <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>Evidence:</Text>
-                                        <Textarea
-                                          placeholder="Override evidence quote..."
-                                          value={override?.evidence || ''}
-                                          onChange={(e) => setCriteriaOverrides(prev => ({
-                                            ...prev,
-                                            [idx]: {
-                                              score: prev[idx]?.score ?? criteria.earnedPoints,
-                                              reasoning: prev[idx]?.reasoning || '',
-                                              evidence: e.target.value
-                                            }
-                                          }))}
-                                          size="xs"
-                                          rows={2}
-                                          fontSize="xs"
-                                          bg={cardBg}
-                                        />
-                                      </VStack>
-                                      
-                                      <VStack align="stretch" spacing={1}>
-                                        <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>Reasoning:</Text>
-                                        <Textarea
-                                          placeholder="Override reasoning..."
-                                          value={override?.reasoning || ''}
-                                          onChange={(e) => setCriteriaOverrides(prev => ({
-                                            ...prev,
-                                            [idx]: {
-                                              score: prev[idx]?.score ?? criteria.earnedPoints,
-                                              reasoning: e.target.value,
-                                              evidence: prev[idx]?.evidence || ''
-                                            }
-                                          }))}
-                                          size="xs"
-                                          rows={2}
-                                          fontSize="xs"
-                                          bg={cardBg}
-                                        />
-                                      </VStack>
-                                    </VStack>
-                                  </Box>
+                                  <Text fontSize="xs" color="blue.500" fontWeight="600" textAlign="center" mt={1}>
+                                    Click for details →
+                                  </Text>
                                 </VStack>
                               </Box>
-                            )
-                          })}
+                            ))}
+                          </SimpleGrid>
+                          
+                          {/* Download PDF Button */}
+                          {selectedSession?.pdfUrl ? (
+                            <Button
+                              as="a"
+                              href={selectedSession.pdfUrl}
+                              download
+                              leftIcon={<Icon as={FileDown} />}
+                              size="sm"
+                              colorScheme="orange"
+                              width="full"
+                            >
+                              Download PDF Report
+                            </Button>
+                          ) : (
+                            <Button
+                              leftIcon={<Icon as={FileDown} />}
+                              size="sm"
+                              colorScheme="orange"
+                              width="full"
+                              onClick={generatePdf}
+                              isLoading={generatingPdf}
+                            >
+                              Generate PDF Report
+                            </Button>
+                          )}
                         </VStack>
-                        
-                        {/* Save Button */}
-                        <Button
-                          colorScheme="green"
-                          size="md"
-                          onClick={saveManualGradeOverride}
-                          isLoading={savingManualGrade}
-                          width="full"
-                        >
-                          Save All Overrides
-                        </Button>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                )}
+                      </CardBody>
+                    </Card>
+                  )}
+                  
+                  {/* Transcript View */}
+                  {selectedSession?.id === session.id && activeView === 'transcript' && (
+                    <Card bg={cardBg} border="2px solid" borderColor="blue.500" borderRadius="2xl" shadow="lg">
+                      <CardBody p={6}>
+                        <VStack align="stretch" spacing={4}>
+                          <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
+                            Call Transcript
+                          </Heading>
+                          {loadingTranscript ? (
+                            <VStack py={8}>
+                              <Spinner color="blue.500" />
+                              <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
+                                Loading transcript...
+                              </Text>
+                            </VStack>
+                          ) : sessionTranscript?.transcript_clean ? (
+                            <Box 
+                              maxH="500px" 
+                              overflowY="auto" 
+                              p={4} 
+                              bg={useColorModeValue('gray.50', 'gray.900')}
+                              borderRadius="lg"
+                              border="1px solid"
+                              borderColor={borderColor}
+                            >
+                              <VStack align="stretch" spacing={4} w="full">
+                                {sessionTranscript.transcript_clean.split('\n').filter((line: string) => line.trim() !== '').map((line: string, idx: number) => {
+                                  // Match landing page chat UI style
+                                  if (line.startsWith('You:')) {
+                                    const message = line.substring(4).trim()
+                                    if (!message) return null
+                                    return (
+                                      <Box 
+                                        key={idx} 
+                                        bg={accentColor}
+                                        color="white"
+                                        p={4}
+                                        rounded="2xl"
+                                        roundedBottomRight="md"
+                                        maxW="75%"
+                                        alignSelf="flex-end"
+                                      >
+                                        <Text fontSize="sm">{message}</Text>
+                                      </Box>
+                                    )
+                                  } else if (line.startsWith('AI Customer:')) {
+                                    const message = line.substring(12).trim()
+                                    if (!message) return null
+                                    return (
+                                      <Box 
+                                        key={idx} 
+                                        bg={useColorModeValue('gray.100', 'gray.700')}
+                                        color={useColorModeValue('gray.700', 'white')}
+                                        p={4}
+                                        rounded="2xl"
+                                        roundedBottomLeft="md"
+                                        maxW="75%"
+                                        alignSelf="flex-start"
+                                      >
+                                        <Text fontSize="sm">{message}</Text>
+                                      </Box>
+                                    )
+                                  } else {
+                                    // Display other lines centered
+                                    return (
+                                      <Box key={idx} p={2} alignSelf="center">
+                                        <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.500')} fontStyle="italic">
+                                          {line}
+                                        </Text>
+                                      </Box>
+                                    )
+                                  }
+                                })}
+                              </VStack>
+                            </Box>
+                          ) : (
+                            <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
+                              No transcript available
+                            </Text>
+                          )}
+                        </VStack>
+                      </CardBody>
+                    </Card>
+                  )}
+                  
+                  {/* Summary View */}
+                  {selectedSession?.id === session.id && activeView === 'summary' && (
+                    <Card bg={cardBg} border="2px solid" borderColor="green.500" borderRadius="2xl" shadow="lg">
+                      <CardBody p={6}>
+                        <VStack align="stretch" spacing={4}>
+                          <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
+                            AI Call Summary
+                          </Heading>
+                          {loadingSummary ? (
+                            <VStack py={8}>
+                              <Spinner color="green.500" />
+                              <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
+                                Generating AI summary...
+                              </Text>
+                            </VStack>
+                          ) : sessionSummary ? (
+                            <VStack align="stretch" spacing={3}>
+                              <Box p={4} bg={useColorModeValue('green.50', 'green.900/20')} borderRadius="lg" border="2px solid" borderColor="green.200">
+                                <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')} whiteSpace="pre-wrap" lineHeight="1.8">
+                                  {sessionSummary}
+                                </Text>
+                              </Box>
+                              {sessionTranscript && (
+                                <HStack spacing={4} fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+                                  <HStack spacing={1}>
+                                    <Icon as={Clock} boxSize={4} />
+                                    <Text>Duration: {Math.round(sessionTranscript.duration_seconds / 60)} min</Text>
+                                  </HStack>
+                                  <HStack spacing={1}>
+                                    <Icon as={Calendar} boxSize={4} />
+                                    <Text>{new Date(sessionTranscript.start_time).toLocaleString()}</Text>
+                                  </HStack>
+                                </HStack>
+                              )}
+                            </VStack>
+                          ) : (
+                            <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
+                              No summary available
+                            </Text>
+                          )}
+                        </VStack>
+                      </CardBody>
+                    </Card>
+                  )}
                   
                   {/* Loading State */}
                   {selectedSession?.id === session.id && loadingGrade && (
@@ -1069,6 +1157,103 @@ const Analytics: React.FC = () => {
           </Box>
         </Panel>
       </PanelGroup>
+
+      {/* Criterion Detail Modal */}
+      <Modal isOpen={isModalOpen} onClose={onModalClose} size="xl" isCentered>
+        <ModalOverlay />
+        <ModalContent maxW="800px" mx={4}>
+          <ModalHeader pr={12}>
+            <VStack align="start" spacing={2}>
+              <Text fontSize="lg" fontWeight="700" color={useColorModeValue('gray.900', 'white')} pr={8}>
+                {selectedCriterion?.title}
+              </Text>
+              {selectedCriterion && (
+                <Badge 
+                  colorScheme={
+                    (selectedCriterion.earnedPoints / selectedCriterion.maxPoints) >= 0.85 ? 'green' : 
+                    (selectedCriterion.earnedPoints / selectedCriterion.maxPoints) >= 0.70 ? 'blue' : 'orange'
+                  }
+                  borderRadius="full"
+                  px={3}
+                  py={1}
+                  fontSize="sm"
+                >
+                  {selectedCriterion.earnedPoints}/{selectedCriterion.maxPoints} pts
+                </Badge>
+              )}
+            </VStack>
+          </ModalHeader>
+          <ModalCloseButton top={4} right={4} />
+          <ModalBody pb={6}>
+            {selectedCriterion && (
+              <VStack align="stretch" spacing={4}>
+                <Box>
+                  <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.600', 'gray.400')} mb={2}>
+                    Description:
+                  </Text>
+                  <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')}>
+                    {selectedCriterion.description}
+                  </Text>
+                </Box>
+
+                <Divider />
+
+                {/* Special handling for Objection Handling - show all objections */}
+                {selectedCriterion.title.toLowerCase().includes('objection') && selectedCriterion.evidence && selectedCriterion.evidence.length > 0 && (
+                  <Box>
+                    <Text fontSize="sm" fontWeight="600" color={useColorModeValue('blue.700', 'blue.300')} mb={2}>
+                      All Objections Identified ({selectedCriterion.evidence.length}):
+                    </Text>
+                    <VStack align="stretch" spacing={2}>
+                      {selectedCriterion.evidence.map((objection: string, i: number) => (
+                        <Box key={i} p={3} bg={useColorModeValue('blue.50', 'blue.900/20')} borderRadius="md" borderLeft="3px solid" borderColor="blue.500">
+                          <HStack align="start" spacing={2}>
+                            <Badge colorScheme="blue" fontSize="xs">{i + 1}</Badge>
+                            <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')} flex={1}>
+                              "{objection}"
+                            </Text>
+                          </HStack>
+                        </Box>
+                      ))}
+                    </VStack>
+                  </Box>
+                )}
+
+                {/* Evidence for other criteria */}
+                {!selectedCriterion.title.toLowerCase().includes('objection') && selectedCriterion.evidence && selectedCriterion.evidence.length > 0 && (
+                  <Box>
+                    <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.700', 'gray.300')} mb={2}>
+                      Evidence from Transcript:
+                    </Text>
+                    <VStack align="stretch" spacing={2}>
+                      {selectedCriterion.evidence.map((ev: string, i: number) => (
+                        <Box key={i} p={3} bg={useColorModeValue('gray.50', 'gray.800')} borderRadius="md" borderLeft="3px solid" borderColor={borderColor}>
+                          <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')}>
+                            "{ev}"
+                          </Text>
+                        </Box>
+                      ))}
+                    </VStack>
+                  </Box>
+                )}
+
+                <Divider />
+
+                <Box>
+                  <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.700', 'gray.300')} mb={2}>
+                    AI Analysis:
+                  </Text>
+                  <Box p={3} bg={useColorModeValue('orange.50', 'orange.900/20')} borderRadius="md">
+                    <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')}>
+                      {selectedCriterion.reasoning}
+                    </Text>
+                  </Box>
+                </Box>
+              </VStack>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Box>
   )
 }
