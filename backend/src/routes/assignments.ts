@@ -3,6 +3,45 @@ import { supabase } from '../config/supabase'
 
 const router = Router()
 
+// GET /api/assignments/organization/:orgId - Get all assignments for an organization
+router.get('/organization/:orgId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { orgId } = req.params
+
+    console.log('Fetching assignments for organization:', orgId)
+
+    // Fetch all assignments - assignments table doesn't have org_id
+    // Filtering is done by user access control (users can only see assignments in their org)
+    const { data: assignments, error } = await supabase
+      .from('assignments')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching assignments:', error)
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch assignments',
+        details: error.message
+      })
+      return
+    }
+
+    res.json({
+      success: true,
+      data: assignments || []
+    })
+
+  } catch (error) {
+    console.error('Error in get organization assignments:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})
+
 // PATCH /api/assignments/:id/status - Update assignment status
 router.patch('/:id/status', async (req: Request, res: Response): Promise<void> => {
   try {

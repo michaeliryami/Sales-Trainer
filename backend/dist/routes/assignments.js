@@ -3,6 +3,37 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const supabase_1 = require("../config/supabase");
 const router = (0, express_1.Router)();
+router.get('/organization/:orgId', async (req, res) => {
+    try {
+        const { orgId } = req.params;
+        console.log('Fetching assignments for organization:', orgId);
+        const { data: assignments, error } = await supabase_1.supabase
+            .from('assignments')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) {
+            console.error('Error fetching assignments:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch assignments',
+                details: error.message
+            });
+            return;
+        }
+        res.json({
+            success: true,
+            data: assignments || []
+        });
+    }
+    catch (error) {
+        console.error('Error in get organization assignments:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
 router.patch('/:id/status', async (req, res) => {
     try {
         const { id } = req.params;

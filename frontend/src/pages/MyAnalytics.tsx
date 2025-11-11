@@ -20,7 +20,15 @@ import {
   Divider,
   Select,
   Spinner,
-  Button
+  Button,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure
 } from '@chakra-ui/react'
 import { 
   TrendingUp, 
@@ -52,6 +60,8 @@ const MyAnalytics: React.FC = () => {
   const [loadingSummary, setLoadingSummary] = useState(false)
   const [activeView, setActiveView] = useState<'transcript' | 'grade' | 'summary' | null>(null)
   const [generatingPdf, setGeneratingPdf] = useState(false)
+  const [selectedCriterion, setSelectedCriterion] = useState<any>(null)
+  const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure()
   const toast = useToast()
 
   const bg = useColorModeValue('gray.50', 'gray.900')
@@ -171,54 +181,34 @@ const MyAnalytics: React.FC = () => {
 
   // Handle view button clicks (Transcript, Grade, Summary)
   const handleViewButtonClick = (view: 'transcript' | 'grade' | 'summary', session: any) => {
-    // If clicking the same view on the same session, deselect (toggle off)
+    // Toggle view - if clicking the same view, deselect it
     if (selectedSession?.id === session.id && activeView === view) {
-      setSelectedSession(null)
       setActiveView(null)
+      setSelectedSession(null)
       setSessionGrade(null)
       setSessionTranscript(null)
       setSessionSummary(null)
       return
     }
-
+    
     // Set new selection
     setSelectedSession(session)
     setActiveView(view)
-
-    // Fetch the appropriate data based on view
-    if (view === 'transcript') {
-      if (!sessionTranscript || sessionTranscript.id !== session.id) {
+    
+    // Fetch data based on view
+    if (view === 'grade' && !sessionGrade) {
+      fetchSessionGrade(session.id)
+    }
+    if (view === 'transcript' && !sessionTranscript) {
+      fetchSessionTranscript(session.id)
+    }
+    if (view === 'summary') {
+      if (!sessionTranscript) {
         fetchSessionTranscript(session.id)
       }
-    } else if (view === 'grade') {
-      if (!sessionGrade || sessionGrade.session_id !== session.id) {
-        fetchSessionGrade(session.id)
-      }
-    } else if (view === 'summary') {
       if (!sessionSummary) {
         generateSummary(session.id)
       }
-    }
-  }
-
-  const handleSessionClick = (session: any) => {
-    console.log('Session clicked:', session)
-    console.log('Has grade?', session.hasGrade)
-    
-    // Toggle selection - if clicking the same session, deselect it
-    if (selectedSession?.id === session.id) {
-      setSelectedSession(null)
-      setSessionGrade(null)
-      return
-    }
-    
-    setSelectedSession(session)
-    if (session.hasGrade) {
-      console.log('Fetching grade for session:', session.id)
-      fetchSessionGrade(session.id)
-    } else {
-      console.log('No grade for this session')
-      setSessionGrade(null)
     }
   }
 
@@ -749,9 +739,8 @@ const MyAnalytics: React.FC = () => {
                         borderColor={selectedSession?.id === session.id ? accentColor : borderColor}
                         borderRadius="2xl"
                         shadow="sm"
-                        _hover={{ shadow: 'md', borderColor: accentColor, cursor: session.hasGrade ? 'pointer' : 'default' }}
+                        _hover={{ shadow: 'md', borderColor: accentColor }}
                         transition="all 0.3s"
-                        onClick={() => session.hasGrade && handleSessionClick(session)}
                       >
                         <CardBody p={4}>
                           <VStack align="stretch" spacing={3}>
@@ -881,41 +870,16 @@ const MyAnalytics: React.FC = () => {
                         </CardBody>
                       </Card>
                       
-                      {/* Grade Breakdown Section - Show when grade button is clicked */}
-                      {selectedSession?.id === session.id && activeView === 'grade' && sessionGrade && !loadingGrade && (
-                      <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg" ml={4}>
+                      {/* Grade Report - Show as 2-column grid */}
+                      {selectedSession?.id === session.id && activeView === 'grade' && sessionGrade && (
+                      <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg">
                         <CardBody p={6}>
                           <VStack align="stretch" spacing={4}>
-                            <HStack justify="space-between" align="start">
-                              <VStack align="start" spacing={2}>
-                                <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
-                                  Grade Breakdown
-                                </Heading>
-                                {selectedSession?.pdfUrl ? (
-                                  <Button
-                                    as="a"
-                                    href={selectedSession.pdfUrl}
-                                    download
-                                    leftIcon={<Icon as={FileDown} />}
-                                    size="sm"
-                                    colorScheme="orange"
-                                    variant="outline"
-                                  >
-                                    Download PDF Report
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    leftIcon={<Icon as={FileDown} />}
-                                    size="sm"
-                                    colorScheme="orange"
-                                    variant="outline"
-                                    onClick={generatePdf}
-                                    isLoading={generatingPdf}
-                                  >
-                                    Generate PDF Report
-                                  </Button>
-                                )}
-                              </VStack>
+                            {/* Header */}
+                            <HStack justify="space-between" align="center">
+                              <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
+                                Grade Report
+                              </Heading>
                               <Badge 
                                 colorScheme={sessionGrade.percentage >= 85 ? 'green' : sessionGrade.percentage >= 70 ? 'blue' : 'red'}
                                 variant="solid"
@@ -925,23 +889,37 @@ const MyAnalytics: React.FC = () => {
                                 fontSize="lg"
                                 fontWeight="700"
                               >
-                                {Math.round(sessionGrade.percentage)}%
+                                {Math.round(sessionGrade.percentage)}% ({sessionGrade.total_score}/{sessionGrade.max_possible_score})
                               </Badge>
                             </HStack>
                             
-                            <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
-                              {sessionGrade.total_score} / {sessionGrade.max_possible_score} points
-                            </Text>
-                            
                             <Divider />
                             
-                            {/* Individual Criteria */}
-                            <VStack spacing={4} align="stretch">
+                            {/* Criteria Grid - 2 columns */}
+                            <SimpleGrid columns={2} spacing={3}>
                               {sessionGrade.criteria_grades?.map((criteria: any, idx: number) => (
-                                <Box key={idx} p={4} bg={useColorModeValue('gray.50', 'gray.800')} borderRadius="xl">
-                                  <VStack align="stretch" spacing={3}>
-                                    <HStack justify="space-between">
-                                      <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
+                                <Box 
+                                  key={idx} 
+                                  p={3} 
+                                  bg={useColorModeValue('gray.50', 'gray.800')} 
+                                  borderRadius="lg" 
+                                  border="1px solid" 
+                                  borderColor={borderColor}
+                                  cursor="pointer"
+                                  _hover={{ 
+                                    borderColor: accentColor, 
+                                    shadow: 'md',
+                                    transform: 'translateY(-2px)'
+                                  }}
+                                  transition="all 0.2s"
+                                  onClick={() => {
+                                    setSelectedCriterion(criteria)
+                                    onModalOpen()
+                                  }}
+                                >
+                                  <VStack align="stretch" spacing={2}>
+                                    <HStack justify="space-between" align="center">
+                                      <Text fontWeight="700" color={useColorModeValue('gray.900', 'white')} fontSize="sm">
                                         {criteria.title}
                                       </Text>
                                       <Badge 
@@ -950,37 +928,70 @@ const MyAnalytics: React.FC = () => {
                                           (criteria.earnedPoints / criteria.maxPoints) >= 0.70 ? 'blue' : 'orange'
                                         }
                                         borderRadius="full"
-                                        px={3}
+                                        px={2}
                                         py={1}
+                                        fontSize="xs"
                                       >
                                         {criteria.earnedPoints}/{criteria.maxPoints}
                                       </Badge>
                                     </HStack>
                                     
-                                    <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} fontStyle="italic">
-                                      {criteria.description}
-                                    </Text>
-                                    
-                                    {criteria.evidence && criteria.evidence.length > 0 && (
-                                      <Box mt={1}>
-                                        <Text fontSize="xs" fontWeight="600" color={useColorModeValue('gray.700', 'gray.300')} mb={1}>
-                                          Evidence:
+                                    {/* Objections list for Objection Handling */}
+                                    {criteria.title.toLowerCase().includes('objection') && criteria.evidence && criteria.evidence.length > 0 && (
+                                      <VStack align="stretch" spacing={1} fontSize="xs">
+                                        <Text fontWeight="600" color={useColorModeValue('blue.600', 'blue.300')}>
+                                          Objections ({criteria.evidence.length}):
                                         </Text>
-                                        {criteria.evidence.map((ev: string, i: number) => (
-                                          <Text key={i} fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} pl={3} borderLeft="2px solid" borderColor={useColorModeValue('gray.300', 'gray.600')} mb={1}>
-                                            "{ev}"
+                                        {criteria.evidence.slice(0, 2).map((objection: string, i: number) => (
+                                          <Text key={i} color={useColorModeValue('gray.600', 'gray.400')} noOfLines={1}>
+                                            {i + 1}. "{objection}"
                                           </Text>
                                         ))}
-                                      </Box>
+                                        {criteria.evidence.length > 2 && (
+                                          <Text color={useColorModeValue('gray.500', 'gray.500')} fontStyle="italic">
+                                            +{criteria.evidence.length - 2} more
+                                          </Text>
+                                        )}
+                                      </VStack>
                                     )}
                                     
-                                    <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')}>
-                                      <strong>{criteria.isManualOverride ? 'Feedback:' : 'AI Reasoning:'}</strong> {criteria.reasoning}
+                                    <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} noOfLines={2}>
+                                      {criteria.reasoning}
+                                    </Text>
+                                    
+                                    <Text fontSize="xs" color="blue.500" fontWeight="600" textAlign="center" mt={1}>
+                                      Click for details →
                                     </Text>
                                   </VStack>
                                 </Box>
                               ))}
-                            </VStack>
+                            </SimpleGrid>
+                            
+                            {/* Download PDF Button */}
+                            {selectedSession?.pdfUrl ? (
+                              <Button
+                                as="a"
+                                href={selectedSession.pdfUrl}
+                                download
+                                leftIcon={<Icon as={FileDown} />}
+                                size="sm"
+                                colorScheme="orange"
+                                width="full"
+                              >
+                                Download PDF Report
+                              </Button>
+                            ) : (
+                              <Button
+                                leftIcon={<Icon as={FileDown} />}
+                                size="sm"
+                                colorScheme="orange"
+                                width="full"
+                                onClick={generatePdf}
+                                isLoading={generatingPdf}
+                              >
+                                Generate PDF Report
+                              </Button>
+                            )}
                           </VStack>
                         </CardBody>
                       </Card>
@@ -988,7 +999,7 @@ const MyAnalytics: React.FC = () => {
                     
                     {/* Transcript View */}
                     {selectedSession?.id === session.id && activeView === 'transcript' && (
-                      <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg" ml={4}>
+                      <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg">
                         <CardBody p={6}>
                           <VStack align="stretch" spacing={4}>
                             <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
@@ -1073,7 +1084,7 @@ const MyAnalytics: React.FC = () => {
                     
                     {/* Summary View */}
                     {selectedSession?.id === session.id && activeView === 'summary' && (
-                      <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg" ml={4}>
+                      <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg">
                         <CardBody p={6}>
                           <VStack align="stretch" spacing={4}>
                             <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
@@ -1118,7 +1129,7 @@ const MyAnalytics: React.FC = () => {
                     
                     {/* Loading indicator right after selected session */}
                     {selectedSession?.id === session.id && loadingGrade && (
-                      <Card bg={cardBg} borderRadius="2xl" ml={4}>
+                      <Card bg={cardBg} borderRadius="2xl">
                         <CardBody p={8}>
                           <VStack>
                             <Spinner color={accentColor} />
@@ -1151,6 +1162,96 @@ const MyAnalytics: React.FC = () => {
           </Box>
         </Panel>
       </PanelGroup>
+
+      {/* Criterion Detail Modal */}
+      <Modal isOpen={isModalOpen} onClose={onModalClose} size="xl" isCentered>
+        <ModalOverlay />
+        <ModalContent maxW="800px" mx={4}>
+          <ModalHeader pr={12}>
+            <VStack align="start" spacing={2}>
+              <Text fontSize="lg" fontWeight="700" color={useColorModeValue('gray.900', 'white')} pr={8}>
+                {selectedCriterion?.title}
+              </Text>
+              {selectedCriterion && (
+                <Badge 
+                  colorScheme={
+                    (selectedCriterion.earnedPoints / selectedCriterion.maxPoints) >= 0.85 ? 'green' : 
+                    (selectedCriterion.earnedPoints / selectedCriterion.maxPoints) >= 0.70 ? 'blue' : 'orange'
+                  }
+                  borderRadius="full"
+                  px={3}
+                  py={1}
+                  fontSize="sm"
+                >
+                  {selectedCriterion.earnedPoints}/{selectedCriterion.maxPoints} pts
+                </Badge>
+              )}
+            </VStack>
+          </ModalHeader>
+          <ModalCloseButton top={4} right={4} />
+          <ModalBody pb={6}>
+            {selectedCriterion && (
+              <VStack align="stretch" spacing={4}>
+                <Box>
+                  <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.600', 'gray.400')} mb={2}>
+                    Description:
+                  </Text>
+                  <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')}>
+                    {selectedCriterion.description}
+                  </Text>
+                </Box>
+                <Divider />
+                {selectedCriterion.title.toLowerCase().includes('objection') && selectedCriterion.evidence && selectedCriterion.evidence.length > 0 && (
+                  <Box>
+                    <Text fontSize="sm" fontWeight="600" color={useColorModeValue('blue.700', 'blue.300')} mb={2}>
+                      All Objections Identified ({selectedCriterion.evidence.length}):
+                    </Text>
+                    <VStack align="stretch" spacing={2}>
+                      {selectedCriterion.evidence.map((objection: string, i: number) => (
+                        <Box key={i} p={3} bg={useColorModeValue('blue.50', 'blue.900/20')} borderRadius="md" borderLeft="3px solid" borderColor="blue.500">
+                          <HStack align="start" spacing={2}>
+                            <Badge colorScheme="blue" fontSize="xs">{i + 1}</Badge>
+                            <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')} flex={1}>
+                              "{objection}"
+                            </Text>
+                          </HStack>
+                        </Box>
+                      ))}
+                    </VStack>
+                  </Box>
+                )}
+                {!selectedCriterion.title.toLowerCase().includes('objection') && selectedCriterion.evidence && selectedCriterion.evidence.length > 0 && (
+                  <Box>
+                    <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.700', 'gray.300')} mb={2}>
+                      Evidence from Transcript:
+                    </Text>
+                    <VStack align="stretch" spacing={2}>
+                      {selectedCriterion.evidence.map((ev: string, i: number) => (
+                        <Box key={i} p={3} bg={useColorModeValue('gray.50', 'gray.800')} borderRadius="md" borderLeft="3px solid" borderColor={borderColor}>
+                          <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')}>
+                            "{ev}"
+                          </Text>
+                        </Box>
+                      ))}
+                    </VStack>
+                  </Box>
+                )}
+                <Divider />
+                <Box>
+                  <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.700', 'gray.300')} mb={2}>
+                    AI Analysis:
+                  </Text>
+                  <Box p={3} bg={useColorModeValue('orange.50', 'orange.900/20')} borderRadius="md">
+                    <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')}>
+                      {selectedCriterion.reasoning}
+                    </Text>
+                  </Box>
+                </Box>
+              </VStack>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Box>
   )
 }

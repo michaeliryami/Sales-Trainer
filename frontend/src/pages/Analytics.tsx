@@ -29,8 +29,6 @@ import {
   Td,
   TableContainer,
   Spinner,
-  Alert,
-  AlertIcon,
   Input,
   Textarea,
   useToast,
@@ -85,6 +83,12 @@ const Analytics: React.FC = () => {
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [selectedCriterion, setSelectedCriterion] = useState<any>(null)
   const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure()
+  const [selectedUser, setSelectedUser] = useState<any>(null)
+  const [userAnalytics, setUserAnalytics] = useState<any>(null)
+  const [loadingUserAnalytics, setLoadingUserAnalytics] = useState(false)
+  const [teamMembers, setTeamMembers] = useState<any[]>([])
+  const [filterUserId, setFilterUserId] = useState<string | null>(null)
+  const [assignments, setAssignments] = useState<any[]>([])
   const toast = useToast()
   
   // Cache TTL: 2 minutes
@@ -169,7 +173,6 @@ const Analytics: React.FC = () => {
           avgSessionDuration: 0,
           completionRate: 0,
           avgScore: 0,
-          topTemplates: [],
           recentSessions: [],
           topPerformers: [],
           weeklyTrends: { sessions: [], completion: [] }
@@ -184,7 +187,6 @@ const Analytics: React.FC = () => {
         avgSessionDuration: 0,
         completionRate: 0,
         avgScore: 0,
-        topTemplates: [],
         recentSessions: [],
         topPerformers: [],
         weeklyTrends: { sessions: [], completion: [] }
@@ -195,7 +197,75 @@ const Analytics: React.FC = () => {
     }
   }
 
+  // Fetch team members
+  const fetchTeamMembers = async () => {
+    if (!organization?.id) return
+    
+    try {
+      const response = await apiFetch(`/api/profiles/organization/${organization.id}`)
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        setTeamMembers(result.data)
+      }
+    } catch (error) {
+      console.error('Error fetching team members:', error)
+    }
+  }
+
+  // Fetch assignments
+  const fetchAssignments = async () => {
+    if (!organization?.id) return
+    
+    try {
+      const response = await apiFetch(`/api/assignments/organization/${organization.id}`)
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        setAssignments(result.data)
+      }
+    } catch (error) {
+      console.error('Error fetching assignments:', error)
+    }
+  }
+
+  // Fetch individual user analytics
+  const fetchUserAnalytics = async (userId: string) => {
+    setLoadingUserAnalytics(true)
+    try {
+      const response = await apiFetch(`/api/analytics/employee/${userId}?period=${timeRange}`)
+      const result = await response.json()
+      
+      if (result.success) {
+        setUserAnalytics(result.data)
+      } else {
+        setUserAnalytics(null)
+      }
+    } catch (error) {
+      console.error('Error fetching user analytics:', error)
+      setUserAnalytics(null)
+    } finally {
+      setLoadingUserAnalytics(false)
+    }
+  }
+
+  // Handle user click
+  const handleUserClick = (user: any) => {
+    if (selectedUser?.id === user.id) {
+      setSelectedUser(null)
+      setUserAnalytics(null)
+    } else {
+      setSelectedUser(user)
+      fetchUserAnalytics(user.id)
+    }
+  }
+
   // Initial fetch
+  useEffect(() => {
+    fetchTeamMembers()
+    fetchAssignments()
+  }, [organization])
+
   useEffect(() => {
     fetchAnalytics()
   }, [timeRange, organization])
@@ -571,7 +641,7 @@ const Analytics: React.FC = () => {
                   </Card>
                 </SimpleGrid>
 
-                {/* Top Templates */}
+                {/* Team Members */}
                 <Card bg={cardBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" shadow="md">
                   <CardBody p={6}>
                     <Heading 
@@ -581,105 +651,90 @@ const Analytics: React.FC = () => {
                       fontWeight="600"
                       letterSpacing="-0.01em"
                     >
-                      Top Performing Templates
+                      <HStack>
+                        <Icon as={Users} boxSize={5} color={accentColor} />
+                        <Text>Team Members</Text>
+                      </HStack>
                     </Heading>
-                    <VStack spacing={3} align="stretch">
-                      {analyticsData?.topTemplates?.map((template: any, index: number) => (
-                        <Box key={index} p={4} bg={useColorModeValue('gray.50/50', 'gray.800/50')} borderRadius="xl" border="1px solid" borderColor={borderColor}>
-                          <Flex justify="space-between" align="center" mb={2}>
-                            <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
-                              {template.name}
-                            </Text>
-                            <Badge colorScheme="orange" variant="outline" borderRadius="full" px={3} py={1}>
-                              {template.sessions} sessions
-                            </Badge>
-                          </Flex>
-                          <HStack justify="space-between" align="center">
-                            <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
-                              Success Rate
-                            </Text>
-                            <HStack spacing={2}>
-                              <Progress 
-                                value={template.successRate} 
-                                size="sm" 
-                                colorScheme="green" 
-                                borderRadius="full" 
-                                w="100px"
-                                bg={useColorModeValue('gray.200', 'gray.700')}
-                              />
-                              <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.700', 'gray.300')}>
-                                {template.successRate}%
-                              </Text>
-                            </HStack>
-                          </HStack>
-                        </Box>
-                      ))}
+                    <VStack spacing={2} align="stretch">
+                      {teamMembers.length > 0 ? (
+                        teamMembers.map((member: any) => (
+                          <Box 
+                            key={member.id} 
+                            p={3} 
+                            bg={selectedUser?.id === member.id ? useColorModeValue('orange.50', 'orange.900/20') : useColorModeValue('gray.50/50', 'gray.800/50')} 
+                            borderRadius="lg" 
+                            border="1px solid" 
+                            borderColor={selectedUser?.id === member.id ? accentColor : borderColor}
+                            cursor="pointer"
+                            _hover={{ borderColor: accentColor, shadow: 'sm' }}
+                            transition="all 0.2s"
+                            onClick={() => handleUserClick(member)}
+                          >
+                            <VStack align="stretch" spacing={2}>
+                              <HStack justify="space-between">
+                                <VStack align="start" spacing={0}>
+                                  <Text fontWeight="600" fontSize="sm" color={useColorModeValue('gray.900', 'white')}>
+                                    {member.display_name || member.email}
+                                  </Text>
+                                  <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                                    {member.email}
+                                  </Text>
+                                </VStack>
+                                {member.role === 'admin' && (
+                                  <Badge colorScheme="purple" size="sm" fontSize="xs">
+                                    Admin
+                                  </Badge>
+                                )}
+                              </HStack>
+                              
+                              {/* Show stats inline when selected */}
+                              {selectedUser?.id === member.id && userAnalytics && !loadingUserAnalytics && (
+                                <SimpleGrid columns={2} spacing={2} pt={2} borderTop="1px solid" borderColor={borderColor}>
+                                  <Box>
+                                    <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Sessions</Text>
+                                    <Text fontSize="md" fontWeight="700" color={useColorModeValue('gray.900', 'white')}>
+                                      {userAnalytics.totalSessions || 0}
+                                    </Text>
+                                  </Box>
+                                  <Box>
+                                    <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Avg Score</Text>
+                                    <Text fontSize="md" fontWeight="700" color={useColorModeValue('gray.900', 'white')}>
+                                      {userAnalytics.avgScore?.toFixed(1) || 0}%
+                                    </Text>
+                                  </Box>
+                                  <Box>
+                                    <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Assignments</Text>
+                                    <Text fontSize="md" fontWeight="700" color={useColorModeValue('gray.900', 'white')}>
+                                      {userAnalytics.assignmentsCompleted || 0}/{userAnalytics.totalAssignments || 0}
+                                    </Text>
+                                  </Box>
+                                  <Box>
+                                    <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Streak</Text>
+                                    <Text fontSize="md" fontWeight="700" color={useColorModeValue('gray.900', 'white')}>
+                                      {userAnalytics.currentStreak || 0} days
+                                    </Text>
+                                  </Box>
+                                </SimpleGrid>
+                              )}
+                              
+                              {selectedUser?.id === member.id && loadingUserAnalytics && (
+                                <HStack justify="center" py={2}>
+                                  <Spinner size="sm" color={accentColor} />
+                                </HStack>
+                              )}
+                            </VStack>
+                          </Box>
+                        ))
+                      ) : (
+                        <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')} textAlign="center" py={4}>
+                          No team members found
+                        </Text>
+                      )}
                     </VStack>
                   </CardBody>
                 </Card>
 
-                {/* Top Performers */}
-                {analyticsData?.topPerformers && analyticsData.topPerformers.length > 0 && (
-                  <Card bg={cardBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" shadow="md">
-                    <CardBody p={6}>
-                      <Heading 
-                        size="md" 
-                        color={useColorModeValue('gray.900', 'white')} 
-                        mb={4}
-                        fontWeight="600"
-                        letterSpacing="-0.01em"
-                      >
-                        <HStack>
-                          <Icon as={Award} boxSize={5} color={accentColor} />
-                          <Text>Top Performers</Text>
-                        </HStack>
-                      </Heading>
-                      <VStack spacing={3} align="stretch">
-                        {analyticsData.topPerformers.map((performer: any, index: number) => (
-                          <Box key={index} p={4} bg={useColorModeValue('gray.50/50', 'gray.800/50')} borderRadius="xl" border="1px solid" borderColor={borderColor}>
-                            <Flex justify="space-between" align="center">
-                              <HStack spacing={3}>
-                                <Box 
-                                  bg={index === 0 ? 'yellow.100' : index === 1 ? 'gray.200' : 'orange.100'} 
-                                  color={index === 0 ? 'yellow.800' : index === 1 ? 'gray.700' : 'orange.800'}
-                                  w="32px"
-                                  h="32px"
-                                  borderRadius="full"
-                                  display="flex"
-                                  alignItems="center"
-                                  justifyContent="center"
-                                  fontWeight="700"
-                                  fontSize="sm"
-                                >
-                                  {index + 1}
-                                </Box>
-                                <VStack align="start" spacing={0}>
-                                  <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
-                                    {performer.name}
-                                  </Text>
-                                  <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
-                                    {performer.completedSessions} sessions • {performer.streak} day streak
-                                  </Text>
-                                </VStack>
-                              </HStack>
-                              <Badge 
-                                colorScheme={performer.avgScore >= 85 ? 'green' : performer.avgScore >= 70 ? 'blue' : 'yellow'}
-                                variant="subtle"
-                                borderRadius="full"
-                                px={3}
-                                py={1}
-                                fontSize="sm"
-                                fontWeight="600"
-                              >
-                                {performer.avgScore}% avg
-                              </Badge>
-                            </Flex>
-                          </Box>
-                        ))}
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                )}
               </VStack>
             </Box>
           </Box>
@@ -744,44 +799,75 @@ const Analytics: React.FC = () => {
               borderBottom="1px"
               borderColor={borderColor}
             >
-              <VStack align="start" spacing={1}>
-                <Heading 
-                  size="md" 
-                  color={useColorModeValue('gray.900', 'white')}
-                  fontWeight="600"
-                >
-                  Recent Activity
-                </Heading>
-                <Text 
-                  fontSize="sm" 
-                  color={useColorModeValue('gray.600', 'gray.400')}
-                >
-                  Latest training sessions
-                </Text>
-              </VStack>
+              <HStack justify="space-between" align="center">
+                <VStack align="start" spacing={1}>
+                  <Heading 
+                    size="md" 
+                    color={useColorModeValue('gray.900', 'white')}
+                    fontWeight="600"
+                  >
+                    Recent Activity
+                  </Heading>
+                  <Text 
+                    fontSize="sm" 
+                    color={useColorModeValue('gray.600', 'gray.400')}
+                  >
+                    Latest training sessions
+                  </Text>
+                </VStack>
+                <HStack spacing={2}>
+                  <Select
+                    size="sm"
+                    maxW="200px"
+                    value={filterAssignmentId || 'all'}
+                    onChange={(e) => {
+                      const value = e.target.value === 'all' ? null : parseInt(e.target.value)
+                      setFilterAssignmentId(value)
+                      if (value) {
+                        navigate(`/analytics?assignment=${value}`)
+                      } else {
+                        navigate('/analytics')
+                      }
+                    }}
+                    bg={useColorModeValue('white', 'gray.800')}
+                    borderRadius="xl"
+                    border="1px solid"
+                    borderColor={borderColor}
+                  >
+                    <option value="all">All Assignments</option>
+                    {assignments.map((assignment) => (
+                      <option key={assignment.id} value={assignment.id}>
+                        {assignment.title}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select
+                    size="sm"
+                    maxW="200px"
+                    value={filterUserId || 'all'}
+                    onChange={(e) => setFilterUserId(e.target.value === 'all' ? null : e.target.value)}
+                    bg={useColorModeValue('white', 'gray.800')}
+                    borderRadius="xl"
+                    border="1px solid"
+                    borderColor={borderColor}
+                  >
+                    <option value="all">All Users</option>
+                    {teamMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.display_name || member.email}
+                      </option>
+                    ))}
+                  </Select>
+                </HStack>
+              </HStack>
             </Box>
 
             {/* Content */}
             <Box flex={1} overflowY="auto" p={6}>
               <VStack spacing={4} align="stretch">
-                {/* Assignment Filter */}
-                {filterAssignmentId && (
-                  <Alert status="info" borderRadius="xl">
-                    <AlertIcon />
-                    <Box flex={1}>
-                      <Text fontSize="sm" fontWeight="600">Filtered by Assignment #{filterAssignmentId}</Text>
-                    </Box>
-                    <Button size="sm" variant="ghost" onClick={() => {
-                      setFilterAssignmentId(null)
-                      navigate('/analytics')
-                    }}>
-                      Clear Filter
-                    </Button>
-                  </Alert>
-                )}
-                
                 {analyticsData?.recentSessions
                   ?.filter((session: any) => !filterAssignmentId || session.assignmentId === filterAssignmentId)
+                  ?.filter((session: any) => !filterUserId || session.userId === filterUserId)
                   .map((session: any, index: number) => (
                   <React.Fragment key={index}>
                   <Card 

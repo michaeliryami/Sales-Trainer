@@ -56,39 +56,6 @@ router.get('/admin/:orgId', async (req, res) => {
         const avgScore = grades && grades.length > 0
             ? grades.reduce((sum, g) => sum + (g.percentage || 0), 0) / grades.length
             : 0;
-        const templateStats = {};
-        sessions?.forEach(session => {
-            if (session.template_id) {
-                if (!templateStats[session.template_id]) {
-                    templateStats[session.template_id] = { count: 0, completed: 0, totalScore: 0, scores: 0 };
-                }
-                templateStats[session.template_id].count++;
-                if (session.status === 'completed') {
-                    templateStats[session.template_id].completed++;
-                }
-            }
-        });
-        grades?.forEach(grade => {
-            const session = sessions?.find(s => s.id === grade.session_id);
-            if (session?.template_id) {
-                if (templateStats[session.template_id]) {
-                    templateStats[session.template_id].totalScore += grade.percentage || 0;
-                    templateStats[session.template_id].scores++;
-                }
-            }
-        });
-        const { data: templates } = await supabase_1.supabase
-            .from('templates')
-            .select('id, title');
-        const topTemplates = templates?.map(template => {
-            const stats = templateStats[template.id];
-            return stats ? {
-                id: template.id,
-                name: template.title,
-                sessions: stats.count,
-                successRate: stats.scores > 0 ? Math.round(stats.totalScore / stats.scores) : 0
-            } : null;
-        }).filter(Boolean).sort((a, b) => b.sessions - a.sessions).slice(0, 5);
         const recentSessionsData = sessions
             ?.filter(s => s.assignment_id !== null && s.submitted_for_review === true)
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -100,6 +67,9 @@ router.get('/admin/:orgId', async (req, res) => {
             .from('profiles')
             .select('id, display_name, email')
             .in('id', allUserIds);
+        const { data: templates } = await supabase_1.supabase
+            .from('templates')
+            .select('id, title');
         const recentSessions = recentSessionsData.map(session => {
             const profile = profiles?.find(p => p.id === session.user_id);
             const template = templates?.find(t => t.id === session.template_id);
@@ -166,7 +136,6 @@ router.get('/admin/:orgId', async (req, res) => {
             avgSessionDuration: parseFloat(avgDuration.toFixed(1)),
             completionRate: parseFloat(completionRate.toFixed(1)),
             avgScore: parseFloat(avgScore.toFixed(1)),
-            topTemplates: topTemplates || [],
             recentSessions,
             topPerformers: topPerformers || [],
             weeklyTrends
@@ -247,7 +216,8 @@ router.get('/employee/:userId', async (req, res) => {
         const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
         const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
         const lowestScore = scores.length > 0 ? Math.min(...scores) : 0;
-        const assignmentsCompleted = grades?.length || 0;
+        const assignmentSessionIds = sessions?.filter(s => s.assignment_id !== null).map(s => s.id) || [];
+        const assignmentsCompleted = grades?.filter(g => assignmentSessionIds.includes(g.session_id)).length || 0;
         const assignmentsPending = (userAssignments?.length || 0) - assignmentsCompleted;
         const { data: templates } = await supabase_1.supabase
             .from('templates')
@@ -574,6 +544,200 @@ router.get('/session-grade/:sessionId', async (req, res) => {
         return res.status(500).json({
             success: false,
             error: 'Failed to fetch session grade',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+async function cleanTranscriptWithLLM(rawTranscript) {
+    try {
+        const OpenAI = require('openai');
+        const openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY
+        });
+        const prompt = `
+Please clean up this raw conversation transcript by removing duplicates, merging overlapping text, and creating one natural conversation flow.
+
+Raw transcript:
+${rawTranscript}
+
+Instructions:
+1. Remove duplicate lines and repeated phrases
+2. Merge overlapping or fragmented sentences into complete thoughts
+3. Keep the natural conversation flow between "You" and "AI Customer"
+4. Remove timestamps and unnecessary repetition
+5. Present as a clean, readable conversation
+6. Keep all the actual content, just clean up the formatting and duplicates
+
+Format the output as:
+You: [clean message]
+AI Customer: [clean message]
+You: [clean message]
+etc.
+
+Only return the cleaned conversation, nothing else.
+`;
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                {
+                    role: "system",
+                    content: "You are a transcript editor. Clean up conversations by removing duplicates and creating natural flow while preserving all actual content."
+                },
+                {
+                    role: "user",
+                    content: prompt
+                }
+            ],
+            max_tokens: 1500,
+            temperature: 0.1
+        });
+        const cleanedTranscript = completion.choices[0]?.message?.content || rawTranscript;
+        return cleanedTranscript.trim();
+    }
+    catch (error) {
+        console.error('Error cleaning transcript with LLM:', error);
+        return rawTranscript;
+    }
+}
+router.get('/session-transcript/:sessionId', async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        console.log('Fetching transcript for session:', sessionId);
+        const { data: session, error } = await supabase_1.supabase
+            .from('training_sessions')
+            .select('transcript, transcript_clean, transcript_llm_clean, call_id, start_time, end_time, duration_seconds')
+            .eq('id', sessionId)
+            .single();
+        if (error) {
+            if (error.code === 'PGRST116') {
+                return res.json({
+                    success: true,
+                    data: null
+                });
+            }
+            throw error;
+        }
+        let cleanedTranscript = session.transcript_llm_clean;
+        if (!cleanedTranscript && session.transcript_clean) {
+            console.log('No LLM-cleaned transcript found. Running LLM cleaning for first time...');
+            try {
+                cleanedTranscript = await cleanTranscriptWithLLM(session.transcript_clean);
+                console.log('LLM cleaning completed. Saving to database...');
+                const { error: updateError } = await supabase_1.supabase
+                    .from('training_sessions')
+                    .update({ transcript_llm_clean: cleanedTranscript })
+                    .eq('id', sessionId);
+                if (updateError) {
+                    console.error('Error saving LLM-cleaned transcript:', updateError);
+                }
+                else {
+                    console.log('LLM-cleaned transcript saved successfully!');
+                }
+            }
+            catch (error) {
+                console.error('Error in LLM cleaning:', error);
+                cleanedTranscript = session.transcript_clean;
+            }
+        }
+        else if (cleanedTranscript) {
+            console.log('Using cached LLM-cleaned transcript from database');
+        }
+        else {
+            cleanedTranscript = session.transcript_clean;
+        }
+        return res.json({
+            success: true,
+            data: {
+                ...session,
+                transcript_clean: cleanedTranscript
+            }
+        });
+    }
+    catch (error) {
+        console.error('Error fetching session transcript:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Failed to fetch session transcript',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+router.get('/session-summary/:sessionId', async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        console.log('Generating summary for session:', sessionId);
+        const { data: existingSession, error: fetchError } = await supabase_1.supabase
+            .from('training_sessions')
+            .select('ai_summary, transcript_clean, transcript_llm_clean')
+            .eq('id', sessionId)
+            .single();
+        if (fetchError) {
+            throw fetchError;
+        }
+        if (existingSession.ai_summary) {
+            return res.json({
+                success: true,
+                data: { summary: existingSession.ai_summary }
+            });
+        }
+        const transcriptToSummarize = existingSession.transcript_llm_clean || existingSession.transcript_clean;
+        if (!transcriptToSummarize) {
+            return res.status(400).json({
+                success: false,
+                error: 'No transcript available for this session'
+            });
+        }
+        const OpenAI = require('openai');
+        const openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY
+        });
+        const prompt = `Analyze this sales call transcript and provide a concise summary focusing on:
+1. What the rep did well (strengths in their approach, techniques used effectively)
+2. What the rep could improve (missed opportunities, weak points, areas for development)
+3. Overall call assessment (how the call went, outcome, key takeaways)
+
+Keep the summary professional, actionable, and around 150-200 words.
+
+Transcript:
+${transcriptToSummarize}
+
+Provide the summary in a clear, paragraph format.`;
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                {
+                    role: "system",
+                    content: "You are an expert sales coach analyzing training calls. Provide constructive, specific feedback."
+                },
+                {
+                    role: "user",
+                    content: prompt
+                }
+            ],
+            max_tokens: 500,
+            temperature: 0.7
+        });
+        const summary = completion.choices[0]?.message?.content;
+        if (!summary) {
+            throw new Error('No summary generated');
+        }
+        const { error: updateError } = await supabase_1.supabase
+            .from('training_sessions')
+            .update({ ai_summary: summary })
+            .eq('id', sessionId);
+        if (updateError) {
+            console.error('Error saving summary:', updateError);
+        }
+        return res.json({
+            success: true,
+            data: { summary }
+        });
+    }
+    catch (error) {
+        console.error('Error generating session summary:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Failed to generate session summary',
             details: error instanceof Error ? error.message : 'Unknown error'
         });
     }

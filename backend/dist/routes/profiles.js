@@ -40,5 +40,35 @@ router.post('/check-emails', async (req, res) => {
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
+router.get('/organization/:orgId', async (req, res) => {
+    try {
+        const { orgId } = req.params;
+        console.log('Fetching profiles for organization:', orgId);
+        const { data: profiles, error } = await supabase_1.supabase
+            .from('profiles')
+            .select('id, display_name, email, role, created_at')
+            .eq('org', orgId)
+            .order('display_name', { ascending: true });
+        if (error) {
+            console.error('Error fetching organization profiles:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to fetch organization profiles'
+            });
+        }
+        console.log(`Found ${profiles?.length || 0} profiles for org ${orgId}`);
+        return res.json({
+            success: true,
+            data: profiles || []
+        });
+    }
+    catch (error) {
+        console.error('Error in organization profiles:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+});
 exports.default = router;
 //# sourceMappingURL=profiles.js.map

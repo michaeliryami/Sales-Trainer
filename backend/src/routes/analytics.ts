@@ -71,46 +71,6 @@ router.get('/admin/:orgId', async (req, res) => {
       ? grades.reduce((sum, g) => sum + (g.percentage || 0), 0) / grades.length
       : 0
 
-    // Get template stats
-    const templateStats: any = {}
-    sessions?.forEach(session => {
-      if (session.template_id) {
-        if (!templateStats[session.template_id]) {
-          templateStats[session.template_id] = { count: 0, completed: 0, totalScore: 0, scores: 0 }
-        }
-        templateStats[session.template_id].count++
-        if (session.status === 'completed') {
-          templateStats[session.template_id].completed++
-        }
-      }
-    })
-
-    // Add grade data to template stats
-    grades?.forEach(grade => {
-      const session = sessions?.find(s => s.id === grade.session_id)
-      if (session?.template_id) {
-        if (templateStats[session.template_id]) {
-          templateStats[session.template_id].totalScore += grade.percentage || 0
-          templateStats[session.template_id].scores++
-        }
-      }
-    })
-
-    // Get template details
-    const { data: templates } = await supabase
-      .from('templates')
-      .select('id, title')
-
-    const topTemplates = templates?.map(template => {
-      const stats = templateStats[template.id]
-      return stats ? {
-        id: template.id,
-        name: template.title,
-        sessions: stats.count,
-        successRate: stats.scores > 0 ? Math.round(stats.totalScore / stats.scores) : 0
-      } : null
-    }).filter(Boolean).sort((a: any, b: any) => b.sessions - a.sessions).slice(0, 5)
-
     // Get recent sessions with user and template details
     // For admin: Only show SUBMITTED assignment sessions (not playground or unsubmitted)
     const recentSessionsData = sessions
@@ -127,6 +87,11 @@ router.get('/admin/:orgId', async (req, res) => {
       .from('profiles')
       .select('id, display_name, email')
       .in('id', allUserIds)
+
+    // Get templates for recent sessions
+    const { data: templates } = await supabase
+      .from('templates')
+      .select('id, title')
 
     const recentSessions = recentSessionsData.map(session => {
       const profile = profiles?.find(p => p.id === session.user_id)
@@ -206,7 +171,6 @@ router.get('/admin/:orgId', async (req, res) => {
       avgSessionDuration: parseFloat(avgDuration.toFixed(1)),
       completionRate: parseFloat(completionRate.toFixed(1)),
       avgScore: parseFloat(avgScore.toFixed(1)),
-      topTemplates: topTemplates || [],
       recentSessions,
       topPerformers: topPerformers || [],
       weeklyTrends
@@ -307,8 +271,9 @@ router.get('/employee/:userId', async (req, res) => {
     const highestScore = scores.length > 0 ? Math.max(...scores) : 0
     const lowestScore = scores.length > 0 ? Math.min(...scores) : 0
 
-    // Assignment progress
-    const assignmentsCompleted = grades?.length || 0
+    // Assignment progress - only count assignment sessions (not playground)
+    const assignmentSessionIds = sessions?.filter(s => s.assignment_id !== null).map(s => s.id) || []
+    const assignmentsCompleted = grades?.filter(g => assignmentSessionIds.includes(g.session_id)).length || 0
     const assignmentsPending = (userAssignments?.length || 0) - assignmentsCompleted
 
     // Get recent sessions with details
