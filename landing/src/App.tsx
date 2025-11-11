@@ -19,7 +19,6 @@ function App() {
   const [rotatingText, setRotatingText] = useState(0)
   const [showScrollButton, setShowScrollButton] = useState(true)
   const [visibleMessages, setVisibleMessages] = useState<number[]>([])
-  const [timer, setTimer] = useState(0)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   
   const rotatingWords = [
@@ -30,12 +29,12 @@ function App() {
   ]
 
   const conversationTurns = [
-    { speaker: 'prospect', text: "I'm not sure if this is the right time..." },
-    { speaker: 'rep', text: "I understand. Let's talk about what's important to you right now..." },
-    { speaker: 'prospect', text: "That makes sense. Tell me more..." },
-    { speaker: 'rep', text: "Of course! We help teams close 3x more deals through AI practice..." },
-    { speaker: 'prospect', text: "Interesting. How does that work exactly?" },
-    { speaker: 'rep', text: "Great question! Your reps practice unlimited roleplay scenarios..." }
+    { speaker: 'prospect', text: "So what exactly does Clozone do?" },
+    { speaker: 'rep', text: "We're an AI-powered sales training platform. Your reps practice live phone calls with realistic AI customers." },
+    { speaker: 'prospect', text: "Wait, they actually talk to AI? Like a real conversation?" },
+    { speaker: 'rep', text: "Exactly! The AI responds just like a real prospect - objections, questions, everything. Then we instantly grade their performance." },
+    { speaker: 'prospect', text: "That's actually pretty cool. How do you grade them?" },
+    { speaker: 'rep', text: "Our AI analyzes the entire call - objection handling, discovery questions, closing techniques. They get detailed feedback on what worked and what to improve." }
   ]
 
   useEffect(() => {
@@ -62,7 +61,6 @@ function App() {
     // Animate conversation in a loop
     const animateConversation = () => {
       setVisibleMessages([])
-      setTimer(0)
       const delays = [500, 3000, 5500, 8000, 10500, 13000]
       const timeouts: ReturnType<typeof setTimeout>[] = []
 
@@ -86,17 +84,6 @@ function App() {
     return () => timeouts.forEach(t => clearTimeout(t))
   }, [])
 
-  useEffect(() => {
-    // Animate timer
-    const interval = setInterval(() => {
-      setTimer(prev => {
-        if (prev >= 15) return 0
-        return prev + 1
-      })
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [])
 
   useEffect(() => {
     // Auto-scroll only the messages container (not the page)
@@ -454,7 +441,7 @@ function App() {
                 See Clozone in Action
               </Heading>
               <Text fontSize={{ base: 'lg', md: 'xl' }} color="gray.600" maxW="2xl">
-                Watch how our AI helps your reps practice real conversations
+                Here's how we help your sales team level up with AI-powered training
               </Text>
             </VStack>
 
@@ -507,11 +494,11 @@ function App() {
                       <Icon as={Phone} w={5} h={5} color="brand.500" />
                     </Box>
                     <VStack align="start" spacing={0}>
-                      <Text fontWeight="bold" fontSize="md">Active Training Call</Text>
+                      <Text fontWeight="bold" fontSize="md">Product Demo</Text>
                       <HStack spacing={2}>
                         <Box w="2" h="2" rounded="full" bg="green.500" className="pulse-dot" />
                         <Text color="gray.500" fontSize="xs">
-                          00:{String(Math.floor(timer / 60)).padStart(2, '0')}:{String(timer % 60).padStart(2, '0')}
+                          Live conversation
                         </Text>
                       </HStack>
                     </VStack>
