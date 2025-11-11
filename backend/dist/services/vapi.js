@@ -44,10 +44,10 @@ class VapiService {
     }
     generateSystemPromptFromTemplate(template) {
         const difficultyInstructions = {
-            easy: "You are generally trusting and open to new opportunities. When the topic of insurance comes up, you're interested and ask basic questions. You're polite and don't push back too hard on offers.",
-            medium: "You are moderately cautious about sales calls and offers. When insurance is mentioned, you ask some probing questions about coverage, pricing, and terms. You have some natural skepticism but can be convinced with good explanations.",
-            hard: "You are quite skeptical of sales calls and don't trust easily. When insurance is discussed, you ask tough questions about exclusions, claim processes, and want to compare with competitors. You raise several objections and concerns.",
-            expert: "You are very experienced and analytical. You dislike sales calls and are highly skeptical. When insurance comes up, you ask complex questions about policy details, legal implications, and industry standards. You're difficult to convince and very thorough in your questioning."
+            easy: "You're a warm lead - genuinely interested and ready to buy. You remember filling out the form and are open to hearing options. You ask basic questions to understand coverage and pricing, but you're receptive and easy to move forward.",
+            medium: "You're interested but cautious - need some convincing. You ask probing questions about coverage, pricing, and terms. You have mild skepticism about costs or timing, but good explanations and value propositions can win you over. Moderate closing effort required.",
+            hard: "You're a skeptical prospect - tough but closeable. You don't trust sales pitches easily and ask difficult questions about exclusions, claim processes, and want to compare competitors. You raise multiple objections. The rep needs strong objection handling and persistence to close you.",
+            expert: "You're the hardest close - extremely analytical and resistant. You're highly experienced with insurance and ask complex questions about policy fine print, legal implications, and industry practices. You're very difficult to convince, throw curveballs, and require expert-level sales skills to close."
         };
         const difficultyInstruction = difficultyInstructions[template.difficulty] || difficultyInstructions.medium;
         return `CRITICAL RULES (ALWAYS OBEY THESE FIRST):
@@ -127,10 +127,10 @@ Simulate a natural, believable customer conversation for an insurance sales trai
     }
     generateSystemPrompt(persona, difficulty, insuranceType, script) {
         const difficultyInstructions = {
-            easy: "I am generally trusting and open to new opportunities. When the topic of insurance comes up, I'm interested and ask basic questions. I'm polite and don't push back too hard on offers.",
-            medium: "I am moderately cautious about sales calls and offers. When insurance is mentioned, I ask some probing questions about coverage, pricing, and terms. I have some natural skepticism but can be convinced with good explanations.",
-            hard: "I am quite skeptical of sales calls and don't trust easily. When insurance is discussed, I ask tough questions about exclusions, claim processes, and want to compare with competitors. I raise several objections and concerns.",
-            expert: "I am very experienced and analytical. I dislike sales calls and am highly skeptical. When insurance comes up, I ask complex questions about policy details, legal implications, and industry standards. I'm difficult to convince and very thorough in my questioning."
+            easy: "I'm a warm lead - genuinely interested and ready to buy. I remember filling out the form and am open to hearing options. I ask basic questions to understand coverage and pricing, but I'm receptive and easy to move forward.",
+            medium: "I'm interested but cautious - need some convincing. I ask probing questions about coverage, pricing, and terms. I have mild skepticism about costs or timing, but good explanations and value propositions can win me over. Moderate closing effort required.",
+            hard: "I'm a skeptical prospect - tough but closeable. I don't trust sales pitches easily and ask difficult questions about exclusions, claim processes, and want to compare competitors. I raise multiple objections. The rep needs strong objection handling and persistence to close me.",
+            expert: "I'm the hardest close - extremely analytical and resistant. I'm highly experienced with insurance and ask complex questions about policy fine print, legal implications, and industry practices. I'm very difficult to convince, throw curveballs, and require expert-level sales skills to close."
         };
         if (!script) {
             return `You are a ${persona.toLowerCase()}.

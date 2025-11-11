@@ -622,10 +622,10 @@ function Admin() {
                       fontWeight="semibold"
                       mb={2}
                     >
-                      Difficulty Level
+                      Closing Effort
                     </FormLabel>
                     <Select
-                      placeholder="Select difficulty"
+                      placeholder="Select closing effort"
                       value={formData.difficulty}
                       onChange={(e) => handleInputChange('difficulty', e.target.value)}
                       bg={cardBg}
@@ -640,10 +640,10 @@ function Admin() {
                         boxShadow: `0 0 0 1px ${accentColor}`
                       }}
                     >
-                      <option value="easy">Easy</option>
-                      <option value="medium">Medium</option>
-                      <option value="hard">Hard</option>
-                      <option value="expert">Expert</option>
+                      <option value="easy">Warm Lead (Easy Close)</option>
+                      <option value="medium">Interested (Moderate Effort)</option>
+                      <option value="hard">Skeptical (Challenging)</option>
+                      <option value="expert">Hard Close (Maximum Effort)</option>
                     </Select>
                   </FormControl>
 
@@ -1352,7 +1352,10 @@ Speaker: Clear dialogue format"
                   py={1}
                   fontWeight="600"
                 >
-                  {selectedViewTemplate?.difficulty}
+                  {selectedViewTemplate?.difficulty === 'easy' ? 'Warm Lead' : 
+                   selectedViewTemplate?.difficulty === 'medium' ? 'Interested' : 
+                   selectedViewTemplate?.difficulty === 'hard' ? 'Skeptical' : 
+                   'Hard Close'}
                 </Badge>
               </HStack>
               <Text fontSize="md" color={useColorModeValue('gray.600', 'gray.400')}>
