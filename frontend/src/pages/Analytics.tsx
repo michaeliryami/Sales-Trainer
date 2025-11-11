@@ -837,7 +837,7 @@ const Analytics: React.FC = () => {
                             <Button
                               size="xs"
                               leftIcon={<Icon as={FileText} boxSize={3} />}
-                              colorScheme="blue"
+                              colorScheme="orange"
                               variant={selectedSession?.id === session.id && activeView === 'transcript' ? 'solid' : 'outline'}
                               onClick={() => handleViewButtonClick('transcript', session)}
                               flex={1}
@@ -857,7 +857,7 @@ const Analytics: React.FC = () => {
                             <Button
                               size="xs"
                               leftIcon={<Icon as={BarChart3} boxSize={3} />}
-                              colorScheme="green"
+                              colorScheme="orange"
                               variant={selectedSession?.id === session.id && activeView === 'summary' ? 'solid' : 'outline'}
                               onClick={() => handleViewButtonClick('summary', session)}
                               flex={1}
@@ -867,7 +867,7 @@ const Analytics: React.FC = () => {
                             <Button
                               size="xs"
                               leftIcon={<Icon as={Volume2} boxSize={3} />}
-                              colorScheme="purple"
+                              colorScheme="orange"
                               variant="outline"
                               isDisabled
                               flex={1}
