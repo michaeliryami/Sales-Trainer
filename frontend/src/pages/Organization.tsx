@@ -64,11 +64,25 @@ const Organization: React.FC = () => {
   const [savingOrgName, setSavingOrgName] = useState(false)
   
   // Invite modal state
-  const { isOpen: isInviteOpen, onOpen: onInviteOpen, onClose: onInviteClose } = useDisclosure()
+  const { isOpen: isInviteOpen, onOpen: onInviteOpenInternal, onClose: onInviteCloseInternal } = useDisclosure()
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'admin' | 'employee'>('employee')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState('')
+
+  // Wrapper to clear errors when opening invite modal
+  const onInviteOpen = () => {
+    setInviteError('')
+    onInviteOpenInternal()
+  }
+
+  // Wrapper to clear form when closing invite modal
+  const onInviteClose = () => {
+    setInviteError('')
+    setInviteEmail('')
+    setInviteRole('employee')
+    onInviteCloseInternal()
+  }
   
   // Delete user confirmation dialog state
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
@@ -204,6 +218,18 @@ const Organization: React.FC = () => {
     }
   }, [organization, profileLoading])
 
+  // Auto-refresh users and invites every 15 seconds
+  useEffect(() => {
+    if (!organization) return
+
+    const interval = setInterval(() => {
+      console.log('Auto-refreshing organization users and invites...')
+      fetchOrganizationUsers()
+    }, 15000) // 15 seconds
+
+    return () => clearInterval(interval)
+  }, [organization])
+
   const getUserRole = (user: Profile) => {
     return user.role === 'admin' ? 'Admin' : 'Rep'
   }
@@ -215,6 +241,13 @@ const Organization: React.FC = () => {
 
   const handleInviteUser = async () => {
     if (!inviteEmail.trim() || !organization || !profile) return
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(inviteEmail.trim())) {
+      setInviteError('Please enter a valid email address')
+      return
+    }
 
     setInviteLoading(true)
     setInviteError('')
@@ -249,9 +282,7 @@ const Organization: React.FC = () => {
         isClosable: true,
       })
 
-      // Clear form and close modal
-      setInviteEmail('')
-      setInviteRole('employee')
+      // Close modal (form will be cleared by onInviteClose wrapper)
       onInviteClose()
       
       // Refresh the users list
@@ -974,12 +1005,16 @@ const Organization: React.FC = () => {
                   type="email"
                   placeholder="Enter email address"
                   value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
+                  onChange={(e) => {
+                    setInviteEmail(e.target.value)
+                    if (inviteError) setInviteError('') // Clear error when user starts typing
+                  }}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter' && !inviteLoading) {
                       handleInviteUser()
                     }
                   }}
+                  autoFocus
                 />
                 {inviteError && (
                   <FormErrorMessage>{inviteError}</FormErrorMessage>
