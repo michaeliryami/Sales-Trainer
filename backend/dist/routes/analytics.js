@@ -367,6 +367,192 @@ router.get('/employee/:userId', async (req, res) => {
         });
     }
 });
+async function processSessionInBackground(sessionId, userId, assignmentId, transcriptClean) {
+    console.log(`🔄 Starting background processing for session ${sessionId}`);
+    const OpenAI = require('openai');
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    try {
+        let llmCleanedTranscript = null;
+        if (transcriptClean) {
+            console.log(`📝 Cleaning transcript for session ${sessionId}...`);
+            try {
+                llmCleanedTranscript = await cleanTranscriptWithLLM(transcriptClean);
+                await supabase_1.supabase
+                    .from('training_sessions')
+                    .update({ transcript_llm_clean: llmCleanedTranscript })
+                    .eq('id', sessionId);
+                console.log(`✅ Transcript cleaned for session ${sessionId}`);
+            }
+            catch (error) {
+                console.error(`❌ Failed to clean transcript for session ${sessionId}:`, error);
+                llmCleanedTranscript = transcriptClean;
+            }
+        }
+        if (llmCleanedTranscript || transcriptClean) {
+            console.log(`📊 Generating summary for session ${sessionId}...`);
+            try {
+                const transcriptForSummary = llmCleanedTranscript || transcriptClean;
+                const summaryPrompt = `Analyze this sales call transcript and provide a concise summary focusing on:
+1. What the rep did well (strengths in their approach, techniques used effectively)
+2. What the rep could improve (missed opportunities, weak points, areas for development)
+3. Overall call assessment (how the call went, outcome, key takeaways)
+
+Keep it concise but actionable - 3-4 paragraphs maximum.
+
+TRANSCRIPT:
+${transcriptForSummary}
+
+Provide a helpful, constructive summary for the sales rep.`;
+                const summaryCompletion = await openai.chat.completions.create({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        {
+                            role: "system",
+                            content: "You are a sales training coach providing constructive feedback on training calls."
+                        },
+                        {
+                            role: "user",
+                            content: summaryPrompt
+                        }
+                    ],
+                    max_tokens: 800,
+                    temperature: 0.3
+                });
+                const summary = summaryCompletion.choices[0]?.message?.content;
+                if (summary) {
+                    await supabase_1.supabase
+                        .from('training_sessions')
+                        .update({ ai_summary: summary })
+                        .eq('id', sessionId);
+                    console.log(`✅ Summary generated for session ${sessionId}`);
+                }
+            }
+            catch (error) {
+                console.error(`❌ Failed to generate summary for session ${sessionId}:`, error);
+            }
+        }
+        console.log(`🎯 Auto-grading session ${sessionId}...`);
+        try {
+            let rubricCriteria = [];
+            let rubricId = null;
+            if (assignmentId) {
+                const { data: assignment, error: assignmentError } = await supabase_1.supabase
+                    .from('assignments')
+                    .select('rubric_id, rubric:rubrics(criteria)')
+                    .eq('id', assignmentId)
+                    .single();
+                if (assignmentError || !assignment?.rubric) {
+                    console.log(`⚠️ No rubric found for assignment ${assignmentId}, skipping grading`);
+                    return;
+                }
+                rubricCriteria = assignment.rubric.criteria || [];
+                rubricId = assignment.rubric_id;
+            }
+            else {
+                const { data: defaultRubric, error: rubricError } = await supabase_1.supabase
+                    .from('rubrics')
+                    .select('id, criteria')
+                    .eq('id', 1)
+                    .single();
+                if (rubricError || !defaultRubric) {
+                    console.log(`⚠️ No default rubric found, skipping grading for playground session ${sessionId}`);
+                    return;
+                }
+                rubricCriteria = defaultRubric.criteria || [];
+                rubricId = defaultRubric.id;
+            }
+            const rubricText = rubricCriteria.map((criteria) => `- ${criteria.title}: ${criteria.description} (Max: ${criteria.maxPoints} points)`).join('\n');
+            const transcriptForGrading = llmCleanedTranscript || transcriptClean;
+            const MAX_TRANSCRIPT_CHARS = 200000;
+            let processedTranscript = transcriptForGrading;
+            if (transcriptForGrading && transcriptForGrading.length > MAX_TRANSCRIPT_CHARS) {
+                processedTranscript = transcriptForGrading.substring(0, MAX_TRANSCRIPT_CHARS) +
+                    '\n\n[TRANSCRIPT TRUNCATED DUE TO LENGTH]';
+            }
+            const gradingPrompt = `
+You are an objective sales training evaluator. Analyze this sales conversation transcript against the provided rubric criteria and provide accurate, honest grading.
+
+RUBRIC CRITERIA:
+${rubricText}
+
+CONVERSATION TRANSCRIPT:
+${processedTranscript}
+
+INSTRUCTIONS:
+1. For each rubric criterion, objectively analyze the salesperson's performance
+2. Award points based on actual demonstration of the skill, not just attempts
+3. Provide specific quotes/examples from the transcript as evidence
+4. Give detailed reasoning explaining what they did well and where they fell short
+5. Be fair but honest - score reflects actual performance, not potential or effort alone
+6. If a criterion was not addressed, give 0 points (not applicable) or minimal points if barely touched
+
+SCORING APPROACH:
+- Full points: Skill demonstrated excellently with strong execution
+- Partial points: Skill attempted with moderate success but clear room for improvement
+- Minimal points: Skill barely present or poorly executed
+- Zero points: Skill completely absent or not attempted
+
+RESPONSE FORMAT (JSON):
+{
+  "totalScore": number,
+  "maxPossibleScore": number,
+  "criteriaGrades": [
+    {
+      "title": "string",
+      "description": "string", 
+      "maxPoints": number,
+      "earnedPoints": number,
+      "evidence": ["specific quote 1", "specific quote 2"],
+      "reasoning": "detailed explanation of performance"
+    }
+  ]
+}
+
+Only return the JSON response, nothing else.`;
+            const gradingCompletion = await openai.chat.completions.create({
+                model: "gpt-4o-mini",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are an objective sales training evaluator. Provide accurate, fair grading based on actual performance demonstrated in the call. Be honest and constructive in your feedback."
+                    },
+                    {
+                        role: "user",
+                        content: gradingPrompt
+                    }
+                ],
+                max_tokens: 4000,
+                temperature: 0.1
+            });
+            const gradingResponse = gradingCompletion.choices[0]?.message?.content;
+            if (!gradingResponse) {
+                throw new Error('No grading response received');
+            }
+            const gradingResult = JSON.parse(gradingResponse);
+            await supabase_1.supabase
+                .from('session_grades')
+                .insert([{
+                    session_id: sessionId,
+                    user_id: userId,
+                    assignment_id: assignmentId,
+                    rubric_id: rubricId,
+                    total_score: gradingResult.totalScore,
+                    max_possible_score: gradingResult.maxPossibleScore,
+                    criteria_grades: gradingResult.criteriaGrades,
+                    grading_model: 'gpt-4o-mini'
+                }]);
+            console.log(`✅ Session ${sessionId} graded successfully`);
+        }
+        catch (error) {
+            console.error(`❌ Failed to grade session ${sessionId}:`, error);
+        }
+        console.log(`✅ Background processing completed for session ${sessionId}`);
+    }
+    catch (error) {
+        console.error(`❌ Background processing failed for session ${sessionId}:`, error);
+        throw error;
+    }
+}
 router.post('/session', async (req, res) => {
     try {
         const { userId, orgId, sessionType, templateId, assignmentId, callId, vapiCallId, startTime, endTime, durationSeconds, transcript, transcriptClean, status, metadata } = req.body;
@@ -404,6 +590,9 @@ router.post('/session', async (req, res) => {
             .single();
         if (sessionError)
             throw sessionError;
+        processSessionInBackground(session.id, userId, assignmentId, transcriptClean).catch(err => {
+            console.error('Background processing error for session', session.id, ':', err);
+        });
         return res.json({
             success: true,
             data: session,
