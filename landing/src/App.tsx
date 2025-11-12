@@ -161,7 +161,7 @@ function App() {
                   lineHeight="tall"
                   className="fade-in-up delay-1"
                 >
-                  Practice unlimited AI sales calls. Get instant feedback. Close more deals.
+                  AI-powered training for insurance sales teams. Practice unlimited calls, get instant feedback, close more deals.
                 </Text>
 
                 <VStack align="flex-start" spacing={3} className="fade-in-up delay-2">
