@@ -560,6 +560,8 @@ router.post('/grade-transcript', async (req, res) => {
     } = req.body
 
     console.log('Grading transcript for session:', sessionId, assignmentId ? `(Assignment ${assignmentId})` : '(Playground Practice)')
+    console.log('Transcript length (characters):', transcript?.length || 0)
+    console.log('Estimated tokens (rough):', Math.ceil((transcript?.length || 0) / 4))
 
     // Import OpenAI for grading
     const OpenAI = require('openai')
@@ -572,6 +574,19 @@ router.post('/grade-transcript', async (req, res) => {
       `- ${criteria.title}: ${criteria.description} (Max: ${criteria.maxPoints} points)`
     ).join('\n')
 
+    // For very long transcripts, we need to truncate to fit within token limits
+    // GPT-4o-mini has 128k context, but we need room for prompt + response
+    // Rough estimate: 4 chars = 1 token, so ~100k tokens = 400k chars
+    const MAX_TRANSCRIPT_CHARS = 200000 // ~50k tokens, leaving room for rubric and response
+    let processedTranscript = transcript
+    let wasTruncated = false
+    
+    if (transcript && transcript.length > MAX_TRANSCRIPT_CHARS) {
+      console.warn(`⚠️ Transcript too long (${transcript.length} chars), truncating to ${MAX_TRANSCRIPT_CHARS}`)
+      processedTranscript = transcript.substring(0, MAX_TRANSCRIPT_CHARS) + '\n\n[TRANSCRIPT TRUNCATED DUE TO LENGTH - Grading based on first portion of call]'
+      wasTruncated = true
+    }
+
     // Grade with AI
     const prompt = `
 You are an expert sales training evaluator. Analyze this sales conversation transcript against the provided rubric criteria and provide detailed grading.
@@ -580,7 +595,7 @@ RUBRIC CRITERIA:
 ${rubricText}
 
 CONVERSATION TRANSCRIPT:
-${transcript}
+${processedTranscript}
 
 INSTRUCTIONS:
 1. For each rubric criterion, analyze the salesperson's performance
@@ -608,21 +623,40 @@ RESPONSE FORMAT (JSON):
 
 Only return the JSON response, nothing else.`
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert sales training evaluator. Analyze sales conversations against rubric criteria and provide detailed, evidence-based grading."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_tokens: 2000,
-      temperature: 0.1
-    })
+    let completion
+    try {
+      completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert sales training evaluator. Analyze sales conversations against rubric criteria and provide detailed, evidence-based grading."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        max_tokens: 4000, // Increased for detailed grading output
+        temperature: 0.1
+      })
+    } catch (openaiError: any) {
+      console.error('OpenAI API Error:', openaiError)
+      console.error('Error details:', {
+        message: openaiError.message,
+        type: openaiError.type,
+        code: openaiError.code,
+        status: openaiError.status
+      })
+      
+      // Check if it's a token limit error
+      if (openaiError.message?.includes('maximum context length') || 
+          openaiError.code === 'context_length_exceeded') {
+        throw new Error(`Transcript too long for AI processing. Please try a shorter training session. (${transcript?.length || 0} characters)`)
+      }
+      
+      throw new Error(`AI grading failed: ${openaiError.message || 'Unknown error'}`)
+    }
 
     const response = completion.choices[0]?.message?.content
     if (!response) {
@@ -630,7 +664,13 @@ Only return the JSON response, nothing else.`
     }
 
     // Parse the JSON response
-    const gradingResult = JSON.parse(response)
+    let gradingResult
+    try {
+      gradingResult = JSON.parse(response)
+    } catch (parseError) {
+      console.error('Failed to parse grading response:', response)
+      throw new Error('AI returned invalid grading format')
+    }
 
     // Save to database (percentage is auto-calculated as a generated column)
     const { data: grade, error: gradeError } = await supabase
@@ -658,7 +698,10 @@ Only return the JSON response, nothing else.`
     return res.json({
       success: true,
       data: grade,
-      message: 'Transcript graded and saved successfully'
+      message: wasTruncated 
+        ? 'Transcript graded successfully (Note: Very long call - graded based on first portion)' 
+        : 'Transcript graded and saved successfully',
+      wasTruncated
     })
 
   } catch (error) {
