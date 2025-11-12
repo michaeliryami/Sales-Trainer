@@ -13,7 +13,7 @@ import {
   Grid,
   GridItem,
 } from '@chakra-ui/react'
-import { Phone, BarChart2, Target, Zap, TrendingUp, Users, Check, ChevronDown } from 'lucide-react'
+import { Phone, BarChart2, Zap, TrendingUp, Users, Check, ChevronDown } from 'lucide-react'
 
 function App() {
   const [rotatingText, setRotatingText] = useState(0)
@@ -279,24 +279,6 @@ function App() {
                   <VStack spacing={1}>
                     <Icon as={BarChart2} boxSize={6} color="brand.500" />
                     <Text fontSize="xs" color="gray.600" fontWeight="semibold">Real-time Analytics</Text>
-                  </VStack>
-                </Box>
-
-                {/* Card 4 - Bottom-right (154 degrees) */}
-                <Box
-                  position="absolute"
-                  bottom="-5%"
-                  right="20%"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float-fade-4"
-                  style={{ animationDelay: '0.9s' }}
-                >
-                  <VStack spacing={1}>
-                    <Icon as={Target} boxSize={6} color="brand.500" />
-                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Custom Scenarios</Text>
                   </VStack>
                 </Box>
 
@@ -704,26 +686,6 @@ function App() {
             </VStack>
 
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8} w="full">
-              <Box
-                p={8}
-                bg="white"
-                border="1px solid"
-                borderColor="gray.200"
-                rounded="2xl"
-                _hover={{ borderColor: 'brand.500', boxShadow: 'md' }}
-                transition="all 0.3s"
-              >
-                <HStack spacing={4} align="start">
-                  <Icon as={Target} w={8} h={8} color="brand.500" flexShrink={0} />
-                  <VStack align="start" spacing={2}>
-                    <Heading size="md">Custom Scenarios</Heading>
-                    <Text color="gray.600">
-                      Upload your playbook, product docs, or call recordings. We'll create tailored practice scenarios for your exact use case.
-                    </Text>
-                  </VStack>
-                </HStack>
-              </Box>
-
               <Box
                 p={8}
                 bg="white"
