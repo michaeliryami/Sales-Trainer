@@ -845,18 +845,40 @@ function App() {
       <Box bg="gray.900" py={12}>
         <Container maxW="7xl">
           <VStack spacing={6}>
-            <Image src="/logolong.png" alt="Clozone" h="40px" filter="brightness(0) invert(1)" />
             <Text color="gray.400" textAlign="center">
               © 2025 Clozone AI. All rights reserved.
             </Text>
-            <HStack spacing={6}>
+            <HStack spacing={6} flexWrap="wrap" justify="center">
               <Text
                 as="a"
-                href="mailto:contact@clozone.ai"
+                href="mailto:michael@clozone.ai"
                 color="gray.400"
                 _hover={{ color: 'white' }}
+                transition="color 0.2s"
               >
-                contact@clozone.ai
+                michael@clozone.ai
+              </Text>
+              <Text color="gray.600">•</Text>
+              <Text
+                as="a"
+                href="/terms-of-service.html"
+                target="_blank"
+                color="gray.400"
+                _hover={{ color: 'white' }}
+                transition="color 0.2s"
+              >
+                Terms of Service
+              </Text>
+              <Text color="gray.600">•</Text>
+              <Text
+                as="a"
+                href="/privacy-policy.html"
+                target="_blank"
+                color="gray.400"
+                _hover={{ color: 'white' }}
+                transition="color 0.2s"
+              >
+                Privacy Policy
               </Text>
             </HStack>
           </VStack>
