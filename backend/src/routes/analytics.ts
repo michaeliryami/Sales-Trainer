@@ -492,7 +492,9 @@ router.post('/session', async (req, res) => {
       sessionType,
       templateId,
       assignmentId,
-      status
+      status,
+      transcriptLength: transcript?.length || 0,
+      transcriptCleanLength: transcriptClean?.length || 0
     })
 
     // Insert session (don't include status if not provided - let DB handle default)
