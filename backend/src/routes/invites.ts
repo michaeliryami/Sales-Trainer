@@ -93,6 +93,12 @@ router.post('/invite', async (req, res) => {
       return res.status(400).json({ error: 'Email, organization ID, and admin user ID are required' })
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({ error: 'Invalid email format' })
+    }
+
     if (!['admin', 'employee'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role. Must be admin or employee' })
     }
@@ -168,23 +174,8 @@ router.post('/invite', async (req, res) => {
     invitedRoles[email] = role
     console.log('Updated invited_roles:', invitedRoles)
 
-    // Update the organization with the new users list and role mapping (PostgreSQL array format)
-    const { error: updateError } = await supabase
-      .from('organizations')
-      .update({ 
-        users: usersList,
-        invited_roles: invitedRoles
-      })
-      .eq('id', organizationId)
-
-    if (updateError) {
-      console.error('Error updating organization users:', updateError)
-      return res.status(500).json({ error: 'Failed to invite user' })
-    }
-
-    console.log(`Successfully invited ${email} to organization ${organizationId} with role ${role}`)
-
-    // Send invitation email
+    // Send invitation email FIRST before updating the database
+    // This way, if email sending fails, we don't add invalid emails to the org
     try {
       const inviterName = adminProfile?.display_name || adminProfile?.email || 'Your team'
       const inviteUrl = `https://app.clozone.ai/auth?invite=${encodeURIComponent(email)}&org=${organizationId}`
@@ -199,10 +190,30 @@ router.post('/invite', async (req, res) => {
 
       console.log(`✅ Invitation email sent to ${email}`)
     } catch (emailError) {
-      // Log error but don't fail the invitation - it was already created
+      // If email sending fails, don't create the invitation
       console.error('❌ Failed to send invitation email:', emailError)
-      // Continue with success response since the DB update succeeded
+      return res.status(500).json({ 
+        error: 'Failed to send invitation email. Please verify the email address is correct.',
+        details: emailError instanceof Error ? emailError.message : 'Unknown email error'
+      })
     }
+
+    // Update the organization with the new users list and role mapping (PostgreSQL array format)
+    // Only do this if email was successfully sent
+    const { error: updateError } = await supabase
+      .from('organizations')
+      .update({ 
+        users: usersList,
+        invited_roles: invitedRoles
+      })
+      .eq('id', organizationId)
+
+    if (updateError) {
+      console.error('Error updating organization users:', updateError)
+      return res.status(500).json({ error: 'Failed to invite user' })
+    }
+
+    console.log(`Successfully invited ${email} to organization ${organizationId} with role ${role}`)
 
     return res.json({ 
       success: true, 
