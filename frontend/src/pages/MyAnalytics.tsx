@@ -734,7 +734,7 @@ const MyAnalytics: React.FC = () => {
                   analyticsData.recentSessions.map((session: any, index: number) => (
                     <React.Fragment key={index}>
                       <Card 
-                        bg={selectedSession?.id === session.id ? useColorModeValue('orange.50', 'orange.900/20') : cardBg}
+                        bg={cardBg}
                         border="1px solid"
                         borderColor={selectedSession?.id === session.id ? accentColor : borderColor}
                         borderRadius="2xl"
