@@ -589,7 +589,7 @@ router.post('/grade-transcript', async (req, res) => {
 
     // Grade with AI
     const prompt = `
-You are an expert sales training evaluator. Analyze this sales conversation transcript against the provided rubric criteria and provide detailed grading.
+You are a supportive sales training evaluator. Analyze this sales conversation transcript against the provided rubric criteria and provide CONSTRUCTIVE, ENCOURAGING grading.
 
 RUBRIC CRITERIA:
 ${rubricText}
@@ -597,13 +597,29 @@ ${rubricText}
 CONVERSATION TRANSCRIPT:
 ${processedTranscript}
 
+GRADING PHILOSOPHY:
+- These are TRAINEES who are LEARNING and PRACTICING - not seasoned professionals
+- Award points generously for effort, attempts, and partial demonstrations of skills
+- Give credit for the RIGHT DIRECTION even if execution wasn't perfect
+- Reserve very low scores (below 40%) ONLY for calls where the rep made NO ATTEMPT at a skill
+- A typical learning call should score 60-75% - room to improve but showing solid effort
+- Only truly disastrous calls with no redeeming qualities should score below 50%
+
+SCORING GUIDELINES:
+- 90-100%: Excellent demonstration of the skill with minor room for improvement
+- 70-89%: Good attempt, skill was present but could be stronger/more polished
+- 50-69%: Partial attempt, skill was attempted but needs significant work
+- 30-49%: Minimal attempt, skill barely present or very poorly executed
+- 0-29%: No attempt at all, skill completely absent from the conversation
+
 INSTRUCTIONS:
 1. For each rubric criterion, analyze the salesperson's performance
-2. Award points based on evidence found in the transcript
-3. Provide specific quotes/examples from the transcript as evidence
-4. Give detailed reasoning for each grade
-5. Be strict and fair - only award points for demonstrated skills
-6. If a criterion is not addressed, award 0 points
+2. Award points GENEROUSLY for any evidence of attempting the skill
+3. Give PARTIAL CREDIT liberally - even 40-60% of max points shows they tried
+4. Provide specific quotes/examples from the transcript as evidence
+5. Give detailed reasoning that is CONSTRUCTIVE and identifies what they did well
+6. If a criterion was not addressed at all, award 20-30% of points for basic professionalism/effort
+7. Focus on what they DID do, not just what they missed
 
 RESPONSE FORMAT (JSON):
 {
@@ -616,7 +632,7 @@ RESPONSE FORMAT (JSON):
       "maxPoints": number,
       "earnedPoints": number,
       "evidence": ["specific quote 1", "specific quote 2"],
-      "reasoning": "detailed explanation of why this grade was given"
+      "reasoning": "detailed explanation emphasizing what they did well and where to improve"
     }
   ]
 }
@@ -630,7 +646,7 @@ Only return the JSON response, nothing else.`
         messages: [
           {
             role: "system",
-            content: "You are an expert sales training evaluator. Analyze sales conversations against rubric criteria and provide detailed, evidence-based grading."
+            content: "You are a supportive sales training coach who grades constructively. Remember these are trainees learning and practicing - be encouraging and generous with scoring while providing helpful feedback. Typical scores should be 60-75% for solid learning efforts."
           },
           {
             role: "user",
