@@ -195,6 +195,25 @@ function Header() {
                 Analytics
               </Button>
               <Button
+                variant={isActive('/my-analytics') ? "solid" : "ghost"}
+                colorScheme="orange"
+                size="sm"
+                onClick={() => navigate('/my-analytics')}
+                leftIcon={<Icon as={User} boxSize={4} />}
+                fontWeight="600"
+                borderRadius="xl"
+                bg={isActive('/my-analytics') ? '#f26f25' : 'transparent'}
+                color={isActive('/my-analytics') ? 'white' : undefined}
+                _hover={isActive('/my-analytics') ? {
+                  transform: 'translateY(-2px)',
+                  shadow: 'lg',
+                  bg: '#d95e1e'
+                } : {}}
+                transition="all 0.2s"
+              >
+                My Performance
+              </Button>
+              <Button
                 variant={isActive('/organization') ? "solid" : "ghost"}
                 colorScheme="orange"
                 size="sm"
