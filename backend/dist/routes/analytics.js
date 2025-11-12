@@ -265,7 +265,8 @@ router.get('/employee/:userId', async (req, res) => {
             };
         });
         const scoreTrend = grades
-            ?.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 10)
             .map(g => ({
             date: g.created_at,
             score: Math.round(g.percentage || 0)
@@ -350,7 +351,7 @@ router.get('/employee/:userId', async (req, res) => {
             skills,
             playgroundStats,
             improvementRate: scoreTrend.length >= 2
-                ? (scoreTrend[scoreTrend.length - 1]?.score || 0) - (scoreTrend[0]?.score || 0)
+                ? (scoreTrend[0]?.score || 0) - (scoreTrend[scoreTrend.length - 1]?.score || 0)
                 : 0
         };
         return res.json({
