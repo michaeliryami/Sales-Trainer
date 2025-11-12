@@ -13,7 +13,7 @@ import {
   Grid,
   GridItem,
 } from '@chakra-ui/react'
-import { Phone, BarChart2, Zap, TrendingUp, Users, Check, ChevronDown } from 'lucide-react'
+import { Phone, BarChart2, Zap, TrendingUp, Users, Check, ChevronDown, BookOpen } from 'lucide-react'
 
 function App() {
   const [rotatingText, setRotatingText] = useState(0)
@@ -741,6 +741,26 @@ function App() {
                     <Heading size="md">Unlimited Practice</Heading>
                     <Text color="gray.600">
                       No scheduling, no manager time required. Your team practices whenever they want, as much as they want.
+                    </Text>
+                  </VStack>
+                </HStack>
+              </Box>
+
+              <Box
+                p={8}
+                bg="white"
+                border="1px solid"
+                borderColor="gray.200"
+                rounded="2xl"
+                _hover={{ borderColor: 'brand.500', boxShadow: 'md' }}
+                transition="all 0.3s"
+              >
+                <HStack spacing={4} align="start">
+                  <Icon as={BookOpen} w={8} h={8} color="brand.500" flexShrink={0} />
+                  <VStack align="start" spacing={2}>
+                    <Heading size="md">40+ Insurance Scenarios</Heading>
+                    <Text color="gray.600">
+                      Pre-built prospect personas covering life, health, and disability insurance with multiple difficulty levels.
                     </Text>
                   </VStack>
                 </HStack>
