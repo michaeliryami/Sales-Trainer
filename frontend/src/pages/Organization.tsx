@@ -218,17 +218,6 @@ const Organization: React.FC = () => {
     }
   }, [organization, profileLoading])
 
-  // Auto-refresh users and invites every 15 seconds
-  useEffect(() => {
-    if (!organization) return
-
-    const interval = setInterval(() => {
-      console.log('Auto-refreshing organization users and invites...')
-      fetchOrganizationUsers()
-    }, 15000) // 15 seconds
-
-    return () => clearInterval(interval)
-  }, [organization])
 
   const getUserRole = (user: Profile) => {
     return user.role === 'admin' ? 'Admin' : 'Rep'
