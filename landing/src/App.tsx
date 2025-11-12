@@ -564,7 +564,7 @@ function App() {
                 Practice Makes Perfect
               </Heading>
               <Text fontSize={{ base: 'lg', md: 'xl' }} color="gray.600">
-                Your reps get better with every conversation. Our AI adapts to your industry, products, and sales methodology.
+                Your reps get better with every conversation. Our AI is trained specifically for insurance sales with realistic prospect scenarios.
               </Text>
             </VStack>
 
@@ -597,7 +597,7 @@ function App() {
                 <VStack spacing={3}>
                   <Heading size="lg" textAlign="center">Start a Call</Heading>
                   <Text color="gray.600" textAlign="center" lineHeight="tall">
-                    Choose from pre-built scenarios or create custom situations based on your actual products and prospects.
+                    Choose from 40+ pre-built insurance scenarios with different prospect types and difficulty levels.
                   </Text>
                 </VStack>
               </VStack>
@@ -793,7 +793,7 @@ function App() {
                 Ready to 10x Your Sales Team?
               </Heading>
               <Text fontSize={{ base: 'lg', md: 'xl' }} color="whiteAlpha.900" maxW="2xl" lineHeight="tall">
-                Join leading sales organizations using Clozone to cut onboarding time, improve win rates, and scale their teams faster.
+                See how Clozone helps insurance teams cut onboarding time, improve win rates, and scale faster with AI-powered training.
               </Text>
             </VStack>
 
