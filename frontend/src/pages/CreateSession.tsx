@@ -1887,7 +1887,7 @@ function CreateSession() {
                       borderRadius="lg"
                       spacing={2}
                       cursor="pointer"
-                      onClick={() => navigate('/analytics')}
+                      onClick={() => navigate('/my-analytics')}
                       _hover={{ opacity: 0.8 }}
                       transition="all 0.2s"
                     >
