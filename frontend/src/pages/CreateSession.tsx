@@ -547,7 +547,7 @@ function CreateSession() {
         
         // Set up event listeners
         vapiRef.current.on('call-start', (info: any) => {
-          if (import.meta.env.DEV) console.log('Call started', info)
+          if (import.meta.env.DEV) console.log('🔥 Call started - FULL event:', info)
           setIsCreatingCall(false)
           setIsCallActive(true)
           setTranscript([])
@@ -555,17 +555,29 @@ function CreateSession() {
           transcriptChunksRef.current = []
           callStartTimeRef.current = new Date()
           try {
-            const id = info?.id || info?.callId || info?.call?.id || null
+            // Try all possible locations for call ID
+            const id = info?.id || info?.callId || info?.call_id || info?.call?.id || info?.call?.call_id || null
+            
+            if (import.meta.env.DEV) console.log('🔍 Call ID check:', {
+              'info?.id': info?.id || 'MISSING',
+              'info?.callId': info?.callId || 'MISSING',
+              'info?.call_id': info?.call_id || 'MISSING',
+              'info?.call?.id': info?.call?.id || 'MISSING',
+              'resolved': id || 'NULL'
+            })
+            
             if (id) {
               const callIdStr = String(id)
               setActiveCallId(callIdStr)
               activeCallIdRef.current = callIdStr // Store in ref for synchronous access
-              if (import.meta.env.DEV) console.log('📞 VAPI Call ID captured:', callIdStr, '(stored in state and ref)')
+              if (import.meta.env.DEV) console.log('✅ VAPI Call ID captured:', callIdStr, '(stored in state and ref)')
             } else {
-              if (import.meta.env.DEV) console.warn('⚠️ No call ID found in call-start event:', info)
+              if (import.meta.env.DEV) console.error('❌ NO CALL ID FOUND!')
+              if (import.meta.env.DEV) console.error('❌ Event keys available:', Object.keys(info || {}))
+              if (import.meta.env.DEV) console.error('❌ Full event object:', info)
             }
           } catch (e) {
-            if (import.meta.env.DEV) console.warn('Unable to read call id from call-start payload', e)
+            if (import.meta.env.DEV) console.error('❌ Error reading call id:', e)
           }
         })
 
