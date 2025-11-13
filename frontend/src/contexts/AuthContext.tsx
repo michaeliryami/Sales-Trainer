@@ -38,13 +38,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession()
         if (error) {
-          console.error('Error getting session:', error)
+          if (import.meta.env.DEV) console.error('Error getting session:', error)
         } else {
           setSession(session)
           setUser(session?.user ?? null)
         }
       } catch (error) {
-        console.error('Error in getSession:', error)
+        if (import.meta.env.DEV) console.error('Error in getSession:', error)
       } finally {
         setLoading(false)
       }
@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', {
+        if (import.meta.env.DEV) console.log('Auth state changed:', {
           event,
           userEmail: session?.user?.email,
           sessionExists: !!session,
@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signUp = async (email: string, password: string, displayName?: string): Promise<{ data: any; error: any }> => {
     try {
-      console.log('Validating invite for email:', email)
+      if (import.meta.env.DEV) console.log('Validating invite for email:', email)
       
       // First, validate if the email is invited to any organization
       const inviteResponse = await apiFetch('/api/invites/validate', {
@@ -100,7 +100,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
 
-      console.log('Email validated for organization:', inviteData.organizationName)
+      if (import.meta.env.DEV) console.log('Email validated for organization:', inviteData.organizationName)
 
       // Proceed with signup if email is invited
       const { data, error } = await supabase.auth.signUp({
@@ -116,38 +116,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       })
       
-      console.log('SignUp response:', { data, error })
+      if (import.meta.env.DEV) console.log('SignUp response:', { data, error })
       
       // Return the response as-is - we'll handle the success case in the component
       return { data, error }
     } catch (error) {
-      console.error('Error in signUp:', error)
+      if (import.meta.env.DEV) console.error('Error in signUp:', error)
       return { data: null, error }
     }
   }
 
   const signIn = async (email: string, password: string): Promise<{ data: any; error: any }> => {
     try {
-      console.log('Attempting sign in for:', email)
+      if (import.meta.env.DEV) console.log('Attempting sign in for:', email)
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       })
       
-      console.log('Sign in response:', { 
+      if (import.meta.env.DEV) console.log('Sign in response:', { 
         user: data.user?.email, 
         session: data.session ? 'present' : 'null', 
         error: error?.message 
       })
       
       if (error) {
-        console.error('Sign in error:', error)
+        if (import.meta.env.DEV) console.error('Sign in error:', error)
       }
       
       return { data, error }
     } catch (error) {
-      console.error('Error in signIn:', error)
+      if (import.meta.env.DEV) console.error('Error in signIn:', error)
       return { data: null, error }
     }
   }
@@ -157,7 +157,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { error } = await supabase.auth.signOut()
       return { error }
     } catch (error) {
-      console.error('Error in signOut:', error)
+      if (import.meta.env.DEV) console.error('Error in signOut:', error)
       return { error }
     }
   }
@@ -167,7 +167,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { data, error } = await supabase.auth.resetPasswordForEmail(email)
       return { data, error }
     } catch (error) {
-      console.error('Error in resetPassword:', error)
+      if (import.meta.env.DEV) console.error('Error in resetPassword:', error)
       return { error }
     }
   }
@@ -176,14 +176,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const debugAuthState = async () => {
     try {
       const { data: { session }, error } = await supabase.auth.getSession()
-      console.log('Current auth state:', {
+      if (import.meta.env.DEV) console.log('Current auth state:', {
         session: session ? 'present' : 'null',
         user: session?.user?.email || 'no user',
         error: error?.message || 'no error'
       })
       return { session, error }
     } catch (error) {
-      console.error('Error checking auth state:', error)
+      if (import.meta.env.DEV) console.error('Error checking auth state:', error)
       return { session: null, error }
     }
   }

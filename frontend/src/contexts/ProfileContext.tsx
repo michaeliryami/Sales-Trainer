@@ -36,7 +36,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
 
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
-      console.log('Fetching profile for user:', userId)
+      if (import.meta.env.DEV) console.log('Fetching profile for user:', userId)
       
       const { data, error } = await supabase
         .from('profiles')
@@ -45,21 +45,21 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         .single()
 
       if (error) {
-        console.error('Error fetching profile:', error)
+        if (import.meta.env.DEV) console.error('Error fetching profile:', error)
         return null
       }
 
-      console.log('Profile fetched:', data)
+      if (import.meta.env.DEV) console.log('Profile fetched:', data)
       return data as Profile
     } catch (error) {
-      console.error('Error in fetchProfile:', error)
+      if (import.meta.env.DEV) console.error('Error in fetchProfile:', error)
       return null
     }
   }
 
   const fetchOrganization = async (orgId: number): Promise<Organization | null> => {
     try {
-      console.log('Fetching organization for ID:', orgId)
+      if (import.meta.env.DEV) console.log('Fetching organization for ID:', orgId)
       
       const { data, error } = await supabase
         .from('organizations')
@@ -68,21 +68,21 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         .single()
 
       if (error) {
-        console.error('Error fetching organization:', error)
+        if (import.meta.env.DEV) console.error('Error fetching organization:', error)
         return null
       }
 
-      console.log('Organization fetched:', data)
+      if (import.meta.env.DEV) console.log('Organization fetched:', data)
       return data as Organization
     } catch (error) {
-      console.error('Error in fetchOrganization:', error)
+      if (import.meta.env.DEV) console.error('Error in fetchOrganization:', error)
       return null
     }
   }
 
   const createProfile = async (user: User, organizationId?: number): Promise<Profile | null> => {
     try {
-      console.log('Creating profile for user:', user.email)
+      if (import.meta.env.DEV) console.log('Creating profile for user:', user.email)
       
       let orgId = organizationId
       let assignedRole: 'admin' | 'employee' = 'employee'
@@ -103,20 +103,20 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
             if (inviteData.valid) {
               orgId = inviteData.organizationId
               assignedRole = inviteData.role || 'employee'
-              console.log('User invited to organization:', inviteData.organizationName, 'ID:', orgId, 'Role:', assignedRole)
+              if (import.meta.env.DEV) console.log('User invited to organization:', inviteData.organizationName, 'ID:', orgId, 'Role:', assignedRole)
             } else {
-              console.error('User email not found in any organization invite list')
+              if (import.meta.env.DEV) console.error('User email not found in any organization invite list')
               return null // Don't create profile if not invited
             }
           }
         } catch (inviteError) {
-          console.error('Error validating invite during profile creation:', inviteError)
+          if (import.meta.env.DEV) console.error('Error validating invite during profile creation:', inviteError)
           return null
         }
       }
 
       if (!orgId) {
-        console.error('No organization ID found for user')
+        if (import.meta.env.DEV) console.error('No organization ID found for user')
         return null
       }
       
@@ -128,7 +128,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         role: assignedRole
       }
 
-      console.log('Profile data to insert:', profileData)
+      if (import.meta.env.DEV) console.log('Profile data to insert:', profileData)
 
       const { data, error } = await supabase
         .from('profiles')
@@ -137,11 +137,11 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         .single()
 
       if (error) {
-        console.error('Error creating profile:', error)
+        if (import.meta.env.DEV) console.error('Error creating profile:', error)
         return null
       }
 
-      console.log('Profile created:', data)
+      if (import.meta.env.DEV) console.log('Profile created:', data)
       
       // Remove the user's email from the organization's invite list now that they have a profile
       if (user.email && orgId) {
@@ -179,17 +179,17 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
               })
               .eq('id', orgId)
             
-            console.log('Removed user email from organization invite list:', user.email)
+            if (import.meta.env.DEV) console.log('Removed user email from organization invite list:', user.email)
           }
         } catch (cleanupError) {
-          console.error('Error cleaning up invite list:', cleanupError)
+          if (import.meta.env.DEV) console.error('Error cleaning up invite list:', cleanupError)
           // Don't fail profile creation if cleanup fails
         }
       }
       
       return data as Profile
     } catch (error) {
-      console.error('Error in createProfile:', error)
+      if (import.meta.env.DEV) console.error('Error in createProfile:', error)
       return null
     }
   }
@@ -209,7 +209,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       }
       // If profile exists but org is NULL, update it with the correct org from invite
       else if (!userProfile.org && user.email) {
-        console.log('Profile exists but org is NULL, checking for invite...')
+        if (import.meta.env.DEV) console.log('Profile exists but org is NULL, checking for invite...')
         try {
           const response = await apiFetch('/api/invites/validate', {
             method: 'POST',
@@ -222,7 +222,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
           if (response.ok) {
             const inviteData = await response.json()
             if (inviteData.valid) {
-              console.log('Found invite, updating profile with org:', inviteData.organizationId)
+              if (import.meta.env.DEV) console.log('Found invite, updating profile with org:', inviteData.organizationId)
               
               // Update the profile with the org
               const { data: updatedProfile, error: updateError } = await supabase
@@ -237,7 +237,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
 
               if (!updateError && updatedProfile) {
                 userProfile = updatedProfile as Profile
-                console.log('Profile updated with org:', updatedProfile)
+                if (import.meta.env.DEV) console.log('Profile updated with org:', updatedProfile)
                 
                 // Remove from invite list
                 const { data: org } = await supabase
@@ -268,13 +268,13 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
                     })
                     .eq('id', inviteData.organizationId)
                   
-                  console.log('Removed user from invite list')
+                  if (import.meta.env.DEV) console.log('Removed user from invite list')
                 }
               }
             }
           }
         } catch (inviteError) {
-          console.error('Error checking invite for existing profile:', inviteError)
+          if (import.meta.env.DEV) console.error('Error checking invite for existing profile:', inviteError)
         }
       }
       
@@ -286,7 +286,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         setOrganization(org)
       }
     } catch (error) {
-      console.error('Error refreshing profile:', error)
+      if (import.meta.env.DEV) console.error('Error refreshing profile:', error)
     } finally {
       setLoading(false)
     }
@@ -299,7 +299,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       const org = await fetchOrganization(profile.org)
       setOrganization(org)
     } catch (error) {
-      console.error('Error refreshing organization:', error)
+      if (import.meta.env.DEV) console.error('Error refreshing organization:', error)
     }
   }
 

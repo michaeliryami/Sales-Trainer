@@ -246,7 +246,7 @@ function CreateSession() {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching assignments:', error)
+        if (import.meta.env.DEV) console.error('Error fetching assignments:', error)
         return
       }
 
@@ -256,7 +256,7 @@ function CreateSession() {
           const assignedUsers = JSON.parse(assignment.assigned || '[]')
           return assignedUsers.includes(profile?.id)
         } catch (error) {
-          console.warn('Error parsing assigned users:', error)
+          if (import.meta.env.DEV) console.warn('Error parsing assigned users:', error)
           return false
         }
       })
@@ -265,12 +265,12 @@ function CreateSession() {
       
       // Debug: Log the first assignment to check status
       if (myAssignments.length > 0) {
-        console.log('📋 First assignment:', myAssignments[0])
-        console.log('📋 Status value:', myAssignments[0].status)
-        console.log('📋 Status type:', typeof myAssignments[0].status)
+        if (import.meta.env.DEV) console.log('📋 First assignment:', myAssignments[0])
+        if (import.meta.env.DEV) console.log('📋 Status value:', myAssignments[0].status)
+        if (import.meta.env.DEV) console.log('📋 Status type:', typeof myAssignments[0].status)
       }
     } catch (error) {
-      console.error('Error fetching assignments:', error)
+      if (import.meta.env.DEV) console.error('Error fetching assignments:', error)
     } finally {
       setIsLoadingAssignments(false)
     }
@@ -278,29 +278,29 @@ function CreateSession() {
 
   // Load script when selection changes (for admins with templates OR employees with assignments)
   useEffect(() => {
-    console.log('🔄 useEffect triggered - selectedTemplate:', selectedTemplate, 'selectedAssignment:', selectedAssignment?.title)
+    if (import.meta.env.DEV) console.log('🔄 useEffect triggered - selectedTemplate:', selectedTemplate, 'selectedAssignment:', selectedAssignment?.title)
     
     // CHECK ASSIGNMENTS FIRST - they take priority when both are set
     if (selectedAssignment) {
       const assignmentTemplate = templates.find(t => t.id === selectedAssignment.template)
       
       if (assignmentTemplate) {
-        console.log('📋 Assignment template from DB:', assignmentTemplate.title)
+        if (import.meta.env.DEV) console.log('📋 Assignment template from DB:', assignmentTemplate.title)
         
         // ALWAYS check frontend code first for built-in templates using robust matching
         const builtInMatch = findBuiltInTemplateByTitle(assignmentTemplate.title)
         
         if (builtInMatch) {
           // Use the full script from frontend code (hard-coded templates)
-          console.log('✅ Found matching built-in template:', builtInMatch.title)
-          console.log('✅ Using hard-coded script, length:', builtInMatch.script.length, 'chars')
+          if (import.meta.env.DEV) console.log('✅ Found matching built-in template:', builtInMatch.title)
+          if (import.meta.env.DEV) console.log('✅ Using hard-coded script, length:', builtInMatch.script.length, 'chars')
           setScriptText(builtInMatch.script || '')
           return
         }
         
         // Not a built-in template - use custom template script from DB
-        console.log('⚠️ No built-in match found - using custom template script from DB')
-        console.log('⚠️ DB script length:', assignmentTemplate.script?.length || 0, 'chars')
+        if (import.meta.env.DEV) console.log('⚠️ No built-in match found - using custom template script from DB')
+        if (import.meta.env.DEV) console.log('⚠️ DB script length:', assignmentTemplate.script?.length || 0, 'chars')
         setScriptText(assignmentTemplate.script || '')
         return
       }
@@ -311,7 +311,7 @@ function CreateSession() {
       // Check if it's a built-in template first
       const builtInTemplate = ALL_BUILT_IN_TEMPLATES.find(t => t.id === selectedTemplate)
       if (builtInTemplate) {
-        console.log('✅ Using built-in template script for playground:', builtInTemplate.title)
+        if (import.meta.env.DEV) console.log('✅ Using built-in template script for playground:', builtInTemplate.title)
         setScriptText(builtInTemplate.script || '')
         return
       }
@@ -324,7 +324,7 @@ function CreateSession() {
       }
 
       // Use the custom template script
-      console.log('✅ Using custom template script for playground:', customTemplate.title)
+      if (import.meta.env.DEV) console.log('✅ Using custom template script for playground:', customTemplate.title)
       setScriptText(customTemplate.script || '')
       return
     }
@@ -343,10 +343,10 @@ function CreateSession() {
         const result = await response.json()
         setAssignmentSessions(result.data || [])
       } else {
-        console.error('Failed to fetch assignment sessions')
+        if (import.meta.env.DEV) console.error('Failed to fetch assignment sessions')
       }
     } catch (error) {
-      console.error('Error fetching assignment sessions:', error)
+      if (import.meta.env.DEV) console.error('Error fetching assignment sessions:', error)
     } finally {
       setIsLoadingSessions(false)
     }
@@ -393,7 +393,7 @@ function CreateSession() {
         })
       }
     } catch (error) {
-      console.error('Error submitting session:', error)
+      if (import.meta.env.DEV) console.error('Error submitting session:', error)
       toast({
         title: 'Error',
         description: 'An error occurred while submitting.',
@@ -410,7 +410,7 @@ function CreateSession() {
   // Update assignment status to in_progress
   const updateAssignmentStatus = async (assignmentId: number, status: 'not started' | 'in progress' | 'complete') => {
     try {
-      console.log(`📝 Updating assignment ${assignmentId} status to: ${status}`)
+      if (import.meta.env.DEV) console.log(`📝 Updating assignment ${assignmentId} status to: ${status}`)
       
       const response = await apiFetch(`/api/assignments/${assignmentId}/status`, {
         method: 'PATCH',
@@ -420,7 +420,7 @@ function CreateSession() {
       
       if (response.ok) {
         const result = await response.json()
-        console.log(`✅ Assignment status updated to: ${status}`, result)
+        if (import.meta.env.DEV) console.log(`✅ Assignment status updated to: ${status}`, result)
         
         // Update local state immediately
         if (selectedAssignment && selectedAssignment.id === assignmentId) {
@@ -438,10 +438,10 @@ function CreateSession() {
         )
       } else {
         const errorText = await response.text()
-        console.error('❌ Failed to update assignment status:', response.status, errorText)
+        if (import.meta.env.DEV) console.error('❌ Failed to update assignment status:', response.status, errorText)
       }
     } catch (error) {
-      console.error('❌ Error updating assignment status:', error)
+      if (import.meta.env.DEV) console.error('❌ Error updating assignment status:', error)
     }
   }
 
@@ -469,7 +469,7 @@ function CreateSession() {
     try {
       // If this is an assignment and it's not started or undefined, update to in progress
       if (selectedAssignment && (selectedAssignment.status === 'not started' || !selectedAssignment.status)) {
-        console.log('📊 First training session - updating status to in progress')
+        if (import.meta.env.DEV) console.log('📊 First training session - updating status to in progress')
         await updateAssignmentStatus(selectedAssignment.id, 'in progress')
       }
       let template = null
@@ -478,30 +478,30 @@ function CreateSession() {
       // For employees: load template from assignment
       if (!userRole.isAdmin && selectedAssignment) {
         const assignmentTemplate = templates.find(t => t.id === selectedAssignment.template)
-        console.log('🚀 STARTING CALL - Employee assignment')
-        console.log('🚀 Assignment template from DB:', assignmentTemplate?.title)
+        if (import.meta.env.DEV) console.log('🚀 STARTING CALL - Employee assignment')
+        if (import.meta.env.DEV) console.log('🚀 Assignment template from DB:', assignmentTemplate?.title)
         
         if (assignmentTemplate) {
           // Try to find matching built-in template by title using robust matching
           const builtInMatch = findBuiltInTemplateByTitle(assignmentTemplate.title)
-          console.log('🚀 Looking for built-in match...')
-          console.log('🚀 Built-in match found?', !!builtInMatch)
+          if (import.meta.env.DEV) console.log('🚀 Looking for built-in match...')
+          if (import.meta.env.DEV) console.log('🚀 Built-in match found?', !!builtInMatch)
           
           if (builtInMatch) {
             // Use built-in template's full script from hard-coded templates
             template = builtInMatch
             scriptContent = builtInMatch.script || ''
-            console.log('✅✅✅ SUCCESS! Using hard-coded built-in script for VAPI:', builtInMatch.title)
-            console.log('📝 Script being sent to VAPI:', scriptContent.length, 'characters')
+            if (import.meta.env.DEV) console.log('✅✅✅ SUCCESS! Using hard-coded built-in script for VAPI:', builtInMatch.title)
+            if (import.meta.env.DEV) console.log('📝 Script being sent to VAPI:', scriptContent.length, 'characters')
           } else {
             // Use custom template from database
             template = assignmentTemplate
             scriptContent = assignmentTemplate.script || ''
-            console.log('⚠️ No built-in match - using custom template script from DB:', assignmentTemplate.title)
-            console.log('📝 Script being sent to VAPI:', scriptContent.length, 'characters')
+            if (import.meta.env.DEV) console.log('⚠️ No built-in match - using custom template script from DB:', assignmentTemplate.title)
+            if (import.meta.env.DEV) console.log('📝 Script being sent to VAPI:', scriptContent.length, 'characters')
           }
         } else {
-          console.log('❌❌❌ ERROR: Assignment template not found in database!')
+          if (import.meta.env.DEV) console.log('❌❌❌ ERROR: Assignment template not found in database!')
         }
       } else {
         // For admins: use selected template from playground
@@ -531,7 +531,7 @@ function CreateSession() {
       }
 
       const data = await response.json()
-      console.log('Assistant created:', data.assistant)
+      if (import.meta.env.DEV) console.log('Assistant created:', data.assistant)
       
       // Store assistant ID for cleanup later
       if (data.assistant?.id) {
@@ -544,7 +544,7 @@ function CreateSession() {
         
         // Set up event listeners
         vapiRef.current.on('call-start', (info: any) => {
-          console.log('Call started', info)
+          if (import.meta.env.DEV) console.log('Call started', info)
           setIsCreatingCall(false)
           setIsCallActive(true)
           setTranscript([])
@@ -555,18 +555,18 @@ function CreateSession() {
             const id = info?.id || info?.callId || info?.call?.id || null
             if (id) setActiveCallId(String(id))
           } catch (e) {
-            console.warn('Unable to read call id from call-start payload')
+            if (import.meta.env.DEV) console.warn('Unable to read call id from call-start payload')
           }
         })
 
         vapiRef.current.on('call-end', async () => {
-          console.log('Call ended')
+          if (import.meta.env.DEV) console.log('Call ended')
           setIsCreatingCall(false)
           setIsCallActive(false)
           
           // Save session data to database immediately when call ends (ONLY for assignments)
           const chunks = transcriptChunksRef.current
-          console.log('Call ended - checking if we should save:', {
+          if (import.meta.env.DEV) console.log('Call ended - checking if we should save:', {
             hasChunks: chunks.length > 0,
             hasProfile: !!profile?.id,
             hasOrg: !!organization?.id,
@@ -577,7 +577,7 @@ function CreateSession() {
           // Save ALL sessions to database (both playground and assignments)
           if (chunks.length > 0 && profile?.id && organization?.id) {
             try {
-              console.log('✅ Conditions met - Saving session to database...')
+              if (import.meta.env.DEV) console.log('✅ Conditions met - Saving session to database...')
               
               // Get the correct template - for assignments, always use DB template ID
               let templateIdForDb = null
@@ -588,21 +588,21 @@ function CreateSession() {
                 templateIdForDb = selectedAssignment.template
                 const assignmentTemplate = templates.find(t => t.id === selectedAssignment.template)
                 templateTitle = assignmentTemplate?.title || 'Assignment'
-                console.log('Assignment - using DB template ID:', templateIdForDb)
+                if (import.meta.env.DEV) console.log('Assignment - using DB template ID:', templateIdForDb)
               } else {
                 // For playground, check if it's custom or built-in
                 const customTemplate = templates.find(t => t.id.toString() === selectedTemplate)
                 if (customTemplate) {
                   templateIdForDb = customTemplate.id
                   templateTitle = customTemplate.title
-                  console.log('Playground - using custom template ID:', templateIdForDb)
+                  if (import.meta.env.DEV) console.log('Playground - using custom template ID:', templateIdForDb)
                 } else {
                   // Built-in template - set NULL (built-in templates don't exist in DB due to FK constraint)
                   const builtInTemplate = ALL_BUILT_IN_TEMPLATES.find(t => t.id === selectedTemplate)
                   if (builtInTemplate) {
                     templateIdForDb = null // NULL for built-in templates (FK constraint requires template exists in DB)
                     templateTitle = builtInTemplate.title
-                    console.log('Playground - built-in template (storing in metadata):', selectedTemplate, templateTitle)
+                    if (import.meta.env.DEV) console.log('Playground - built-in template (storing in metadata):', selectedTemplate, templateTitle)
                   }
                 }
               }
@@ -629,7 +629,7 @@ function CreateSession() {
                 }
               }
 
-              console.log('📤 Sending session data to backend:', sessionData)
+              if (import.meta.env.DEV) console.log('📤 Sending session data to backend:', sessionData)
               
               const saveResponse = await apiFetch('/api/analytics/session', {
                 method: 'POST',
@@ -637,11 +637,11 @@ function CreateSession() {
                 body: JSON.stringify(sessionData)
               })
 
-              console.log('📥 Backend response status:', saveResponse.status)
+              if (import.meta.env.DEV) console.log('📥 Backend response status:', saveResponse.status)
               
               if (saveResponse.ok) {
                 const result = await saveResponse.json()
-                console.log('✅ Session saved successfully:', result)
+                if (import.meta.env.DEV) console.log('✅ Session saved successfully:', result)
                 
                 // Grade ALL sessions (assignments and playground) using appropriate rubric
                 if (result.data?.id) {
@@ -656,13 +656,13 @@ function CreateSession() {
                   
                   if (selectedAssignment) {
                     assignmentId = selectedAssignment.id
-                    console.log('🎯 Using general rubric for assignment:', assignmentId)
+                    if (import.meta.env.DEV) console.log('🎯 Using general rubric for assignment:', assignmentId)
                   } else {
-                    console.log('🎯 Using general rubric for playground session')
+                    if (import.meta.env.DEV) console.log('🎯 Using general rubric for playground session')
                   }
                   
                   if (rubricToUse?.grading && Array.isArray(rubricToUse.grading)) {
-                    console.log('🎯 Grading session against rubric...')
+                    if (import.meta.env.DEV) console.log('🎯 Grading session against rubric...')
                     
                     // Set grading indicators
                     setIsGradingSession(true)
@@ -687,8 +687,8 @@ function CreateSession() {
                     
                     if (gradeResponse.ok) {
                       const gradeResult = await gradeResponse.json()
-                      console.log('✅ Session graded:', gradeResult)
-                      console.log(`📊 Score: ${Math.round(gradeResult.data.percentage)}%`)
+                      if (import.meta.env.DEV) console.log('✅ Session graded:', gradeResult)
+                      if (import.meta.env.DEV) console.log(`📊 Score: ${Math.round(gradeResult.data.percentage)}%`)
                       
                       toast({
                         title: 'Session Graded!',
@@ -710,7 +710,7 @@ function CreateSession() {
                         setShowPlaygroundGradeDetails(false) // Reset details view
                       }
                     } else {
-                      console.error('Failed to grade session')
+                      if (import.meta.env.DEV) console.error('Failed to grade session')
                       toast({
                         title: 'Grading Failed',
                         description: 'Could not grade your session. Please try again.',
@@ -728,13 +728,13 @@ function CreateSession() {
                 }
               } else {
                 const errorText = await saveResponse.text()
-                console.error('❌ Failed to save session:', errorText)
+                if (import.meta.env.DEV) console.error('❌ Failed to save session:', errorText)
               }
             } catch (error) {
-              console.error('❌ Error saving session:', error)
+              if (import.meta.env.DEV) console.error('❌ Error saving session:', error)
             }
             } else {
-            console.log('ℹ️  Not saving - this is playground practice (assignments only)')
+            if (import.meta.env.DEV) console.log('ℹ️  Not saving - this is playground practice (assignments only)')
           }
           
           // Try to fetch finalized transcript from backend using call id
@@ -790,23 +790,23 @@ function CreateSession() {
                   setTranscript(merged)
                 }
               } else {
-                console.warn('Failed to fetch finalized call transcript', await res.text())
+                if (import.meta.env.DEV) console.warn('Failed to fetch finalized call transcript', await res.text())
               }
             } catch (err) {
-              console.warn('Error fetching finalized transcript:', err)
+              if (import.meta.env.DEV) console.warn('Error fetching finalized transcript:', err)
             }
           }
           
           // Clean up: delete the assistant
           if (activeAssistantId) {
             try {
-              console.log('🗑️  Cleaning up assistant:', activeAssistantId)
+              if (import.meta.env.DEV) console.log('🗑️  Cleaning up assistant:', activeAssistantId)
               await apiFetch(`/api/assistants/${activeAssistantId}`, {
                 method: 'DELETE'
               })
-              console.log('✅ Assistant cleaned up successfully')
+              if (import.meta.env.DEV) console.log('✅ Assistant cleaned up successfully')
             } catch (deleteError) {
-              console.warn('Error deleting assistant:', deleteError)
+              if (import.meta.env.DEV) console.warn('Error deleting assistant:', deleteError)
               // Don't throw - cleanup failures shouldn't break the flow
             }
           }
@@ -868,7 +868,7 @@ function CreateSession() {
         })
 
         vapiRef.current.on('error', (error: any) => {
-          console.error('VAPI error:', error)
+          if (import.meta.env.DEV) console.error('VAPI error:', error)
           setIsCreatingCall(false)
           setIsCallActive(false)
         })
@@ -878,7 +878,7 @@ function CreateSession() {
       await vapiRef.current.start(data.assistant.id)
       
     } catch (error) {
-      console.error('Error creating call:', error)
+      if (import.meta.env.DEV) console.error('Error creating call:', error)
       toast({
         title: 'Call failed',
         description: 'Could not start training call. Please try again.',
@@ -978,7 +978,7 @@ function CreateSession() {
       document.body.removeChild(a)
 
     } catch (error) {
-      console.error('Error exporting transcript:', error)
+      if (import.meta.env.DEV) console.error('Error exporting transcript:', error)
       toast({
         title: 'Export failed',
         description: 'Could not export transcript. Please try again.',
@@ -1075,7 +1075,7 @@ function CreateSession() {
         const config = await response.json()
         setVapiPublicKey(config.vapiPublicKey)
       } catch (error) {
-        console.error('Failed to fetch VAPI config:', error)
+        if (import.meta.env.DEV) console.error('Failed to fetch VAPI config:', error)
       }
     }
     fetchConfig()
@@ -1085,15 +1085,15 @@ function CreateSession() {
   useEffect(() => {
     // Don't fetch if we don't have the required data yet
     if (!organization?.id || !profile?.id) {
-      console.log('Skipping fetch - missing organization or profile')
+      if (import.meta.env.DEV) console.log('Skipping fetch - missing organization or profile')
       return
     }
 
     const fetchTemplates = async () => {
       try {
         setIsLoadingTemplates(true)
-        console.log('Fetching templates for organization:', organization?.id)
-        console.log('User role isAdmin:', userRole.isAdmin)
+        if (import.meta.env.DEV) console.log('Fetching templates for organization:', organization?.id)
+        if (import.meta.env.DEV) console.log('User role isAdmin:', userRole.isAdmin)
         
         // Fetch both NULL org templates (for lookups) and org-specific templates
         // BUT we'll filter NULL org templates out of the Custom tab display
@@ -1104,28 +1104,28 @@ function CreateSession() {
           .order('created_at', { ascending: false })
 
         if (error) {
-          console.error('Error fetching templates:', error)
+          if (import.meta.env.DEV) console.error('Error fetching templates:', error)
           return
         }
 
-        console.log('Templates fetched:', data?.length || 0, 'templates found')
+        if (import.meta.env.DEV) console.log('Templates fetched:', data?.length || 0, 'templates found')
         setTemplates(data || [])
       } catch (error) {
-        console.error('Error fetching templates:', error)
+        if (import.meta.env.DEV) console.error('Error fetching templates:', error)
       } finally {
         setIsLoadingTemplates(false)
       }
     }
 
-    console.log('CreateSession useEffect - Organization ID:', organization?.id)
-    console.log('CreateSession useEffect - Profile ID:', profile?.id)
-    console.log('CreateSession useEffect - User Role isAdmin:', userRole.isAdmin)
+    if (import.meta.env.DEV) console.log('CreateSession useEffect - Organization ID:', organization?.id)
+    if (import.meta.env.DEV) console.log('CreateSession useEffect - Profile ID:', profile?.id)
+    if (import.meta.env.DEV) console.log('CreateSession useEffect - User Role isAdmin:', userRole.isAdmin)
     
     if (userRole.isAdmin) {
-      console.log('Admin detected - fetching templates')
+      if (import.meta.env.DEV) console.log('Admin detected - fetching templates')
       fetchTemplates()
     } else {
-      console.log('Employee detected - fetching assignments')
+      if (import.meta.env.DEV) console.log('Employee detected - fetching assignments')
       // Also fetch templates to use with assignments
       fetchTemplates()
       fetchAssignments()
@@ -1923,9 +1923,9 @@ function CreateSession() {
                   if (isOpen) {
                     onClose()
                   } else {
-                    console.log('Opening modal for template:', selectedTemplate)
+                    if (import.meta.env.DEV) console.log('Opening modal for template:', selectedTemplate)
                           const template = templates.find(t => t.id.toString() === selectedTemplate)
-                          console.log('Template script preview:', template?.script ? template.script.substring(0, 100) + '...' : 'No script found')
+                          if (import.meta.env.DEV) console.log('Template script preview:', template?.script ? template.script.substring(0, 100) + '...' : 'No script found')
                   onOpen()
                   }
                 }}

@@ -25,7 +25,7 @@ const Auth: React.FC = () => {
   // Redirect authenticated users to the app
   useEffect(() => {
     if (!loading && user) {
-      console.log('User is authenticated, redirecting to app')
+      if (import.meta.env.DEV) console.log('User is authenticated, redirecting to app')
       // Get the intended destination from location state, or default to home
       const from = (location.state as any)?.from?.pathname || '/'
       navigate(from, { replace: true })

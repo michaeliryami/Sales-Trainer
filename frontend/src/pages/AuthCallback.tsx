@@ -28,15 +28,15 @@ const AuthCallback: React.FC = () => {
     const handleAuthCallback = async () => {
       try {
         // Debug logging
-        console.log('AuthCallback - Current URL:', window.location.href)
-        console.log('AuthCallback - Search params:', Object.fromEntries(searchParams.entries()))
-        console.log('AuthCallback - Hash:', window.location.hash)
+        if (import.meta.env.DEV) console.log('AuthCallback - Current URL:', window.location.href)
+        if (import.meta.env.DEV) console.log('AuthCallback - Search params:', Object.fromEntries(searchParams.entries()))
+        if (import.meta.env.DEV) console.log('AuthCallback - Hash:', window.location.hash)
         
         // First, try to get the code from URL parameters (PKCE flow)
         const code = searchParams.get('code')
         
         if (code) {
-          console.log('AuthCallback - Found code, using PKCE flow:', code)
+          if (import.meta.env.DEV) console.log('AuthCallback - Found code, using PKCE flow:', code)
           // PKCE flow - exchange the code for a session
           const { data, error } = await supabase.auth.exchangeCodeForSession(code)
           
@@ -50,7 +50,7 @@ const AuthCallback: React.FC = () => {
             }, 2000)
           }
         } else {
-          console.log('AuthCallback - No code found, checking for implicit flow tokens')
+          if (import.meta.env.DEV) console.log('AuthCallback - No code found, checking for implicit flow tokens')
           // Check for implicit flow tokens in URL hash
           const hashParams = new URLSearchParams(window.location.hash.substring(1))
           const accessToken = hashParams.get('access_token')
@@ -58,7 +58,7 @@ const AuthCallback: React.FC = () => {
           const tokenType = hashParams.get('token_type')
           const type = hashParams.get('type')
           
-          console.log('AuthCallback - Hash params:', {
+          if (import.meta.env.DEV) console.log('AuthCallback - Hash params:', {
             accessToken: accessToken ? 'present' : 'missing',
             refreshToken: refreshToken ? 'present' : 'missing',
             tokenType,
@@ -66,7 +66,7 @@ const AuthCallback: React.FC = () => {
           })
           
           if (accessToken && type === 'signup') {
-            console.log('AuthCallback - Found implicit flow tokens, setting session')
+            if (import.meta.env.DEV) console.log('AuthCallback - Found implicit flow tokens, setting session')
             // Implicit flow - set the session directly
             const { data, error } = await supabase.auth.setSession({
               access_token: accessToken,

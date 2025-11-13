@@ -142,7 +142,7 @@ const Analytics: React.FC = () => {
         if (cached) {
           const { data, timestamp } = JSON.parse(cached)
           if (now - timestamp < CACHE_TTL) {
-            console.log('Loading analytics from cache')
+            if (import.meta.env.DEV) console.log('Loading analytics from cache')
             setAnalyticsData(data)
             setLastFetch(timestamp)
             setLoading(false)
@@ -165,7 +165,7 @@ const Analytics: React.FC = () => {
           timestamp: now
         }))
       } else {
-        console.error('Failed to fetch analytics:', result.error)
+        if (import.meta.env.DEV) console.error('Failed to fetch analytics:', result.error)
         // Set empty data on error
         setAnalyticsData({
           totalSessions: 0,
@@ -179,7 +179,7 @@ const Analytics: React.FC = () => {
         })
       }
     } catch (error) {
-      console.error('Error fetching analytics:', error)
+      if (import.meta.env.DEV) console.error('Error fetching analytics:', error)
       // Set empty data on error
       setAnalyticsData({
         totalSessions: 0,
@@ -209,7 +209,7 @@ const Analytics: React.FC = () => {
         setTeamMembers(result.data)
       }
     } catch (error) {
-      console.error('Error fetching team members:', error)
+      if (import.meta.env.DEV) console.error('Error fetching team members:', error)
     }
   }
 
@@ -225,7 +225,7 @@ const Analytics: React.FC = () => {
         setAssignments(result.data)
       }
     } catch (error) {
-      console.error('Error fetching assignments:', error)
+      if (import.meta.env.DEV) console.error('Error fetching assignments:', error)
     }
   }
 
@@ -242,7 +242,7 @@ const Analytics: React.FC = () => {
         setUserAnalytics(null)
       }
     } catch (error) {
-      console.error('Error fetching user analytics:', error)
+      if (import.meta.env.DEV) console.error('Error fetching user analytics:', error)
       setUserAnalytics(null)
     } finally {
       setLoadingUserAnalytics(false)
@@ -274,7 +274,7 @@ const Analytics: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       if (organization?.id && analyticsData) {
-        console.log('Background refresh analytics...')
+        if (import.meta.env.DEV) console.log('Background refresh analytics...')
         fetchAnalytics(true)
       }
     }, CACHE_TTL)
@@ -295,7 +295,7 @@ const Analytics: React.FC = () => {
         setSessionGrade(null)
       }
     } catch (error) {
-      console.error('Error fetching session grade:', error)
+      if (import.meta.env.DEV) console.error('Error fetching session grade:', error)
       setSessionGrade(null)
     } finally {
       setLoadingGrade(false)
@@ -315,7 +315,7 @@ const Analytics: React.FC = () => {
         setSessionTranscript(null)
       }
     } catch (error) {
-      console.error('Error fetching session transcript:', error)
+      if (import.meta.env.DEV) console.error('Error fetching session transcript:', error)
       setSessionTranscript(null)
     } finally {
       setLoadingTranscript(false)
@@ -335,7 +335,7 @@ const Analytics: React.FC = () => {
         setSessionSummary(null)
       }
     } catch (error) {
-      console.error('Error generating summary:', error)
+      if (import.meta.env.DEV) console.error('Error generating summary:', error)
       setSessionSummary(null)
     } finally {
       setLoadingSummary(false)
@@ -458,11 +458,11 @@ const Analytics: React.FC = () => {
         }
       } else {
         const errorText = await response.text()
-        console.error('PDF generation failed:', errorText)
+        if (import.meta.env.DEV) console.error('PDF generation failed:', errorText)
         throw new Error('Failed to generate PDF')
       }
     } catch (error) {
-      console.error('Error generating PDF:', error)
+      if (import.meta.env.DEV) console.error('Error generating PDF:', error)
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to generate PDF report',

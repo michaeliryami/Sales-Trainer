@@ -27,20 +27,20 @@ const AuthCallbackSimple: React.FC = () => {
         // Let Supabase handle the auth callback automatically
         const { data, error } = await supabase.auth.getSession()
         
-        console.log('Simple AuthCallback - Session check:', { data, error })
+        if (import.meta.env.DEV) console.log('Simple AuthCallback - Session check:', { data, error })
         
         if (error) {
-          console.error('Session error:', error)
+          if (import.meta.env.DEV) console.error('Session error:', error)
           setError(error.message)
         } else if (data.session) {
-          console.log('Session found:', data.session.user.email)
+          if (import.meta.env.DEV) console.log('Session found:', data.session.user.email)
           setSuccess(true)
           // Redirect after a short delay
           setTimeout(() => {
             navigate('/', { replace: true })
           }, 1500)
         } else {
-          console.log('No session found, waiting for auth state change...')
+          if (import.meta.env.DEV) console.log('No session found, waiting for auth state change...')
           // Wait a moment for auth state to update
           setTimeout(async () => {
             const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -59,7 +59,7 @@ const AuthCallbackSimple: React.FC = () => {
           return // Don't set loading to false yet
         }
       } catch (err: any) {
-        console.error('Callback error:', err)
+        if (import.meta.env.DEV) console.error('Callback error:', err)
         setError(err.message || 'An unexpected error occurred')
       } finally {
         setLoading(false)
@@ -69,7 +69,7 @@ const AuthCallbackSimple: React.FC = () => {
     // Also listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('AuthCallback - Auth state changed:', event, session?.user?.email)
+        if (import.meta.env.DEV) console.log('AuthCallback - Auth state changed:', event, session?.user?.email)
         
         if (event === 'SIGNED_IN' && session) {
           setSuccess(true)

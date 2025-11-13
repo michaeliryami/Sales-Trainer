@@ -49,12 +49,12 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
     setLoading(true)
     setError('')
 
-    console.log('Login attempt for:', email)
+    if (import.meta.env.DEV) console.log('Login attempt for:', email)
     
     const { data, error } = await signIn(email, password)
     
     if (error) {
-      console.error('Login error:', error)
+      if (import.meta.env.DEV) console.error('Login error:', error)
       
       // Handle different types of authentication errors
       if (error.message?.includes('Email not confirmed') || 
@@ -70,7 +70,7 @@ const Login: React.FC<LoginProps> = ({ onToggleMode, onForgotPassword }) => {
         setError(error.message || 'Failed to sign in. Please try again.')
       }
     } else if (data.session) {
-      console.log('Login successful for:', email)
+      if (import.meta.env.DEV) console.log('Login successful for:', email)
     }
     
     setLoading(false)

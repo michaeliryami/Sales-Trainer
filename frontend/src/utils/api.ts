@@ -17,7 +17,7 @@ const getApiBaseUrl = (): string => {
   const apiUrl = import.meta.env.VITE_API_URL
   
   if (!apiUrl) {
-    console.error('❌ VITE_API_URL is not set! API calls will fail.')
+    if (import.meta.env.DEV) console.error('❌ VITE_API_URL is not set! API calls will fail.')
     return ''
   }
   

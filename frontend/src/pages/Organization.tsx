@@ -104,7 +104,7 @@ const Organization: React.FC = () => {
       setLoading(true)
       setError('')
 
-      console.log('Fetching users for organization:', organization.id)
+      if (import.meta.env.DEV) console.log('Fetching users for organization:', organization.id)
       
       // Fetch all profiles that belong to this organization
       const { data, error } = await supabase
@@ -114,12 +114,12 @@ const Organization: React.FC = () => {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching organization users:', error)
+        if (import.meta.env.DEV) console.error('Error fetching organization users:', error)
         setError('Failed to load organization members')
         return
       }
 
-          console.log('Organization users fetched:', data)
+          if (import.meta.env.DEV) console.log('Organization users fetched:', data)
           
           // Sort users to show admins first, then by created_at
           const sortedUsers = (data || []).sort((a, b) => {
@@ -150,12 +150,12 @@ const Organization: React.FC = () => {
           // Get emails that are invited but don't have active profiles in this org
           const invitedEmails = usersList.filter(email => !existingOrgEmails.includes(email))
           
-          console.log('Invited emails not in org:', invitedEmails)
+          if (import.meta.env.DEV) console.log('Invited emails not in org:', invitedEmails)
           
           // Check which of these emails have profiles in the system (any org)
           if (invitedEmails.length > 0) {
             try {
-              console.log('Checking profiles for emails:', invitedEmails)
+              if (import.meta.env.DEV) console.log('Checking profiles for emails:', invitedEmails)
               
               // Use backend API to check profiles (bypasses RLS)
               try {
@@ -169,32 +169,32 @@ const Organization: React.FC = () => {
 
                 if (response.ok) {
                   const result = await response.json()
-                  console.log('Backend profile check result:', result)
+                  if (import.meta.env.DEV) console.log('Backend profile check result:', result)
                   
                   setPendingInvites(result.pending || [])
                   setAcceptedInvites(result.accepted || [])
                 } else {
-                  console.error('Error checking profiles via backend')
+                  if (import.meta.env.DEV) console.error('Error checking profiles via backend')
                   setPendingInvites(invitedEmails)
                   setAcceptedInvites([])
                 }
               } catch (error) {
-                console.error('Error checking profiles via backend:', error)
+                if (import.meta.env.DEV) console.error('Error checking profiles via backend:', error)
                 setPendingInvites(invitedEmails)
                 setAcceptedInvites([])
               }
             } catch (error) {
-              console.error('Error checking profiles:', error)
+              if (import.meta.env.DEV) console.error('Error checking profiles:', error)
               setPendingInvites(invitedEmails)
               setAcceptedInvites([])
             }
           } else {
-            console.log('No invited emails to check')
+            if (import.meta.env.DEV) console.log('No invited emails to check')
             setPendingInvites([])
             setAcceptedInvites([])
           }
         } catch (parseError) {
-          console.error('Error parsing organization users list:', parseError)
+          if (import.meta.env.DEV) console.error('Error parsing organization users list:', parseError)
           setPendingInvites([])
           setAcceptedInvites([])
         }
@@ -203,7 +203,7 @@ const Organization: React.FC = () => {
         setAcceptedInvites([])
       }
     } catch (err) {
-      console.error('Error in fetchOrganizationUsers:', err)
+      if (import.meta.env.DEV) console.error('Error in fetchOrganizationUsers:', err)
       setError('Failed to load organization members')
     } finally {
       setLoading(false)
@@ -278,7 +278,7 @@ const Organization: React.FC = () => {
       await fetchOrganizationUsers()
 
     } catch (error) {
-      console.error('Error inviting user:', error)
+      if (import.meta.env.DEV) console.error('Error inviting user:', error)
       setInviteError('Failed to invite user. Please try again.')
     } finally {
       setInviteLoading(false)
@@ -327,7 +327,7 @@ const Organization: React.FC = () => {
       await fetchOrganizationUsers()
 
     } catch (error) {
-      console.error('Error removing invitation:', error)
+      if (import.meta.env.DEV) console.error('Error removing invitation:', error)
       toast({
         title: 'Error',
         description: 'Failed to remove invitation. Please try again.',
@@ -385,7 +385,7 @@ const Organization: React.FC = () => {
       await fetchOrganizationUsers()
 
     } catch (error) {
-      console.error('Error removing user:', error)
+      if (import.meta.env.DEV) console.error('Error removing user:', error)
       toast({
         title: 'Error',
         description: 'Failed to remove user. Please try again.',
@@ -441,7 +441,7 @@ const Organization: React.FC = () => {
       await fetchOrganizationUsers()
 
     } catch (error) {
-      console.error('Error changing user role:', error)
+      if (import.meta.env.DEV) console.error('Error changing user role:', error)
       toast({
         title: 'Error',
         description: 'Failed to update user role. Please try again.',
@@ -932,7 +932,7 @@ const Organization: React.FC = () => {
                                       setIsEditingOrgName(false)
                                       toast({ title: 'Organization name updated', status: 'success' })
                                     } catch (err) {
-                                      console.error('Error updating org name:', err)
+                                      if (import.meta.env.DEV) console.error('Error updating org name:', err)
                                       toast({ title: 'Failed to update name', status: 'error' })
                                     } finally {
                                       setSavingOrgName(false)

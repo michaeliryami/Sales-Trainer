@@ -76,7 +76,7 @@ function Admin() {
         return JSON.parse(saved)
       }
     } catch (error) {
-      console.warn('Error loading form data from localStorage:', error)
+      if (import.meta.env.DEV) console.warn('Error loading form data from localStorage:', error)
     }
     return {
       title: '',
@@ -101,7 +101,7 @@ function Admin() {
         return JSON.parse(saved)
       }
     } catch (error) {
-      console.warn('Error loading editing template from localStorage:', error)
+      if (import.meta.env.DEV) console.warn('Error loading editing template from localStorage:', error)
     }
     return null
   }
@@ -161,7 +161,7 @@ function Admin() {
       const { data, error } = await query
 
       if (error) {
-        console.error('Error fetching templates:', error)
+        if (import.meta.env.DEV) console.error('Error fetching templates:', error)
         toast({
           title: 'Error loading templates',
           description: error.message,
@@ -174,7 +174,7 @@ function Admin() {
 
       setTemplates(data || [])
     } catch (error) {
-      console.error('Error fetching templates:', error)
+      if (import.meta.env.DEV) console.error('Error fetching templates:', error)
     } finally {
       setIsLoadingTemplates(false)
     }
@@ -236,7 +236,7 @@ function Admin() {
       })
 
     } catch (error) {
-      console.error('Error generating script:', error)
+      if (import.meta.env.DEV) console.error('Error generating script:', error)
       toast({
         title: 'Generation Failed',
         description: error instanceof Error ? error.message : 'Failed to generate script. Please try again.',
@@ -332,7 +332,7 @@ function Admin() {
       fetchTemplates()
 
     } catch (error) {
-      console.error(`Error ${editingTemplate ? 'updating' : 'creating'} template:`, error)
+      if (import.meta.env.DEV) console.error(`Error ${editingTemplate ? 'updating' : 'creating'} template:`, error)
       toast({
         title: `Error ${editingTemplate ? 'updating' : 'creating'} template`,
         description: 'Something went wrong. Please try again.',
@@ -385,7 +385,7 @@ function Admin() {
 
       fetchTemplates()
     } catch (error) {
-      console.error('Error deleting template:', error)
+      if (import.meta.env.DEV) console.error('Error deleting template:', error)
       toast({
         title: 'Error deleting template',
         description: 'Something went wrong. Please try again.',

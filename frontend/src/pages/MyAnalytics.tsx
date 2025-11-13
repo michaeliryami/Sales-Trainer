@@ -80,17 +80,17 @@ const MyAnalytics: React.FC = () => {
         const response = await apiFetch(`/api/analytics/employee/${profile.id}?period=${timeRange}`)
         const result = await response.json()
         
-        console.log('📊 Analytics data received:', result)
-        console.log('📋 Recent sessions:', result?.data?.recentSessions)
+        if (import.meta.env.DEV) console.log('📊 Analytics data received:', result)
+        if (import.meta.env.DEV) console.log('📋 Recent sessions:', result?.data?.recentSessions)
         
         if (result.success) {
           setAnalyticsData(result.data)
         } else {
-          console.error('Failed to fetch analytics:', result.error)
+          if (import.meta.env.DEV) console.error('Failed to fetch analytics:', result.error)
           setAnalyticsData(null)
         }
       } catch (error) {
-        console.error('Error fetching analytics:', error)
+        if (import.meta.env.DEV) console.error('Error fetching analytics:', error)
         setAnalyticsData(null)
       } finally {
         setLoading(false)
@@ -104,21 +104,21 @@ const MyAnalytics: React.FC = () => {
   const fetchSessionGrade = async (sessionId: number) => {
     setLoadingGrade(true)
     try {
-      console.log('Fetching grade for session ID:', sessionId)
+      if (import.meta.env.DEV) console.log('Fetching grade for session ID:', sessionId)
       const response = await apiFetch(`/api/analytics/session-grade/${sessionId}`)
       const result = await response.json()
       
-      console.log('Grade fetch result:', result)
+      if (import.meta.env.DEV) console.log('Grade fetch result:', result)
       
       if (result.success) {
-        console.log('Setting session grade:', result.data)
+        if (import.meta.env.DEV) console.log('Setting session grade:', result.data)
         setSessionGrade(result.data)
       } else {
-        console.log('No grade found in result')
+        if (import.meta.env.DEV) console.log('No grade found in result')
         setSessionGrade(null)
       }
     } catch (error) {
-      console.error('Error fetching session grade:', error)
+      if (import.meta.env.DEV) console.error('Error fetching session grade:', error)
       setSessionGrade(null)
     } finally {
       setLoadingGrade(false)
@@ -138,7 +138,7 @@ const MyAnalytics: React.FC = () => {
         setSessionTranscript(null)
       }
     } catch (error) {
-      console.error('Error fetching session transcript:', error)
+      if (import.meta.env.DEV) console.error('Error fetching session transcript:', error)
       setSessionTranscript(null)
     } finally {
       setLoadingTranscript(false)
@@ -165,7 +165,7 @@ const MyAnalytics: React.FC = () => {
         })
       }
     } catch (error) {
-      console.error('Error generating summary:', error)
+      if (import.meta.env.DEV) console.error('Error generating summary:', error)
       setSessionSummary(null)
       toast({
         title: 'Failed to generate summary',
@@ -287,11 +287,11 @@ const MyAnalytics: React.FC = () => {
         }
       } else {
         const errorText = await response.text()
-        console.error('PDF generation failed:', errorText)
+        if (import.meta.env.DEV) console.error('PDF generation failed:', errorText)
         throw new Error('Failed to generate PDF')
       }
     } catch (error) {
-      console.error('Error generating PDF:', error)
+      if (import.meta.env.DEV) console.error('Error generating PDF:', error)
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to generate PDF report',

@@ -92,7 +92,7 @@ function AssignmentCard({
     try {
       return JSON.parse(assignment.assigned || '[]')
     } catch (error) {
-      console.warn('Error parsing assigned users:', error)
+      if (import.meta.env.DEV) console.warn('Error parsing assigned users:', error)
       return []
     }
   }
@@ -269,7 +269,7 @@ function Assignments() {
         return JSON.parse(saved)
       }
     } catch (error) {
-      console.warn('Error loading form data from localStorage:', error)
+      if (import.meta.env.DEV) console.warn('Error loading form data from localStorage:', error)
     }
     return {
       title: '',
@@ -319,7 +319,7 @@ function Assignments() {
         return JSON.parse(saved)
       }
     } catch (error) {
-      console.warn('Error loading editing assignment from localStorage:', error)
+      if (import.meta.env.DEV) console.warn('Error loading editing assignment from localStorage:', error)
     }
     return null
   }
@@ -363,7 +363,7 @@ function Assignments() {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching assignments:', error)
+        if (import.meta.env.DEV) console.error('Error fetching assignments:', error)
         toast({
           title: 'Error loading assignments',
           description: error.message,
@@ -380,7 +380,7 @@ function Assignments() {
         setSelectedAssignmentId(data[0].id)
       }
     } catch (error) {
-      console.error('Error fetching assignments:', error)
+      if (import.meta.env.DEV) console.error('Error fetching assignments:', error)
     } finally {
       setIsLoadingAssignments(false)
     }
@@ -396,13 +396,13 @@ function Assignments() {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching templates:', error)
+        if (import.meta.env.DEV) console.error('Error fetching templates:', error)
         return
       }
 
       setTemplates(data || [])
     } catch (error) {
-      console.error('Error fetching templates:', error)
+      if (import.meta.env.DEV) console.error('Error fetching templates:', error)
     }
   }
 
@@ -417,13 +417,13 @@ function Assignments() {
         .order('display_name', { ascending: true })
 
       if (error) {
-        console.error('Error fetching users:', error)
+        if (import.meta.env.DEV) console.error('Error fetching users:', error)
         return
       }
 
       setUsers(data || [])
     } catch (error) {
-      console.error('Error fetching users:', error)
+      if (import.meta.env.DEV) console.error('Error fetching users:', error)
     } finally {
       setIsLoadingUsers(false)
     }
@@ -508,7 +508,7 @@ function Assignments() {
       fetchAssignments()
 
     } catch (error) {
-      console.error(`Error ${editingAssignment ? 'updating' : 'creating'} assignment:`, error)
+      if (import.meta.env.DEV) console.error(`Error ${editingAssignment ? 'updating' : 'creating'} assignment:`, error)
       toast({
         title: `Error ${editingAssignment ? 'updating' : 'creating'} assignment`,
         description: 'Something went wrong. Please try again.',
@@ -526,7 +526,7 @@ function Assignments() {
     try {
       assignedUsers = JSON.parse(assignment.assigned || '[]')
     } catch (error) {
-      console.warn('Error parsing assigned users:', error)
+      if (import.meta.env.DEV) console.warn('Error parsing assigned users:', error)
     }
 
     setFormData({
@@ -544,7 +544,7 @@ function Assignments() {
     try {
       assignedUsers = JSON.parse(assignment.assigned || '[]')
     } catch (error) {
-      console.warn('Error parsing assigned users:', error)
+      if (import.meta.env.DEV) console.warn('Error parsing assigned users:', error)
     }
 
     setFormData({
@@ -578,7 +578,7 @@ function Assignments() {
 
       fetchAssignments()
     } catch (error) {
-      console.error('Error deleting assignment:', error)
+      if (import.meta.env.DEV) console.error('Error deleting assignment:', error)
       toast({
         title: 'Error deleting assignment',
         description: 'Something went wrong. Please try again.',

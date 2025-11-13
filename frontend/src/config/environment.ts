@@ -53,7 +53,7 @@ const getApiUrl = (): string => {
   }
   
   // In production, must be explicitly set
-  console.error('⚠️  VITE_API_URL not set in production environment!')
+  if (import.meta.env.DEV) console.error('⚠️  VITE_API_URL not set in production environment!')
   return ''
 }
 
@@ -67,14 +67,14 @@ const validateConfig = () => {
   const missing = required.filter(({ value }) => !value).map(({ key }) => key)
   
   if (missing.length > 0) {
-    console.error(`❌ Missing required environment variables: ${missing.join(', ')}`)
-    console.error('Please create a .env.local file with the required variables')
-    console.error('See .env.example for reference')
+    if (import.meta.env.DEV) console.error(`❌ Missing required environment variables: ${missing.join(', ')}`)
+    if (import.meta.env.DEV) console.error('Please create a .env.local file with the required variables')
+    if (import.meta.env.DEV) console.error('See .env.example for reference')
   }
   
   // In production, API URL is required
   if (isProduction && !import.meta.env.VITE_API_URL) {
-    console.error('❌ VITE_API_URL must be set in production!')
+    if (import.meta.env.DEV) console.error('❌ VITE_API_URL must be set in production!')
   }
 }
 
@@ -94,10 +94,10 @@ export const config: FrontendConfig = {
 
 // Log configuration on startup (development only)
 if (isDevelopment) {
-  console.log('🔧 Frontend Configuration:')
-  console.log(`   Environment: ${config.env}`)
-  console.log(`   API URL: ${config.apiUrl || 'Using Vite proxy'}`)
-  console.log(`   Supabase: ${config.supabase.url}`)
-  console.log(`   Hostname: ${window.location.hostname}`)
+  if (import.meta.env.DEV) console.log('🔧 Frontend Configuration:')
+  if (import.meta.env.DEV) console.log(`   Environment: ${config.env}`)
+  if (import.meta.env.DEV) console.log(`   API URL: ${config.apiUrl || 'Using Vite proxy'}`)
+  if (import.meta.env.DEV) console.log(`   Supabase: ${config.supabase.url}`)
+  if (import.meta.env.DEV) console.log(`   Hostname: ${window.location.hostname}`)
 }
 
