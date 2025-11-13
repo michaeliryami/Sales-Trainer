@@ -1216,5 +1216,35 @@ router.post('/session/:id/submit', async (req, res) => {
         });
     }
 });
+router.get('/debug-vapi-call/:callId', async (req, res) => {
+    try {
+        const { callId } = req.params;
+        console.log('🔍 DEBUG: Fetching VAPI call details for:', callId);
+        const { vapiService } = require('../services/vapi');
+        const callDetails = await vapiService.getCall(callId);
+        const recordingInfo = {
+            callId: callId,
+            hasArtifact: !!callDetails.artifact,
+            artifactRecordingUrl: callDetails.artifact?.recordingUrl || null,
+            recordingUrl: callDetails.recordingUrl || null,
+            recordingPath: callDetails.recordingPath || null,
+            recordingObject: callDetails.recording || null,
+            fullCallDetails: callDetails
+        };
+        console.log('🔍 DEBUG: Recording info extracted:', JSON.stringify(recordingInfo, null, 2));
+        return res.json({
+            success: true,
+            data: recordingInfo
+        });
+    }
+    catch (error) {
+        console.error('❌ DEBUG: Error fetching VAPI call:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Failed to fetch VAPI call details',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
 exports.default = router;
 //# sourceMappingURL=analytics.js.map
