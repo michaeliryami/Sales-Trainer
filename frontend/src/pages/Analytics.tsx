@@ -812,7 +812,7 @@ const Analytics: React.FC = () => {
                     fontSize="sm" 
                     color={useColorModeValue('gray.600', 'gray.400')}
                   >
-                    Latest training sessions
+                    Latest assignments completed
                   </Text>
                 </VStack>
                 <HStack spacing={2}>
