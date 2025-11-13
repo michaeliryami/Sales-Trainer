@@ -485,17 +485,44 @@ async function processSessionInBackground(
 
   try {
     // STEP 0: Fetch recording URL from VAPI (if we have a call ID)
+    // VAPI recordings take time to process, so we need to wait and retry
     if (vapiCallId) {
       console.log(`🎙️ Fetching recording URL for session ${sessionId}...`)
       try {
         const { vapiService } = require('../services/vapi')
-        const callDetails = await vapiService.getCall(vapiCallId)
         
-        // VAPI returns recording URL in artifact or recordingUrl field
-        const recordingUrl = callDetails.artifact?.recordingUrl || 
-                            callDetails.recordingUrl || 
-                            callDetails.recording?.url ||
-                            null
+        // Helper function to wait
+        const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+        
+        // Retry logic: Try multiple times with increasing delays
+        // VAPI needs time to process the recording after call ends
+        const maxRetries = 6
+        const delays = [10000, 15000, 20000, 30000, 40000, 50000] // 10s, 15s, 20s, 30s, 40s, 50s
+        
+        let recordingUrl = null
+        
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          // Wait before checking (give VAPI time to process)
+          await wait(delays[attempt] || 30000)
+          
+          console.log(`🔄 Attempt ${attempt + 1}/${maxRetries} to fetch recording for session ${sessionId}`)
+          
+          const callDetails = await vapiService.getCall(vapiCallId)
+          
+          // Check multiple possible locations for recording URL
+          recordingUrl = callDetails.artifact?.recordingUrl || 
+                        callDetails.recordingUrl || 
+                        callDetails.recording?.url ||
+                        callDetails.recordingPath ||
+                        null
+          
+          if (recordingUrl) {
+            console.log(`✅ Recording URL found on attempt ${attempt + 1}`)
+            break
+          }
+          
+          console.log(`⏳ Recording not ready yet, will retry...`)
+        }
         
         if (recordingUrl) {
           await supabase
@@ -503,9 +530,9 @@ async function processSessionInBackground(
             .update({ recording_url: recordingUrl })
             .eq('id', sessionId)
           
-          console.log(`✅ Recording URL saved for session ${sessionId}`)
+          console.log(`✅ Recording URL saved for session ${sessionId}: ${recordingUrl}`)
         } else {
-          console.log(`⚠️ No recording URL found for call ${vapiCallId}`)
+          console.log(`⚠️ No recording URL found after ${maxRetries} attempts for call ${vapiCallId}`)
         }
       } catch (error) {
         console.error(`❌ Failed to fetch recording URL for session ${sessionId}:`, error)
