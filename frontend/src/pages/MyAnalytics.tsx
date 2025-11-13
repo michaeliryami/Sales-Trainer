@@ -447,62 +447,6 @@ const MyAnalytics: React.FC = () => {
                   </Card>
                 </SimpleGrid>
 
-                {/* Assignment Progress */}
-                <Card bg={cardBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" shadow="md">
-                  <CardBody p={6}>
-                    <Heading 
-                      size="md" 
-                      color={useColorModeValue('gray.900', 'white')} 
-                      mb={4}
-                      fontWeight="600"
-                      letterSpacing="-0.01em"
-                    >
-                      <HStack>
-                        <Icon as={Target} boxSize={5} color={accentColor} />
-                        <Text>Assignment Progress</Text>
-                      </HStack>
-                    </Heading>
-                    <VStack spacing={4} align="stretch">
-                      <Box>
-                        <Flex justify="space-between" mb={2}>
-                          <Text fontSize="sm" fontWeight="500" color={useColorModeValue('gray.600', 'gray.300')}>
-                            Completed
-                          </Text>
-                          <Text fontSize="sm" fontWeight="600" color="green.500">
-                            {analyticsData?.assignmentsCompleted || 0}/{analyticsData?.totalAssignments || 0}
-                          </Text>
-                        </Flex>
-                        <Progress 
-                          value={analyticsData?.totalAssignments > 0 ? (analyticsData.assignmentsCompleted / analyticsData.totalAssignments) * 100 : 0}
-                          size="md" 
-                          colorScheme="green" 
-                          borderRadius="full"
-                          bg={useColorModeValue('gray.200', 'gray.700')}
-                        />
-                      </Box>
-                      <Divider />
-                      <SimpleGrid columns={2} spacing={4}>
-                        <Box>
-                          <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')} mb={1}>
-                            Pending
-                          </Text>
-                          <Text fontSize="lg" fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
-                            {analyticsData?.assignmentsPending || 0}
-                          </Text>
-                        </Box>
-                        <Box>
-                          <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')} mb={1}>
-                            Total
-                          </Text>
-                          <Text fontSize="lg" fontWeight="600" color={useColorModeValue('gray.900', 'white')}>
-                            {analyticsData?.totalAssignments || 0}
-                          </Text>
-                        </Box>
-                      </SimpleGrid>
-                    </VStack>
-                  </CardBody>
-                </Card>
-
                 {/* Playground Practice Stats */}
                 {analyticsData?.playgroundStats && analyticsData.playgroundStats.length > 0 && (
                   <Card bg={cardBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" shadow="md">
