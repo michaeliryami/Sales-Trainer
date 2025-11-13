@@ -120,6 +120,8 @@ function CreateSession() {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const toast = useToast()
   const vapiRef = useRef<any>(null)
+  const activeCallIdRef = useRef<string | null>(null) // Ref for immediate access to call ID across async events
+  const activeAssistantIdRef = useRef<string | null>(null) // Ref for assistant ID
   
   // Assignment sessions state
   const [assignmentSessions, setAssignmentSessions] = useState<Array<{
@@ -536,6 +538,7 @@ function CreateSession() {
       // Store assistant ID for cleanup later
       if (data.assistant?.id) {
         setActiveAssistantId(data.assistant.id)
+        activeAssistantIdRef.current = data.assistant.id
       }
 
       // Initialize VAPI web client and start call directly
@@ -554,13 +557,15 @@ function CreateSession() {
           try {
             const id = info?.id || info?.callId || info?.call?.id || null
             if (id) {
-              setActiveCallId(String(id))
-              if (import.meta.env.DEV) console.log('📞 VAPI Call ID captured:', String(id))
+              const callIdStr = String(id)
+              setActiveCallId(callIdStr)
+              activeCallIdRef.current = callIdStr // Store in ref for synchronous access
+              if (import.meta.env.DEV) console.log('📞 VAPI Call ID captured:', callIdStr, '(stored in state and ref)')
             } else {
               if (import.meta.env.DEV) console.warn('⚠️ No call ID found in call-start event:', info)
             }
           } catch (e) {
-            if (import.meta.env.DEV) console.warn('Unable to read call id from call-start payload')
+            if (import.meta.env.DEV) console.warn('Unable to read call id from call-start payload', e)
           }
         })
 
@@ -612,7 +617,9 @@ function CreateSession() {
                 }
               }
               
-              if (import.meta.env.DEV) console.log('📞 Active Call ID at save time:', activeCallId || 'NULL/UNDEFINED')
+              // Use ref value for synchronous access (state might not have updated yet)
+              const vapiCallId = activeCallIdRef.current
+              if (import.meta.env.DEV) console.log('📞 VAPI Call ID at save time (from ref):', vapiCallId || 'NULL/UNDEFINED')
               
               const sessionData = {
                 userId: profile.id,
@@ -620,8 +627,8 @@ function CreateSession() {
                 sessionType: selectedAssignment ? 'assignment' : 'template',
                 templateId: templateIdForDb,
                 assignmentId: selectedAssignment?.id,
-                callId: activeCallId,
-                vapiCallId: activeCallId,
+                callId: vapiCallId,
+                vapiCallId: vapiCallId,
                 startTime: chunks[0]?.timestamp?.toISOString(),
                 endTime: chunks[chunks.length - 1]?.timestamp?.toISOString(),
                 durationSeconds: chunks.length > 0 
@@ -745,9 +752,10 @@ function CreateSession() {
           }
           
           // Try to fetch finalized transcript from backend using call id
-          if (activeCallId) {
+          const finalCallId = activeCallIdRef.current
+          if (finalCallId) {
             try {
-              const res = await apiFetch(`/api/assistants/call/${activeCallId}`)
+              const res = await apiFetch(`/api/assistants/call/${finalCallId}`)
               if (res.ok) {
                 const data = await res.json()
                 const call = data?.call || {}
@@ -805,10 +813,11 @@ function CreateSession() {
           }
           
           // Clean up: delete the assistant
-          if (activeAssistantId) {
+          const assistantId = activeAssistantIdRef.current
+          if (assistantId) {
             try {
-              if (import.meta.env.DEV) console.log('🗑️  Cleaning up assistant:', activeAssistantId)
-              await apiFetch(`/api/assistants/${activeAssistantId}`, {
+              if (import.meta.env.DEV) console.log('🗑️  Cleaning up assistant:', assistantId)
+              await apiFetch(`/api/assistants/${assistantId}`, {
                 method: 'DELETE'
               })
               if (import.meta.env.DEV) console.log('✅ Assistant cleaned up successfully')
@@ -819,7 +828,9 @@ function CreateSession() {
           }
           
           setActiveCallId(null)
+          activeCallIdRef.current = null // Clear ref as well
           setActiveAssistantId(null)
+          activeAssistantIdRef.current = null // Clear ref as well
         })
 
         vapiRef.current.on('message', (message: any) => {
