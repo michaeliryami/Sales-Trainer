@@ -368,11 +368,35 @@ router.get('/employee/:userId', async (req, res) => {
         });
     }
 });
-async function processSessionInBackground(sessionId, userId, assignmentId, transcriptClean) {
+async function processSessionInBackground(sessionId, userId, assignmentId, transcriptClean, vapiCallId) {
     console.log(`🔄 Starting background processing for session ${sessionId}`);
     const OpenAI = require('openai');
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     try {
+        if (vapiCallId) {
+            console.log(`🎙️ Fetching recording URL for session ${sessionId}...`);
+            try {
+                const { vapiService } = require('../services/vapi');
+                const callDetails = await vapiService.getCall(vapiCallId);
+                const recordingUrl = callDetails.artifact?.recordingUrl ||
+                    callDetails.recordingUrl ||
+                    callDetails.recording?.url ||
+                    null;
+                if (recordingUrl) {
+                    await supabase_1.supabase
+                        .from('training_sessions')
+                        .update({ recording_url: recordingUrl })
+                        .eq('id', sessionId);
+                    console.log(`✅ Recording URL saved for session ${sessionId}`);
+                }
+                else {
+                    console.log(`⚠️ No recording URL found for call ${vapiCallId}`);
+                }
+            }
+            catch (error) {
+                console.error(`❌ Failed to fetch recording URL for session ${sessionId}:`, error);
+            }
+        }
         let llmCleanedTranscript = null;
         if (transcriptClean) {
             console.log(`📝 Cleaning transcript for session ${sessionId}...`);
@@ -591,7 +615,7 @@ router.post('/session', async (req, res) => {
             .single();
         if (sessionError)
             throw sessionError;
-        processSessionInBackground(session.id, userId, assignmentId, transcriptClean).catch(err => {
+        processSessionInBackground(session.id, userId, assignmentId, transcriptClean, session.vapi_call_id).catch(err => {
             console.error('Background processing error for session', session.id, ':', err);
         });
         return res.json({

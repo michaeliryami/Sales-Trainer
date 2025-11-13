@@ -804,8 +804,13 @@ const MyAnalytics: React.FC = () => {
                                 leftIcon={<Icon as={Volume2} boxSize={3} />}
                                 colorScheme="orange"
                                 variant="outline"
-                                isDisabled
+                                isDisabled={!session.recording_url}
                                 flex={1}
+                                onClick={() => {
+                                  if (session.recording_url) {
+                                    window.open(session.recording_url, '_blank')
+                                  }
+                                }}
                               >
                                 Audio
                               </Button>

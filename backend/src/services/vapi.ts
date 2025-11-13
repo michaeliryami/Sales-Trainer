@@ -448,7 +448,10 @@ Customer: Says they guess but won't sign anything today`
           provider: "11labs",
           voiceId: selectedVoiceId
         },
-        firstMessage: this.generateFirstMessage('customer', template.type)
+        firstMessage: this.generateFirstMessage('customer', template.type),
+        artifactPlan: {
+          recordingEnabled: true
+        }
       }
 
       // Create a NEW assistant instead of updating the hardcoded one
@@ -502,7 +505,10 @@ Customer: Says they guess but won't sign anything today`
           provider: "11labs",
           voiceId: selectedVoiceId
         },
-        firstMessage: this.generateFirstMessage(templateConfig.persona, templateConfig.insuranceType)
+        firstMessage: this.generateFirstMessage(templateConfig.persona, templateConfig.insuranceType),
+        artifactPlan: {
+          recordingEnabled: true
+        }
       }
 
       // Create a NEW assistant instead of updating the hardcoded one

@@ -386,7 +386,10 @@ Customer: Says they guess but won't sign anything today`
                     provider: "11labs",
                     voiceId: selectedVoiceId
                 },
-                firstMessage: this.generateFirstMessage('customer', template.type)
+                firstMessage: this.generateFirstMessage('customer', template.type),
+                artifactPlan: {
+                    recordingEnabled: true
+                }
             };
             const response = await axios_1.default.post(`${this.baseUrl}/assistant`, assistantData, { headers: this.getHeaders() });
             console.log('✅ New assistant created with ID:', response.data?.id, '| Voice:', selectedVoiceId);
@@ -424,7 +427,10 @@ Customer: Says they guess but won't sign anything today`
                     provider: "11labs",
                     voiceId: selectedVoiceId
                 },
-                firstMessage: this.generateFirstMessage(templateConfig.persona, templateConfig.insuranceType)
+                firstMessage: this.generateFirstMessage(templateConfig.persona, templateConfig.insuranceType),
+                artifactPlan: {
+                    recordingEnabled: true
+                }
             };
             const response = await axios_1.default.post(`${this.baseUrl}/assistant`, assistantData, { headers: this.getHeaders() });
             console.log('✅ New assistant created with ID:', response.data?.id, '| Voice:', selectedVoiceId);

@@ -470,12 +470,13 @@ router.get('/employee/:userId', async (req, res) => {
 })
 
 // Background processing function - runs after session is saved
-// Handles LLM transcript cleaning, summary generation, and auto-grading
+// Handles LLM transcript cleaning, summary generation, auto-grading, and recording URL fetch
 async function processSessionInBackground(
   sessionId: number, 
   userId: string, 
   assignmentId: number | null, 
-  transcriptClean: string
+  transcriptClean: string,
+  vapiCallId: string | null
 ): Promise<void> {
   console.log(`🔄 Starting background processing for session ${sessionId}`)
   
@@ -483,6 +484,35 @@ async function processSessionInBackground(
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
   try {
+    // STEP 0: Fetch recording URL from VAPI (if we have a call ID)
+    if (vapiCallId) {
+      console.log(`🎙️ Fetching recording URL for session ${sessionId}...`)
+      try {
+        const { vapiService } = require('../services/vapi')
+        const callDetails = await vapiService.getCall(vapiCallId)
+        
+        // VAPI returns recording URL in artifact or recordingUrl field
+        const recordingUrl = callDetails.artifact?.recordingUrl || 
+                            callDetails.recordingUrl || 
+                            callDetails.recording?.url ||
+                            null
+        
+        if (recordingUrl) {
+          await supabase
+            .from('training_sessions')
+            .update({ recording_url: recordingUrl })
+            .eq('id', sessionId)
+          
+          console.log(`✅ Recording URL saved for session ${sessionId}`)
+        } else {
+          console.log(`⚠️ No recording URL found for call ${vapiCallId}`)
+        }
+      } catch (error) {
+        console.error(`❌ Failed to fetch recording URL for session ${sessionId}:`, error)
+        // Continue with other steps even if this fails
+      }
+    }
+
     // STEP 1: Clean transcript with LLM (if we have a transcript)
     let llmCleanedTranscript = null
     if (transcriptClean) {
@@ -763,9 +793,9 @@ router.post('/session', async (req, res) => {
     if (sessionError) throw sessionError
 
     // START BACKGROUND PROCESSING (non-blocking)
-    // This will process transcript cleaning, summary, and grading in the background
+    // This will process transcript cleaning, summary, grading, and recording URL fetch in the background
     // User doesn't have to wait, and it continues even if they leave the page
-    processSessionInBackground(session.id, userId, assignmentId, transcriptClean).catch(err => {
+    processSessionInBackground(session.id, userId, assignmentId, transcriptClean, session.vapi_call_id).catch(err => {
       console.error('Background processing error for session', session.id, ':', err)
       // Don't throw - we already saved the session successfully
     })
