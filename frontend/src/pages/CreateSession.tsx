@@ -553,7 +553,12 @@ function CreateSession() {
           callStartTimeRef.current = new Date()
           try {
             const id = info?.id || info?.callId || info?.call?.id || null
-            if (id) setActiveCallId(String(id))
+            if (id) {
+              setActiveCallId(String(id))
+              if (import.meta.env.DEV) console.log('📞 VAPI Call ID captured:', String(id))
+            } else {
+              if (import.meta.env.DEV) console.warn('⚠️ No call ID found in call-start event:', info)
+            }
           } catch (e) {
             if (import.meta.env.DEV) console.warn('Unable to read call id from call-start payload')
           }
@@ -607,6 +612,8 @@ function CreateSession() {
                 }
               }
               
+              if (import.meta.env.DEV) console.log('📞 Active Call ID at save time:', activeCallId || 'NULL/UNDEFINED')
+              
               const sessionData = {
                 userId: profile.id,
                 orgId: organization.id,
@@ -629,7 +636,7 @@ function CreateSession() {
                 }
               }
 
-              if (import.meta.env.DEV) console.log('📤 Sending session data to backend:', sessionData)
+              if (import.meta.env.DEV) console.log('📤 Sending session data to backend with vapiCallId:', sessionData.vapiCallId || 'NULL')
               
               const saveResponse = await apiFetch('/api/analytics/session', {
                 method: 'POST',

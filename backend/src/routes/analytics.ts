@@ -486,6 +486,8 @@ async function processSessionInBackground(
   try {
     // STEP 0: Fetch recording URL from VAPI (if we have a call ID)
     // VAPI recordings take time to process, so we need to wait and retry
+    console.log(`🔍 VAPI Call ID for session ${sessionId}:`, vapiCallId || 'NULL/UNDEFINED')
+    
     if (vapiCallId) {
       console.log(`🎙️ Fetching recording URL for session ${sessionId}...`)
       try {
@@ -538,6 +540,8 @@ async function processSessionInBackground(
         console.error(`❌ Failed to fetch recording URL for session ${sessionId}:`, error)
         // Continue with other steps even if this fails
       }
+    } else {
+      console.log(`⚠️ Skipping recording fetch for session ${sessionId} - no VAPI call ID provided`)
     }
 
     // STEP 1: Clean transcript with LLM (if we have a transcript)
@@ -784,6 +788,7 @@ router.post('/session', async (req, res) => {
       templateId,
       assignmentId,
       status,
+      vapiCallId: vapiCallId || 'NULL',
       transcriptLength: transcript?.length || 0,
       transcriptCleanLength: transcriptClean?.length || 0
     })

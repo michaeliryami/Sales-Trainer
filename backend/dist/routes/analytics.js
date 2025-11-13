@@ -373,6 +373,7 @@ async function processSessionInBackground(sessionId, userId, assignmentId, trans
     const OpenAI = require('openai');
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     try {
+        console.log(`🔍 VAPI Call ID for session ${sessionId}:`, vapiCallId || 'NULL/UNDEFINED');
         if (vapiCallId) {
             console.log(`🎙️ Fetching recording URL for session ${sessionId}...`);
             try {
@@ -410,6 +411,9 @@ async function processSessionInBackground(sessionId, userId, assignmentId, trans
             catch (error) {
                 console.error(`❌ Failed to fetch recording URL for session ${sessionId}:`, error);
             }
+        }
+        else {
+            console.log(`⚠️ Skipping recording fetch for session ${sessionId} - no VAPI call ID provided`);
         }
         let llmCleanedTranscript = null;
         if (transcriptClean) {
@@ -601,6 +605,7 @@ router.post('/session', async (req, res) => {
             templateId,
             assignmentId,
             status,
+            vapiCallId: vapiCallId || 'NULL',
             transcriptLength: transcript?.length || 0,
             transcriptCleanLength: transcriptClean?.length || 0
         });
