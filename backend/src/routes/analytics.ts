@@ -544,11 +544,26 @@ async function processSessionInBackground(
       console.log(`⚠️ Skipping recording fetch for session ${sessionId} - no VAPI call ID provided`)
     }
 
-    // STEP 1: No LLM cleaning needed! VAPI's final transcript is already high quality
-    // We now use VAPI's finalized transcript which is clean, de-duplicated, and properly formatted
-    // This saves LLM costs and processing time (30-60 seconds per call)
-    console.log(`✅ Using VAPI final transcript for session ${sessionId} (no LLM cleaning needed)`)
-    const llmCleanedTranscript = transcriptClean // VAPI's transcript is already clean!
+    // STEP 1: Clean transcript with LLM (if we have a transcript)
+    let llmCleanedTranscript = null
+    if (transcriptClean) {
+      console.log(`📝 Cleaning transcript for session ${sessionId}...`)
+      try {
+        llmCleanedTranscript = await cleanTranscriptWithLLM(transcriptClean)
+        
+        // Save cleaned transcript
+        await supabase
+          .from('training_sessions')
+          .update({ transcript_llm_clean: llmCleanedTranscript })
+          .eq('id', sessionId)
+        
+        console.log(`✅ Transcript cleaned for session ${sessionId}`)
+      } catch (error) {
+        console.error(`❌ Failed to clean transcript for session ${sessionId}:`, error)
+        // Continue with other steps even if this fails
+        llmCleanedTranscript = transcriptClean // Fallback to basic clean
+      }
+    }
 
     // STEP 2: Generate AI summary
     if (llmCleanedTranscript || transcriptClean) {
@@ -1127,13 +1142,39 @@ router.get('/session-transcript/:sessionId', async (req, res) => {
       throw error
     }
 
-    // Use VAPI's final transcript (already clean, no LLM needed!)
-    // We now get high-quality transcripts directly from VAPI
-    const cleanedTranscript = session.transcript_clean
-    console.log('Using VAPI final transcript (no LLM cleaning needed)')
-    
-    // Note: transcript_llm_clean column is kept for backwards compatibility
-    // but new sessions don't need it since VAPI provides clean transcripts
+    let cleanedTranscript = session.transcript_llm_clean
+
+    // LAZY LOAD: If no LLM-cleaned version exists, run it NOW and save it
+    if (!cleanedTranscript && session.transcript_clean) {
+      console.log('No LLM-cleaned transcript found. Running LLM cleaning for first time...')
+      
+      try {
+        cleanedTranscript = await cleanTranscriptWithLLM(session.transcript_clean)
+        console.log('LLM cleaning completed. Saving to database...')
+        
+        // Save the LLM-cleaned transcript to the database for future use
+        const { error: updateError } = await supabase
+          .from('training_sessions')
+          .update({ transcript_llm_clean: cleanedTranscript })
+          .eq('id', sessionId)
+        
+        if (updateError) {
+          console.error('Error saving LLM-cleaned transcript:', updateError)
+          // Don't fail - still return the cleaned transcript even if save fails
+        } else {
+          console.log('LLM-cleaned transcript saved successfully!')
+        }
+      } catch (error) {
+        console.error('Error in LLM cleaning:', error)
+        // Fallback to basic clean if LLM fails
+        cleanedTranscript = session.transcript_clean
+      }
+    } else if (cleanedTranscript) {
+      console.log('Using cached LLM-cleaned transcript from database')
+    } else {
+      // No transcript at all
+      cleanedTranscript = session.transcript_clean
+    }
 
     return res.json({
       success: true,
@@ -1163,7 +1204,7 @@ router.get('/session-summary/:sessionId', async (req, res) => {
     // First check if summary already exists
     const { data: existingSession, error: fetchError } = await supabase
       .from('training_sessions')
-      .select('ai_summary, transcript_clean')
+      .select('ai_summary, transcript_clean, transcript_llm_clean')
       .eq('id', sessionId)
       .single()
 
@@ -1179,8 +1220,8 @@ router.get('/session-summary/:sessionId', async (req, res) => {
       })
     }
 
-    // Use VAPI's final transcript (already clean!)
-    const transcriptToSummarize = existingSession.transcript_clean
+    // Use LLM-cleaned transcript if available, otherwise fall back to basic clean
+    const transcriptToSummarize = existingSession.transcript_llm_clean || existingSession.transcript_clean
 
     // Generate new summary using OpenAI
     if (!transcriptToSummarize) {
