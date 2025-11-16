@@ -415,8 +415,22 @@ async function processSessionInBackground(sessionId, userId, assignmentId, trans
         else {
             console.log(`⚠️ Skipping recording fetch for session ${sessionId} - no VAPI call ID provided`);
         }
-        console.log(`✅ Using VAPI final transcript for session ${sessionId} (no LLM cleaning needed)`);
-        const llmCleanedTranscript = transcriptClean;
+        let llmCleanedTranscript = null;
+        if (transcriptClean) {
+            console.log(`📝 Cleaning transcript for session ${sessionId}...`);
+            try {
+                llmCleanedTranscript = await cleanTranscriptWithLLM(transcriptClean);
+                await supabase_1.supabase
+                    .from('training_sessions')
+                    .update({ transcript_llm_clean: llmCleanedTranscript })
+                    .eq('id', sessionId);
+                console.log(`✅ Transcript cleaned for session ${sessionId}`);
+            }
+            catch (error) {
+                console.error(`❌ Failed to clean transcript for session ${sessionId}:`, error);
+                llmCleanedTranscript = transcriptClean;
+            }
+        }
         if (llmCleanedTranscript || transcriptClean) {
             console.log(`📊 Generating summary for session ${sessionId}...`);
             try {
@@ -881,8 +895,34 @@ router.get('/session-transcript/:sessionId', async (req, res) => {
             }
             throw error;
         }
-        const cleanedTranscript = session.transcript_clean;
-        console.log('Using VAPI final transcript (no LLM cleaning needed)');
+        let cleanedTranscript = session.transcript_llm_clean;
+        if (!cleanedTranscript && session.transcript_clean) {
+            console.log('No LLM-cleaned transcript found. Running LLM cleaning for first time...');
+            try {
+                cleanedTranscript = await cleanTranscriptWithLLM(session.transcript_clean);
+                console.log('LLM cleaning completed. Saving to database...');
+                const { error: updateError } = await supabase_1.supabase
+                    .from('training_sessions')
+                    .update({ transcript_llm_clean: cleanedTranscript })
+                    .eq('id', sessionId);
+                if (updateError) {
+                    console.error('Error saving LLM-cleaned transcript:', updateError);
+                }
+                else {
+                    console.log('LLM-cleaned transcript saved successfully!');
+                }
+            }
+            catch (error) {
+                console.error('Error in LLM cleaning:', error);
+                cleanedTranscript = session.transcript_clean;
+            }
+        }
+        else if (cleanedTranscript) {
+            console.log('Using cached LLM-cleaned transcript from database');
+        }
+        else {
+            cleanedTranscript = session.transcript_clean;
+        }
         return res.json({
             success: true,
             data: {
@@ -906,7 +946,7 @@ router.get('/session-summary/:sessionId', async (req, res) => {
         console.log('Generating summary for session:', sessionId);
         const { data: existingSession, error: fetchError } = await supabase_1.supabase
             .from('training_sessions')
-            .select('ai_summary, transcript_clean')
+            .select('ai_summary, transcript_clean, transcript_llm_clean')
             .eq('id', sessionId)
             .single();
         if (fetchError) {
@@ -918,7 +958,7 @@ router.get('/session-summary/:sessionId', async (req, res) => {
                 data: { summary: existingSession.ai_summary }
             });
         }
-        const transcriptToSummarize = existingSession.transcript_clean;
+        const transcriptToSummarize = existingSession.transcript_llm_clean || existingSession.transcript_clean;
         if (!transcriptToSummarize) {
             return res.status(400).json({
                 success: false,

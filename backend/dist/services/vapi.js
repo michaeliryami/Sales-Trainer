@@ -387,6 +387,7 @@ Customer: Says they guess but won't sign anything today`
                     voiceId: selectedVoiceId
                 },
                 firstMessage: this.generateFirstMessage('customer', template.type),
+                maxDurationSeconds: 1800,
                 artifactPlan: {
                     recordingEnabled: true
                 }
@@ -428,6 +429,7 @@ Customer: Says they guess but won't sign anything today`
                     voiceId: selectedVoiceId
                 },
                 firstMessage: this.generateFirstMessage(templateConfig.persona, templateConfig.insuranceType),
+                maxDurationSeconds: 1800,
                 artifactPlan: {
                     recordingEnabled: true
                 }
