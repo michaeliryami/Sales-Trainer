@@ -586,8 +586,68 @@ function CreateSession() {
           setIsCreatingCall(false)
           setIsCallActive(false)
           
-          // Save session data to database immediately when call ends (ONLY for assignments)
-          const chunks = transcriptChunksRef.current
+          // Fetch VAPI's final high-quality transcript instead of using streaming chunks
+          // VAPI's final transcript is cleaned, de-duplicated, and much higher quality
+          const finalCallId = activeCallIdRef.current
+          let finalTranscript: Array<{speaker: string, text: string, timestamp: Date}> = []
+          
+          if (finalCallId) {
+            try {
+              if (import.meta.env.DEV) console.log('🎯 Fetching VAPI final transcript for call:', finalCallId)
+              // Wait 2 seconds for VAPI to finalize the transcript
+              await new Promise(resolve => setTimeout(resolve, 2000))
+              
+              const res = await apiFetch(`/api/assistants/call/${finalCallId}`)
+              if (res.ok) {
+                const data = await res.json()
+                const call = data?.call || {}
+
+                const addSegment = (speaker: string, text: string) => {
+                  if (!text) return
+                  const last = finalTranscript[finalTranscript.length - 1]
+                  if (last && last.speaker === speaker) {
+                    last.text += ' ' + text
+                  } else {
+                    finalTranscript.push({ speaker, text, timestamp: new Date() })
+                  }
+                }
+
+                // Parse VAPI's transcript (handle different formats)
+                if (Array.isArray(call?.transcript)) {
+                  for (const entry of call.transcript) {
+                    const role = entry?.role || entry?.speaker
+                    const text = entry?.text || entry?.transcript || entry?.content
+                    const speaker = role === 'assistant' ? 'AI Customer' : 'You'
+                    if (text) addSegment(speaker, String(text))
+                  }
+                } else if (Array.isArray(call?.messages)) {
+                  for (const msg of call.messages) {
+                    const role = msg?.role || msg?.speaker
+                    const content = msg?.content || msg?.text
+                    if (typeof content === 'string') {
+                      const speaker = role === 'assistant' ? 'AI Customer' : 'You'
+                      addSegment(speaker, content)
+                    }
+                  }
+                }
+                
+                if (finalTranscript.length > 0) {
+                  if (import.meta.env.DEV) console.log('✅ Using VAPI final transcript:', finalTranscript.length, 'segments (high quality, no LLM needed!)')
+                  // Update UI with final transcript
+                  setTranscript(finalTranscript)
+                }
+              }
+            } catch (err) {
+              if (import.meta.env.DEV) console.warn('⚠️ Could not fetch VAPI final transcript:', err)
+            }
+          }
+          
+          // Use VAPI's final transcript if available, otherwise fall back to streaming chunks
+          const chunks = finalTranscript.length > 0 ? finalTranscript : transcriptChunksRef.current
+          
+          if (finalTranscript.length === 0 && transcriptChunksRef.current.length > 0) {
+            if (import.meta.env.DEV) console.warn('⚠️ Using streaming chunks (VAPI final transcript not available)')
+          }
           if (import.meta.env.DEV) console.log('Call ended - checking if we should save:', {
             hasChunks: chunks.length > 0,
             hasProfile: !!profile?.id,
@@ -761,67 +821,6 @@ function CreateSession() {
             }
             } else {
             if (import.meta.env.DEV) console.log('ℹ️  Not saving - this is playground practice (assignments only)')
-          }
-          
-          // Try to fetch finalized transcript from backend using call id
-          const finalCallId = activeCallIdRef.current
-          if (finalCallId) {
-            try {
-              const res = await apiFetch(`/api/assistants/call/${finalCallId}`)
-              if (res.ok) {
-                const data = await res.json()
-                const call = data?.call || {}
-
-                const merged: Array<{speaker: string, text: string, timestamp: Date}> = []
-
-                const addSegment = (speaker: string, text: string, ts?: string | number | Date) => {
-                  if (!text) return
-                  const timestamp = ts ? new Date(ts) : new Date()
-                  const last = merged[merged.length - 1]
-                  if (last && last.speaker === speaker) {
-                    last.text = mergeWithOverlap(last.text, text)
-                    last.timestamp = timestamp
-                  } else {
-                    merged.push({ speaker, text, timestamp })
-                  }
-                }
-
-                // Common shapes we might receive; handle defensively
-                if (Array.isArray(call?.transcript)) {
-                  for (const entry of call.transcript) {
-                    const role = entry?.role || entry?.speaker || entry?.author
-                    const text = entry?.text || entry?.transcript || entry?.content
-                    const speaker = role === 'assistant' ? 'AI Customer' : 'You'
-                    addSegment(speaker, String(text || ''))
-                  }
-                } else if (Array.isArray(call?.messages)) {
-                  for (const msg of call.messages) {
-                    const role = msg?.role || msg?.speaker || msg?.author
-                    const content = msg?.content || msg?.text || msg?.transcript
-                    if (typeof content === 'string') {
-                      const speaker = role === 'assistant' ? 'AI Customer' : 'You'
-                      addSegment(speaker, content)
-                    } else if (Array.isArray(content)) {
-                      // Some providers return content as array of blocks
-                      const textBlocks = content.map((c: any) => c?.text || c?.content || '').filter(Boolean).join(' ')
-                      const speaker = role === 'assistant' ? 'AI Customer' : 'You'
-                      addSegment(speaker, textBlocks)
-                    }
-                  }
-                } else if (typeof call?.transcript === 'string') {
-                  // Single combined transcript string, attribute to unknown
-                  addSegment('You', String(call.transcript))
-                }
-
-                if (merged.length > 0) {
-                  setTranscript(merged)
-                }
-              } else {
-                if (import.meta.env.DEV) console.warn('Failed to fetch finalized call transcript', await res.text())
-              }
-            } catch (err) {
-              if (import.meta.env.DEV) console.warn('Error fetching finalized transcript:', err)
-            }
           }
           
           // Clean up: delete the assistant
