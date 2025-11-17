@@ -50,7 +50,8 @@ const MyAnalytics: React.FC = () => {
   const { profile } = useProfile()
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState('30d')
-  const [sessionTypeFilter, setSessionTypeFilter] = useState<'all' | 'practice' | 'assignment'>('all')
+  const [statsFilter, setStatsFilter] = useState<'all' | 'practice' | 'assignment'>('all')
+  const [sessionListFilter, setSessionListFilter] = useState<'all' | 'practice' | 'assignment'>('all')
   const [analyticsData, setAnalyticsData] = useState<any>(null)
   const [selectedSession, setSelectedSession] = useState<any>(null)
   const [sessionGrade, setSessionGrade] = useState<any>(null)
@@ -100,6 +101,59 @@ const MyAnalytics: React.FC = () => {
 
     fetchAnalytics()
   }, [timeRange, profile])
+
+  // Filter analytics data based on statsFilter
+  const filteredAnalytics = React.useMemo(() => {
+    if (!analyticsData || statsFilter === 'all') return analyticsData
+
+    // Get ALL sessions from recentSessions (they all come from backend)
+    const allSessions = analyticsData.recentSessions || []
+    
+    const filteredSessions = allSessions.filter((session: any) => {
+      if (statsFilter === 'practice') return !session.assignment_id
+      if (statsFilter === 'assignment') return !!session.assignment_id
+      return true
+    })
+
+    // Recalculate stats based on filtered sessions
+    const totalSessions = filteredSessions.length
+    const completedSessions = filteredSessions.filter((s: any) => s.status === 'completed').length
+    
+    // Calculate average score from sessions that have grades (use percentage field directly from session)
+    const sessionsWithGrades = filteredSessions.filter((s: any) => s.percentage != null && s.percentage !== undefined)
+    const avgScore = sessionsWithGrades.length > 0
+      ? parseFloat((sessionsWithGrades.reduce((sum: number, s: any) => sum + parseFloat(s.percentage), 0) / sessionsWithGrades.length).toFixed(1))
+      : 0
+
+    // Calculate average duration (duration is in minutes from backend)
+    const sessionsWithDuration = filteredSessions.filter((s: any) => s.duration != null && s.duration !== undefined && s.duration > 0)
+    const avgDuration = sessionsWithDuration.length > 0
+      ? parseFloat((sessionsWithDuration.reduce((sum: number, s: any) => sum + parseFloat(s.duration), 0) / sessionsWithDuration.length).toFixed(1))
+      : 0
+
+    // Filter score trend based on session type
+    const filteredSessionIds = new Set(filteredSessions.map((s: any) => s.id))
+    const filteredScoreTrend = (analyticsData.scoreTrend || []).filter((score: any) => 
+      filteredSessionIds.has(score.sessionId)
+    )
+
+    // Calculate improvement rate
+    const improvementRate = filteredScoreTrend.length >= 2
+      ? (filteredScoreTrend[0]?.score || 0) - (filteredScoreTrend[filteredScoreTrend.length - 1]?.score || 0)
+      : 0
+
+    return {
+      ...analyticsData,
+      totalSessions,
+      completedSessions,
+      avgScore,
+      avgDuration,
+      scoreTrend: filteredScoreTrend,
+      improvementRate,
+      skills: analyticsData.skills,
+      playgroundStats: analyticsData.playgroundStats
+    }
+  }, [analyticsData, statsFilter])
 
   // Fetch grade details when session is selected
   const fetchSessionGrade = async (sessionId: number) => {
@@ -361,20 +415,43 @@ const MyAnalytics: React.FC = () => {
                     Your training progress and achievements
                   </Text>
                 </VStack>
-                <Select
-                  value={timeRange}
-                  onChange={(e) => setTimeRange(e.target.value)}
-                  size="sm"
-                  bg={cardBg}
-                  borderColor={borderColor}
-                  borderRadius="xl"
-                  w="120px"
-                >
-                  <option value="7d">Last 7 days</option>
-                  <option value="30d">Last 30 days</option>
-                  <option value="90d">Last 90 days</option>
-                  <option value="all">All time</option>
-                </Select>
+                <HStack spacing={3}>
+                  <Select
+                    value={statsFilter}
+                    onChange={(e) => setStatsFilter(e.target.value as 'all' | 'practice' | 'assignment')}
+                    size="sm"
+                    bg={cardBg}
+                    borderColor={borderColor}
+                    borderRadius="xl"
+                    w="auto"
+                    minW="140px"
+                    border="1px solid"
+                    _hover={{ borderColor: accentColor }}
+                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                  >
+                    <option value="all">All Sessions</option>
+                    <option value="practice">Practice</option>
+                    <option value="assignment">Assignments</option>
+                  </Select>
+                  <Select
+                    value={timeRange}
+                    onChange={(e) => setTimeRange(e.target.value)}
+                    size="sm"
+                    bg={cardBg}
+                    borderColor={borderColor}
+                    borderRadius="xl"
+                    w="auto"
+                    minW="120px"
+                    border="1px solid"
+                    _hover={{ borderColor: accentColor }}
+                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                  >
+                    <option value="7d">Last 7 days</option>
+                    <option value="30d">Last 30 days</option>
+                    <option value="90d">Last 90 days</option>
+                    <option value="all">All time</option>
+                  </Select>
+                </HStack>
               </Flex>
             </Box>
 
@@ -390,10 +467,10 @@ const MyAnalytics: React.FC = () => {
                           Total Sessions
                         </StatLabel>
                         <StatNumber fontSize="2xl" color={useColorModeValue('gray.900', 'white')} fontWeight="700">
-                          {analyticsData?.totalSessions || 0}
+                          {filteredAnalytics?.totalSessions || 0}
                         </StatNumber>
                         <StatHelpText fontSize="xs">
-                          {analyticsData?.completedSessions || 0} completed
+                          {filteredAnalytics?.completedSessions || 0} completed
                         </StatHelpText>
                       </Stat>
                     </CardBody>
@@ -406,10 +483,10 @@ const MyAnalytics: React.FC = () => {
                           Average Score
                         </StatLabel>
                         <StatNumber fontSize="2xl" color={useColorModeValue('gray.900', 'white')} fontWeight="700">
-                          {analyticsData?.avgScore || 0}%
+                          {filteredAnalytics?.avgScore || 0}%
                         </StatNumber>
                         <StatHelpText fontSize="xs">
-                          {analyticsData?.improvementRate > 0 ? '+' : ''}{analyticsData?.improvementRate || 0}% change
+                          {filteredAnalytics?.improvementRate > 0 ? '+' : ''}{filteredAnalytics?.improvementRate || 0}% change
                         </StatHelpText>
                       </Stat>
                     </CardBody>
@@ -422,7 +499,7 @@ const MyAnalytics: React.FC = () => {
                           Avg Duration
                         </StatLabel>
                         <StatNumber fontSize="2xl" color={useColorModeValue('gray.900', 'white')} fontWeight="700">
-                          {analyticsData?.avgDuration || 0}m
+                          {filteredAnalytics?.avgDuration || 0}m
                         </StatNumber>
                         <StatHelpText fontSize="xs">
                           Per training session
@@ -438,10 +515,10 @@ const MyAnalytics: React.FC = () => {
                           Current Streak
                         </StatLabel>
                         <StatNumber fontSize="2xl" color={useColorModeValue('gray.900', 'white')} fontWeight="700">
-                          {analyticsData?.currentStreak || 0}
+                          {filteredAnalytics?.currentStreak || 0}
                         </StatNumber>
                         <StatHelpText fontSize="xs">
-                          {analyticsData?.longestStreak || 0} longest
+                          {filteredAnalytics?.longestStreak || 0} longest
                         </StatHelpText>
                       </Stat>
                     </CardBody>
@@ -511,7 +588,7 @@ const MyAnalytics: React.FC = () => {
                 )}
 
                 {/* Skills Breakdown */}
-                {analyticsData?.skills && analyticsData.skills.length > 0 && (
+                {filteredAnalytics?.skills && filteredAnalytics.skills.length > 0 && (
                   <Card bg={cardBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" shadow="md">
                     <CardBody p={6}>
                       <Heading 
@@ -527,7 +604,7 @@ const MyAnalytics: React.FC = () => {
                         </HStack>
                       </Heading>
                       <VStack spacing={3} align="stretch">
-                        {analyticsData.skills.slice(0, 5).map((skill: any, index: number) => (
+                        {filteredAnalytics.skills.slice(0, 5).map((skill: any, index: number) => (
                           <Box key={index}>
                             <Flex justify="space-between" mb={2}>
                               <Text fontSize="sm" fontWeight="500" color={useColorModeValue('gray.600', 'gray.300')}>
@@ -552,7 +629,7 @@ const MyAnalytics: React.FC = () => {
                 )}
 
                 {/* Score Trend */}
-                {analyticsData?.scoreTrend && analyticsData.scoreTrend.length > 0 && (
+                {filteredAnalytics?.scoreTrend && filteredAnalytics.scoreTrend.length > 0 && (
                   <Card bg={cardBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" shadow="md">
                     <CardBody p={6}>
                       <Heading 
@@ -568,7 +645,7 @@ const MyAnalytics: React.FC = () => {
                         </HStack>
                       </Heading>
                       <VStack spacing={2} align="stretch">
-                        {analyticsData.scoreTrend.map((point: any, index: number) => (
+                        {filteredAnalytics.scoreTrend.map((point: any, index: number) => (
                           <Flex key={index} justify="space-between" align="center" p={2}>
                             <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
                               {new Date(point.date).toLocaleDateString()}
@@ -653,53 +730,43 @@ const MyAnalytics: React.FC = () => {
               px={6}
               py={5}
             >
-              <VStack align="start" spacing={1} flex={1}>
-                <Heading 
-                  size="lg" 
-                  color={useColorModeValue('gray.900', 'white')}
-                  fontWeight="600"
-                  letterSpacing="-0.02em"
-                >
-                  Recent Sessions
-                </Heading>
-                <Text 
-                  fontSize="sm" 
-                  color={useColorModeValue('gray.500', 'gray.400')}
-                  fontWeight="400"
-                >
-                  Your training session history
-                </Text>
-              </VStack>
-              
-              {/* Session Type Filter */}
-              <HStack spacing={2}>
-                <Button
+              <HStack justify="space-between" align="center" w="full">
+                <VStack align="start" spacing={1}>
+                  <Heading 
+                    size="lg" 
+                    color={useColorModeValue('gray.900', 'white')}
+                    fontWeight="600"
+                    letterSpacing="-0.02em"
+                  >
+                    Recent Sessions
+                  </Heading>
+                  <Text 
+                    fontSize="sm" 
+                    color={useColorModeValue('gray.500', 'gray.400')}
+                    fontWeight="400"
+                  >
+                    Your training session history
+                  </Text>
+                </VStack>
+                
+                {/* Session Type Filter Dropdown (Right side, matches time filter) */}
+                <Select
+                  value={sessionListFilter}
+                  onChange={(e) => setSessionListFilter(e.target.value as 'all' | 'practice' | 'assignment')}
                   size="sm"
-                  variant={sessionTypeFilter === 'all' ? 'solid' : 'outline'}
-                  colorScheme="orange"
-                  onClick={() => setSessionTypeFilter('all')}
+                  w="auto"
+                  minW="140px"
                   borderRadius="xl"
+                  border="1px solid"
+                  borderColor={borderColor}
+                  bg={cardBg}
+                  _hover={{ borderColor: accentColor }}
+                  _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
                 >
-                  All
-                </Button>
-                <Button
-                  size="sm"
-                  variant={sessionTypeFilter === 'practice' ? 'solid' : 'outline'}
-                  colorScheme="orange"
-                  onClick={() => setSessionTypeFilter('practice')}
-                  borderRadius="xl"
-                >
-                  Practice
-                </Button>
-                <Button
-                  size="sm"
-                  variant={sessionTypeFilter === 'assignment' ? 'solid' : 'outline'}
-                  colorScheme="orange"
-                  onClick={() => setSessionTypeFilter('assignment')}
-                  borderRadius="xl"
-                >
-                  Assignments
-                </Button>
+                  <option value="all">All Sessions</option>
+                  <option value="practice">Practice</option>
+                  <option value="assignment">Assignments</option>
+                </Select>
               </HStack>
             </Box>
 
@@ -708,17 +775,17 @@ const MyAnalytics: React.FC = () => {
               <VStack spacing={4} align="stretch">
                 {analyticsData?.recentSessions && analyticsData.recentSessions
                   .filter((session: any) => {
-                    if (sessionTypeFilter === 'all') return true
-                    if (sessionTypeFilter === 'practice') return !session.assignment_id
-                    if (sessionTypeFilter === 'assignment') return !!session.assignment_id
+                    if (sessionListFilter === 'all') return true
+                    if (sessionListFilter === 'practice') return !session.assignment_id
+                    if (sessionListFilter === 'assignment') return !!session.assignment_id
                     return true
                   })
                   .length > 0 ? (
                   analyticsData.recentSessions
                     .filter((session: any) => {
-                      if (sessionTypeFilter === 'all') return true
-                      if (sessionTypeFilter === 'practice') return !session.assignment_id
-                      if (sessionTypeFilter === 'assignment') return !!session.assignment_id
+                      if (sessionListFilter === 'all') return true
+                      if (sessionListFilter === 'practice') return !session.assignment_id
+                      if (sessionListFilter === 'assignment') return !!session.assignment_id
                       return true
                     })
                     .map((session: any, index: number) => (
