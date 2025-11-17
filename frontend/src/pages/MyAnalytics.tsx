@@ -50,6 +50,7 @@ const MyAnalytics: React.FC = () => {
   const { profile } = useProfile()
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState('30d')
+  const [sessionTypeFilter, setSessionTypeFilter] = useState<'all' | 'practice' | 'assignment'>('all')
   const [analyticsData, setAnalyticsData] = useState<any>(null)
   const [selectedSession, setSelectedSession] = useState<any>(null)
   const [sessionGrade, setSessionGrade] = useState<any>(null)
@@ -652,7 +653,7 @@ const MyAnalytics: React.FC = () => {
               px={6}
               py={5}
             >
-              <VStack align="start" spacing={1}>
+              <VStack align="start" spacing={1} flex={1}>
                 <Heading 
                   size="lg" 
                   color={useColorModeValue('gray.900', 'white')}
@@ -669,13 +670,58 @@ const MyAnalytics: React.FC = () => {
                   Your training session history
                 </Text>
               </VStack>
+              
+              {/* Session Type Filter */}
+              <HStack spacing={2}>
+                <Button
+                  size="sm"
+                  variant={sessionTypeFilter === 'all' ? 'solid' : 'outline'}
+                  colorScheme="orange"
+                  onClick={() => setSessionTypeFilter('all')}
+                  borderRadius="xl"
+                >
+                  All
+                </Button>
+                <Button
+                  size="sm"
+                  variant={sessionTypeFilter === 'practice' ? 'solid' : 'outline'}
+                  colorScheme="orange"
+                  onClick={() => setSessionTypeFilter('practice')}
+                  borderRadius="xl"
+                >
+                  Practice
+                </Button>
+                <Button
+                  size="sm"
+                  variant={sessionTypeFilter === 'assignment' ? 'solid' : 'outline'}
+                  colorScheme="orange"
+                  onClick={() => setSessionTypeFilter('assignment')}
+                  borderRadius="xl"
+                >
+                  Assignments
+                </Button>
+              </HStack>
             </Box>
 
             {/* Content */}
             <Box flex={1} overflowY="auto" p={6}>
               <VStack spacing={4} align="stretch">
-                {analyticsData?.recentSessions && analyticsData.recentSessions.length > 0 ? (
-                  analyticsData.recentSessions.map((session: any, index: number) => (
+                {analyticsData?.recentSessions && analyticsData.recentSessions
+                  .filter((session: any) => {
+                    if (sessionTypeFilter === 'all') return true
+                    if (sessionTypeFilter === 'practice') return !session.assignment_id
+                    if (sessionTypeFilter === 'assignment') return !!session.assignment_id
+                    return true
+                  })
+                  .length > 0 ? (
+                  analyticsData.recentSessions
+                    .filter((session: any) => {
+                      if (sessionTypeFilter === 'all') return true
+                      if (sessionTypeFilter === 'practice') return !session.assignment_id
+                      if (sessionTypeFilter === 'assignment') return !!session.assignment_id
+                      return true
+                    })
+                    .map((session: any, index: number) => (
                     <React.Fragment key={index}>
                       <Card 
                         bg={cardBg}
