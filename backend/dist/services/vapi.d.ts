@@ -24,14 +24,30 @@ export interface VapiAssistant {
         voiceId: string;
     };
     firstMessage?: string;
+    customerIdentity?: {
+        voiceId: string;
+        name: string;
+        gender: string;
+        dob: string;
+        age: number;
+        address: string;
+    };
 }
 export declare class VapiService {
     private readonly baseUrl;
-    private readonly voiceIds;
+    private readonly voices;
+    private readonly maleNames;
+    private readonly femaleNames;
+    private readonly streetNames;
+    private readonly streetTypes;
+    private readonly cities;
     constructor();
     private getApiKey;
     private getHeaders;
-    private getRandomVoiceId;
+    private generateAddress;
+    private generateDOB;
+    private calculateAge;
+    private generateCustomerIdentity;
     private generateSystemPromptFromTemplate;
     private generateSystemPrompt;
     private getTemplateConfig;

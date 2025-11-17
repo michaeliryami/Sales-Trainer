@@ -123,6 +123,15 @@ function CreateSession() {
   const activeCallIdRef = useRef<string | null>(null) // Ref for immediate access to call ID across async events
   const activeAssistantIdRef = useRef<string | null>(null) // Ref for assistant ID
   
+  // Customer identity state (name, gender, age, DOB, address)
+  const [customerIdentity, setCustomerIdentity] = useState<{
+    name: string
+    gender: string
+    age: number
+    dob: string
+    address: string
+  } | null>(null)
+  
   // Assignment sessions state
   const [assignmentSessions, setAssignmentSessions] = useState<Array<{
     id: number
@@ -540,6 +549,12 @@ function CreateSession() {
         setActiveAssistantId(data.assistant.id)
         activeAssistantIdRef.current = data.assistant.id
       }
+      
+      // Store customer identity for display
+      if (data.assistant?.customerIdentity) {
+        setCustomerIdentity(data.assistant.customerIdentity)
+        if (import.meta.env.DEV) console.log('Customer Identity:', data.assistant.customerIdentity)
+      }
 
       // Initialize VAPI web client and start call directly
       if (!vapiRef.current && vapiPublicKey) {
@@ -843,6 +858,7 @@ function CreateSession() {
           activeCallIdRef.current = null // Clear ref as well
           setActiveAssistantId(null)
           activeAssistantIdRef.current = null // Clear ref as well
+          setCustomerIdentity(null) // Clear customer identity
         })
 
         vapiRef.current.on('message', (message: any) => {
@@ -2079,6 +2095,34 @@ function CreateSession() {
                     </VStack>
                         ) : (
                           <VStack align="stretch" spacing={3}>
+                            {/* Customer Identity Info */}
+                            {customerIdentity && (
+                              <Box
+                                bg={useColorModeValue('blue.50', 'blue.900')}
+                                border="1px solid"
+                                borderColor={useColorModeValue('blue.200', 'blue.700')}
+                                borderRadius="lg"
+                                p={4}
+                                mb={2}
+                              >
+                                <VStack align="start" spacing={1}>
+                                  <Text fontSize="xs" fontWeight="600" color={useColorModeValue('blue.600', 'blue.300')} textTransform="uppercase" letterSpacing="wide">
+                                    Customer Profile
+                                  </Text>
+                                  <HStack spacing={4} fontSize="sm" flexWrap="wrap">
+                                    <Text fontWeight="600">{customerIdentity.name}</Text>
+                                    <Text>•</Text>
+                                    <Text>{customerIdentity.gender === 'male' ? 'Male' : 'Female'}, {customerIdentity.age} years old</Text>
+                                    <Text>•</Text>
+                                    <Text>DOB: {customerIdentity.dob}</Text>
+                                  </HStack>
+                                  <Text fontSize="sm" color={textSecondary}>
+                                    {customerIdentity.address}
+                                  </Text>
+                                </VStack>
+                              </Box>
+                            )}
+                            
                             {/* Chat-style transcript like landing page and analytics */}
                             {transcript.map((segment, index) => (
                               <Box 

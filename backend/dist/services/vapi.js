@@ -8,20 +8,57 @@ const axios_1 = __importDefault(require("axios"));
 const VAPI_BASE_URL = 'https://api.vapi.ai';
 class VapiService {
     constructor() {
-        this.voiceIds = [
-            'DHeSUVQvhhYeIxNUbtj3',
-            'vgsapVXnlLvlrWNbPs6y',
-            '0JRpJnrcyEVIabsZ4U5I',
-            'oWAxZDx7w5VEj9dCyTzz',
-            'Tw2LVqLUUWkxqrCfFOpw',
-            '7wZG7UyB12X3ndKa4uqi',
-            'nm1ZvXYfIcWIwMXCKoBV',
-            'VQWIG7jHNSEv826utbm8',
-            'uwjrUUgKbezCKJAv5nLd',
-            'EP3g1wv2wIp7Hc96Sf4l',
-            'ChvixV5Kt063KajV05qE',
-            '5lm1mr2qVzTTtc8lNLgo',
-            'jqVMajy0TkayOvIB8eCz'
+        this.voices = [
+            { id: 'DHeSUVQvhhYeIxNUbtj3', gender: 'male' },
+            { id: 'vgsapVXnlLvlrWNbPs6y', gender: 'male' },
+            { id: '0JRpJnrcyEVIabsZ4U5I', gender: 'male' },
+            { id: 'oWAxZDx7w5VEj9dCyTzz', gender: 'female' },
+            { id: 'Tw2LVqLUUWkxqrCfFOpw', gender: 'male' },
+            { id: '7wZG7UyB12X3ndKa4uqi', gender: 'male' },
+            { id: 'nm1ZvXYfIcWIwMXCKoBV', gender: 'male' },
+            { id: 'VQWIG7jHNSEv826utbm8', gender: 'male' },
+            { id: 'uwjrUUgKbezCKJAv5nLd', gender: 'male' },
+            { id: 'EP3g1wv2wIp7Hc96Sf4l', gender: 'male' },
+            { id: 'wPZU8v1TgihzaR9aQ8Wj', gender: 'male' },
+            { id: 'ChvixV5Kt063KajV05qE', gender: 'female' },
+            { id: 'jqVMajy0TkayOvIB8eCz', gender: 'female' },
+            { id: '5lm1mr2qVzTTtc8lNLgo', gender: 'male' }
+        ];
+        this.maleNames = [
+            'James', 'Michael', 'Robert', 'John', 'David', 'William', 'Richard', 'Joseph',
+            'Thomas', 'Christopher', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald',
+            'Steven', 'Andrew', 'Paul', 'Joshua', 'Kenneth', 'Kevin', 'Brian', 'George',
+            'Timothy', 'Ronald', 'Jason', 'Edward', 'Jeffrey', 'Ryan', 'Jacob', 'Gary',
+            'Nicholas', 'Eric', 'Jonathan', 'Stephen', 'Larry', 'Justin', 'Scott', 'Brandon'
+        ];
+        this.femaleNames = [
+            'Mary', 'Patricia', 'Jennifer', 'Linda', 'Barbara', 'Elizabeth', 'Susan',
+            'Jessica', 'Sarah', 'Karen', 'Lisa', 'Nancy', 'Betty', 'Margaret', 'Sandra',
+            'Ashley', 'Kimberly', 'Emily', 'Donna', 'Michelle', 'Carol', 'Amanda', 'Melissa',
+            'Deborah', 'Stephanie', 'Dorothy', 'Rebecca', 'Sharon', 'Laura', 'Cynthia',
+            'Kathleen', 'Amy', 'Angela', 'Shirley', 'Anna', 'Brenda', 'Pamela', 'Emma'
+        ];
+        this.streetNames = [
+            'Main', 'Oak', 'Maple', 'Cedar', 'Pine', 'Elm', 'Washington', 'Lake', 'Hill', 'Park',
+            'Forest', 'Sunset', 'River', 'Spring', 'Valley', 'Meadow', 'Church', 'School', 'Mill', 'Willow'
+        ];
+        this.streetTypes = ['St', 'Ave', 'Dr', 'Ln', 'Rd', 'Blvd', 'Ct', 'Way'];
+        this.cities = [
+            { city: 'Austin', state: 'TX', zip: '78701' },
+            { city: 'Dallas', state: 'TX', zip: '75201' },
+            { city: 'Houston', state: 'TX', zip: '77001' },
+            { city: 'Phoenix', state: 'AZ', zip: '85001' },
+            { city: 'Denver', state: 'CO', zip: '80202' },
+            { city: 'Atlanta', state: 'GA', zip: '30301' },
+            { city: 'Charlotte', state: 'NC', zip: '28202' },
+            { city: 'Nashville', state: 'TN', zip: '37201' },
+            { city: 'Orlando', state: 'FL', zip: '32801' },
+            { city: 'Tampa', state: 'FL', zip: '33602' },
+            { city: 'Seattle', state: 'WA', zip: '98101' },
+            { city: 'Portland', state: 'OR', zip: '97201' },
+            { city: 'Las Vegas', state: 'NV', zip: '89101' },
+            { city: 'Raleigh', state: 'NC', zip: '27601' },
+            { city: 'Columbus', state: 'OH', zip: '43201' }
         ];
         this.baseUrl = VAPI_BASE_URL;
     }
@@ -38,11 +75,84 @@ class VapiService {
             'Content-Type': 'application/json',
         };
     }
-    getRandomVoiceId() {
-        const randomIndex = Math.floor(Math.random() * this.voiceIds.length);
-        return this.voiceIds[randomIndex];
+    generateAddress() {
+        const streetNumber = Math.floor(Math.random() * 9000) + 1000;
+        const streetName = this.streetNames[Math.floor(Math.random() * this.streetNames.length)];
+        const streetType = this.streetTypes[Math.floor(Math.random() * this.streetTypes.length)];
+        const location = this.cities[Math.floor(Math.random() * this.cities.length)];
+        if (!location) {
+            return '1234 Main St, Austin, TX 78701';
+        }
+        return `${streetNumber} ${streetName} ${streetType}, ${location.city}, ${location.state} ${location.zip}`;
     }
-    generateSystemPromptFromTemplate(template) {
+    generateDOB(templateTitle, templateId) {
+        const today = new Date();
+        let minAge = 28;
+        let maxAge = 65;
+        const identifier = (templateTitle || templateId || '').toLowerCase();
+        if (identifier.includes('young') || identifier.includes('millennial') || identifier.includes('first-time')) {
+            minAge = 25;
+            maxAge = 35;
+        }
+        else if (identifier.includes('parent') || identifier.includes('family') || identifier.includes('divorced')) {
+            minAge = 32;
+            maxAge = 48;
+        }
+        else if (identifier.includes('senior') || identifier.includes('retiree') || identifier.includes('widow')) {
+            minAge = 60;
+            maxAge = 75;
+        }
+        else if (identifier.includes('business') || identifier.includes('entrepreneur') || identifier.includes('professional')) {
+            minAge = 35;
+            maxAge = 55;
+        }
+        else if (identifier.includes('veteran')) {
+            minAge = 40;
+            maxAge = 65;
+        }
+        const age = Math.floor(Math.random() * (maxAge - minAge + 1)) + minAge;
+        const birthYear = today.getFullYear() - age;
+        const birthMonth = Math.floor(Math.random() * 12) + 1;
+        const birthDay = Math.floor(Math.random() * 28) + 1;
+        return `${String(birthMonth).padStart(2, '0')}/${String(birthDay).padStart(2, '0')}/${birthYear}`;
+    }
+    calculateAge(dob) {
+        const parts = dob.split('/').map(Number);
+        const month = parts[0] || 1;
+        const day = parts[1] || 1;
+        const year = parts[2] || 1990;
+        const birthDate = new Date(year, month - 1, day);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    }
+    generateCustomerIdentity(templateTitle, templateId) {
+        const voice = this.voices[Math.floor(Math.random() * this.voices.length)];
+        if (!voice) {
+            throw new Error('No voices available in voice pool');
+        }
+        const namePool = voice.gender === 'male' ? this.maleNames : this.femaleNames;
+        const name = namePool[Math.floor(Math.random() * namePool.length)];
+        if (!name) {
+            throw new Error('No names available in name pool');
+        }
+        const dob = this.generateDOB(templateTitle, templateId);
+        const age = this.calculateAge(dob);
+        const address = this.generateAddress();
+        return {
+            voiceId: voice.id,
+            name,
+            gender: voice.gender,
+            dob,
+            age,
+            address
+        };
+    }
+    generateSystemPromptFromTemplate(template, identity) {
         const difficultyInstructions = {
             easy: "You're a warm lead - but START GUARDED. Initially skeptical ('Who is this?'), but soften quickly (~20 seconds) once they show competence. Then become genuinely interested and ready to engage. You remember filling out the form and are open to hearing options. You ask basic questions to understand coverage and pricing, and you're receptive and easy to move forward.",
             medium: "You're interested but cautious - START VERY GUARDED. Keep defenses up for 30-45 seconds ('Another insurance call?', 'I get these all the time'). Only warm up if they personalize and show value. Ask probing questions about coverage, pricing, and terms. You have skepticism about costs or timing, but good explanations and value propositions can eventually win you over. Moderate closing effort required.",
@@ -68,7 +178,16 @@ class VapiService {
         if (!personaInfo && template.description) {
             personaInfo = template.description;
         }
-        return `WHO YOU ARE (YOUR CHARACTER - THIS IS CRITICAL):
+        return `YOUR PERSONAL IDENTITY (MEMORIZE THIS):
+**Your Name:** ${identity.name}
+**Your Gender:** ${identity.gender === 'male' ? 'Male' : 'Female'}
+**Your Date of Birth:** ${identity.dob}
+**Your Age:** ${identity.age} years old
+**Your Address:** ${identity.address}
+
+CRITICAL: You MUST respond to your name "${identity.name}" and know your age (${identity.age}), date of birth (${identity.dob}), and address (${identity.address}). If asked "What's your name?" say "${identity.name}". If asked your age, say "${identity.age}". If asked your date of birth, say "${identity.dob}". If asked where you live or your address, say "${identity.address}". This information should be second nature to you - you are this person.
+
+WHO YOU ARE (YOUR CHARACTER - THIS IS CRITICAL):
 ${personaInfo || 'You are a customer who recently filled out a form about life insurance.'}
 
 THIS IS YOUR IDENTITY. Embody this character throughout the entire call. Your responses, concerns, questions, and reactions should ALL reflect this specific person's background, situation, and personality.
@@ -90,7 +209,7 @@ You are THIS SPECIFIC PERSON (described above) who just answered a phone call fr
 
 CONTEXT:
 You previously filled out an online form expressing interest in reviewing or purchasing life insurance coverage. However you do dont say this without being asked, you kind of just know why youre being called
-You may have indicated that you were shopping for new coverage or were unhappy with your current plan.
+You may have indicated that you were shopping for new coverage or were unhappy with your current plan. 
 You understand that this is a legitimate follow-up call from a licensed agent about that form.
 You are not surprised to be called and are open to hearing more.
 
@@ -176,15 +295,25 @@ Simulate a natural, believable customer conversation for an insurance sales trai
 
 REMEMBER: You are NOT a generic customer. You are THE SPECIFIC PERSON described in your character profile. Every word you say should reflect their unique situation, personality, background, and concerns. If you're a veteran, talk like a veteran. If you're a busy professional, sound rushed and impatient. If you're a worried parent, show concern for your family. EMBODY THE CHARACTER.`;
     }
-    generateSystemPrompt(persona, difficulty, insuranceType, script) {
+    generateSystemPrompt(persona, difficulty, insuranceType, identity, script) {
         const difficultyInstructions = {
             easy: "I'm a warm lead - but I START GUARDED. Initially skeptical ('Who is this?'), but soften quickly (~20 seconds) once they show competence. Then I become genuinely interested and ready to engage. I remember filling out the form and am open to hearing options. I ask basic questions to understand coverage and pricing, and I'm receptive and easy to move forward.",
             medium: "I'm interested but cautious - I START VERY GUARDED. I keep my defenses up for 30-45 seconds ('Another insurance call?', 'I get these all the time'). Only warm up if they personalize and show value. I ask probing questions about coverage, pricing, and terms. I have skepticism about costs or timing, but good explanations and value propositions can eventually win me over. Moderate closing effort required.",
             hard: "I'm a skeptical prospect - I START HOSTILE. I stay guarded for 60+ seconds, push back hard ('How'd you get my number?', 'I'm really not interested in sales calls'). Make them PROVE value before I'll even listen. I don't trust sales pitches easily and ask difficult questions about exclusions, claim processes, and want to compare competitors. I raise multiple objections. The rep needs strong objection handling and persistence to close me.",
             expert: "I'm the hardest close - I START EXTREMELY DEFENSIVE and NEVER fully let my guard down. I interrogate them from the start ('Who are you with?', 'Take me off your list'). Even if they're good, I remain analytical and resistant throughout. I'm highly experienced with insurance and ask complex questions about policy fine print, legal implications, and industry practices. I'm very difficult to convince, throw curveballs, and require expert-level sales skills to even get engagement."
         };
+        const identityBlock = `YOUR PERSONAL IDENTITY (MEMORIZE THIS):
+**Your Name:** ${identity.name}
+**Your Gender:** ${identity.gender === 'male' ? 'Male' : 'Female'}
+**Your Date of Birth:** ${identity.dob}
+**Your Age:** ${identity.age} years old
+**Your Address:** ${identity.address}
+
+CRITICAL: You MUST respond to your name "${identity.name}" and know your age (${identity.age}), date of birth (${identity.dob}), and address (${identity.address}). If asked "What's your name?" say "${identity.name}". If asked your age, say "${identity.age}". If asked your date of birth, say "${identity.dob}". If asked where you live or your address, say "${identity.address}". This information should be second nature to you - you are this person.
+
+`;
         if (!script) {
-            return `You are a ${persona.toLowerCase()}.
+            return `${identityBlock}You are a ${persona.toLowerCase()}.
 
 You are a customer who previously filled out an online form expressing interest in reviewing or purchasing life insurance coverage. 
 You may have indicated that you were shopping for new coverage or were unhappy with your current plan. 
@@ -198,7 +327,7 @@ IMPORTANT:
 - NEVER make sound effects or describe background noises like *sighs*, *rustling*, *phone rings*, *dog barks*, etc. This sounds unnatural and scripted. Just speak naturally without any sound descriptions.
 - Do NOT verbalize your realizations or thought processes out loud (e.g., "Oh, I see," "That makes sense," "I understand"). Real people work things out silently. Only speak when you have an actual question or response.`;
         }
-        return `You are a ${persona.toLowerCase()} who just answered the phone. Talk like a REAL person, not a polished customer service rep.
+        return `${identityBlock}You are a ${persona.toLowerCase()} who just answered the phone. Talk like a REAL person, not a polished customer service rep.
 
 You are a customer who previously filled out an online form expressing interest in reviewing or purchasing life insurance coverage. 
 You may have indicated that you were shopping for new coverage or were unhappy with your current plan. 
@@ -363,12 +492,15 @@ Customer: Says they guess but won't sign anything today`
                 scriptLength: template.script?.length || 0,
                 hasScript: !!template.script
             });
-            const systemPrompt = this.generateSystemPromptFromTemplate(template);
-            console.log('✅ System prompt generated:', {
+            const identity = this.generateCustomerIdentity(template.title, template.id?.toString());
+            const systemPrompt = this.generateSystemPromptFromTemplate(template, identity);
+            console.log('✅ System prompt generated with identity:', {
                 promptLength: systemPrompt.length,
-                includesScript: systemPrompt.includes('REFERENCE SCRIPT')
+                includesScript: systemPrompt.includes('REFERENCE SCRIPT'),
+                customerName: identity.name,
+                customerAge: identity.age,
+                customerGender: identity.gender
             });
-            const selectedVoiceId = this.getRandomVoiceId();
             const assistantData = {
                 name: `${template.title} - ${template.difficulty}`,
                 model: {
@@ -384,7 +516,7 @@ Customer: Says they guess but won't sign anything today`
                 },
                 voice: {
                     provider: "11labs",
-                    voiceId: selectedVoiceId
+                    voiceId: identity.voiceId
                 },
                 firstMessage: this.generateFirstMessage('customer', template.type),
                 maxDurationSeconds: 1800,
@@ -393,8 +525,12 @@ Customer: Says they guess but won't sign anything today`
                 }
             };
             const response = await axios_1.default.post(`${this.baseUrl}/assistant`, assistantData, { headers: this.getHeaders() });
-            console.log('✅ New assistant created with ID:', response.data?.id, '| Voice:', selectedVoiceId);
-            return response.data;
+            console.log('✅ New assistant created with ID:', response.data?.id, '| Voice:', identity.voiceId, '| Customer:', identity.name);
+            const assistantResponse = response.data;
+            return {
+                ...assistantResponse,
+                customerIdentity: identity
+            };
         }
         catch (error) {
             console.error('Error creating VAPI assistant with template:', error);
@@ -408,9 +544,9 @@ Customer: Says they guess but won't sign anything today`
     async updateAssistant(request) {
         try {
             const templateConfig = this.getTemplateConfig(request.template);
+            const identity = this.generateCustomerIdentity(templateConfig.persona, request.template);
             const script = this.getTemplateScript(request.template);
-            const systemPrompt = this.generateSystemPrompt(templateConfig.persona, templateConfig.difficulty, templateConfig.insuranceType, script);
-            const selectedVoiceId = this.getRandomVoiceId();
+            const systemPrompt = this.generateSystemPrompt(templateConfig.persona, templateConfig.difficulty, templateConfig.insuranceType, identity, script);
             const assistantData = {
                 name: `${templateConfig.insuranceType} Insurance Customer - ${templateConfig.difficulty}`,
                 model: {
@@ -426,7 +562,7 @@ Customer: Says they guess but won't sign anything today`
                 },
                 voice: {
                     provider: "11labs",
-                    voiceId: selectedVoiceId
+                    voiceId: identity.voiceId
                 },
                 firstMessage: this.generateFirstMessage(templateConfig.persona, templateConfig.insuranceType),
                 maxDurationSeconds: 1800,
@@ -435,8 +571,12 @@ Customer: Says they guess but won't sign anything today`
                 }
             };
             const response = await axios_1.default.post(`${this.baseUrl}/assistant`, assistantData, { headers: this.getHeaders() });
-            console.log('✅ New assistant created with ID:', response.data?.id, '| Voice:', selectedVoiceId);
-            return response.data;
+            console.log('✅ New assistant created with ID:', response.data?.id, '| Voice:', identity.voiceId, '| Customer:', identity.name);
+            const assistantResponse2 = response.data;
+            return {
+                ...assistantResponse2,
+                customerIdentity: identity
+            };
         }
         catch (error) {
             console.error('Error creating VAPI assistant:', error);
