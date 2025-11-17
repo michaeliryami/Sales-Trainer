@@ -102,57 +102,47 @@ const MyAnalytics: React.FC = () => {
     fetchAnalytics()
   }, [timeRange, profile])
 
-  // Filter analytics data based on statsFilter
+  // Use pre-calculated stats from backend based on statsFilter
   const filteredAnalytics = React.useMemo(() => {
-    if (!analyticsData || statsFilter === 'all') return analyticsData
-
-    // Get ALL sessions from recentSessions (they all come from backend)
-    const allSessions = analyticsData.recentSessions || []
+    if (!analyticsData) return null
     
-    const filteredSessions = allSessions.filter((session: any) => {
-      if (statsFilter === 'practice') return !session.assignment_id
-      if (statsFilter === 'assignment') return !!session.assignment_id
-      return true
-    })
-
-    // Recalculate stats based on filtered sessions
-    const totalSessions = filteredSessions.length
-    const completedSessions = filteredSessions.filter((s: any) => s.status === 'completed').length
+    if (statsFilter === 'all') return analyticsData
     
-    // Calculate average score from sessions that have grades (use percentage field directly from session)
-    const sessionsWithGrades = filteredSessions.filter((s: any) => s.percentage != null && s.percentage !== undefined)
-    const avgScore = sessionsWithGrades.length > 0
-      ? parseFloat((sessionsWithGrades.reduce((sum: number, s: any) => sum + parseFloat(s.percentage), 0) / sessionsWithGrades.length).toFixed(1))
-      : 0
-
-    // Calculate average duration (duration is in minutes from backend)
-    const sessionsWithDuration = filteredSessions.filter((s: any) => s.duration != null && s.duration !== undefined && s.duration > 0)
-    const avgDuration = sessionsWithDuration.length > 0
-      ? parseFloat((sessionsWithDuration.reduce((sum: number, s: any) => sum + parseFloat(s.duration), 0) / sessionsWithDuration.length).toFixed(1))
-      : 0
-
-    // Filter score trend based on session type
-    const filteredSessionIds = new Set(filteredSessions.map((s: any) => s.id))
-    const filteredScoreTrend = (analyticsData.scoreTrend || []).filter((score: any) => 
-      filteredSessionIds.has(score.sessionId)
-    )
-
-    // Calculate improvement rate
-    const improvementRate = filteredScoreTrend.length >= 2
-      ? (filteredScoreTrend[0]?.score || 0) - (filteredScoreTrend[filteredScoreTrend.length - 1]?.score || 0)
-      : 0
-
-    return {
-      ...analyticsData,
-      totalSessions,
-      completedSessions,
-      avgScore,
-      avgDuration,
-      scoreTrend: filteredScoreTrend,
-      improvementRate,
-      skills: analyticsData.skills,
-      playgroundStats: analyticsData.playgroundStats
+    if (statsFilter === 'practice') {
+      // Use practice stats calculated from ALL sessions by backend
+      return {
+        ...analyticsData,
+        totalSessions: analyticsData.practiceStats?.totalSessions || 0,
+        completedSessions: analyticsData.practiceStats?.completedSessions || 0,
+        avgScore: analyticsData.practiceStats?.avgScore || 0,
+        avgDuration: analyticsData.practiceStats?.avgDuration || 0,
+        // Filter score trend to only practice sessions
+        scoreTrend: (analyticsData.scoreTrend || []).filter((score: any) => {
+          const session = analyticsData.recentSessions?.find((s: any) => s.id === score.sessionId)
+          return session?.isPlayground === true
+        }),
+        improvementRate: 0 // Will recalculate below
+      }
     }
+    
+    if (statsFilter === 'assignment') {
+      // Use assignment stats calculated from ALL sessions by backend
+      return {
+        ...analyticsData,
+        totalSessions: analyticsData.assignmentStats?.totalSessions || 0,
+        completedSessions: analyticsData.assignmentStats?.completedSessions || 0,
+        avgScore: analyticsData.assignmentStats?.avgScore || 0,
+        avgDuration: analyticsData.assignmentStats?.avgDuration || 0,
+        // Filter score trend to only assignment sessions
+        scoreTrend: (analyticsData.scoreTrend || []).filter((score: any) => {
+          const session = analyticsData.recentSessions?.find((s: any) => s.id === score.sessionId)
+          return session?.isPlayground === false
+        }),
+        improvementRate: 0 // Will recalculate below
+      }
+    }
+    
+    return analyticsData
   }, [analyticsData, statsFilter])
 
   // Fetch grade details when session is selected
@@ -776,16 +766,16 @@ const MyAnalytics: React.FC = () => {
                 {analyticsData?.recentSessions && analyticsData.recentSessions
                   .filter((session: any) => {
                     if (sessionListFilter === 'all') return true
-                    if (sessionListFilter === 'practice') return !session.assignment_id
-                    if (sessionListFilter === 'assignment') return !!session.assignment_id
+                    if (sessionListFilter === 'practice') return session.isPlayground === true
+                    if (sessionListFilter === 'assignment') return session.isPlayground === false
                     return true
                   })
                   .length > 0 ? (
                   analyticsData.recentSessions
                     .filter((session: any) => {
                       if (sessionListFilter === 'all') return true
-                      if (sessionListFilter === 'practice') return !session.assignment_id
-                      if (sessionListFilter === 'assignment') return !!session.assignment_id
+                      if (sessionListFilter === 'practice') return session.isPlayground === true
+                      if (sessionListFilter === 'assignment') return session.isPlayground === false
                       return true
                     })
                     .map((session: any, index: number) => (

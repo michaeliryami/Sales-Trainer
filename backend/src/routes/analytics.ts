@@ -271,8 +271,36 @@ router.get('/employee/:userId', async (req, res) => {
     const highestScore = scores.length > 0 ? Math.max(...scores) : 0
     const lowestScore = scores.length > 0 ? Math.min(...scores) : 0
 
+    // Separate stats for practice vs assignment sessions
+    const practiceSessions = sessions?.filter(s => !s.assignment_id) || []
+    const assignmentSessions = sessions?.filter(s => s.assignment_id !== null) || []
+    
+    // Practice stats
+    const practiceGrades = grades?.filter(g => {
+      const session = sessions?.find(s => s.id === g.session_id)
+      return session && !session.assignment_id
+    }) || []
+    const practiceAvgScore = practiceGrades.length > 0 
+      ? practiceGrades.reduce((sum, g) => sum + (g.percentage || 0), 0) / practiceGrades.length 
+      : 0
+    const practiceAvgDuration = practiceSessions.length > 0
+      ? practiceSessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / practiceSessions.length / 60
+      : 0
+    
+    // Assignment stats
+    const assignmentGrades = grades?.filter(g => {
+      const session = sessions?.find(s => s.id === g.session_id)
+      return session && session.assignment_id !== null
+    }) || []
+    const assignmentAvgScore = assignmentGrades.length > 0
+      ? assignmentGrades.reduce((sum, g) => sum + (g.percentage || 0), 0) / assignmentGrades.length
+      : 0
+    const assignmentAvgDuration = assignmentSessions.length > 0
+      ? assignmentSessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / assignmentSessions.length / 60
+      : 0
+
     // Assignment progress - only count assignment sessions (not playground)
-    const assignmentSessionIds = sessions?.filter(s => s.assignment_id !== null).map(s => s.id) || []
+    const assignmentSessionIds = assignmentSessions.map(s => s.id)
     const assignmentsCompleted = grades?.filter(g => assignmentSessionIds.includes(g.session_id)).length || 0
     const assignmentsPending = (userAssignments?.length || 0) - assignmentsCompleted
 
@@ -329,7 +357,8 @@ router.get('/employee/:userId', async (req, res) => {
           type: session.session_type,
           pdfUrl: session.pdf_url,
           hasGrade: !!grade,
-          isPlayground: isPlayground
+          isPlayground: isPlayground,
+          assignment_id: session.assignment_id
         }
       })
 
@@ -430,6 +459,20 @@ router.get('/employee/:userId', async (req, res) => {
       avgScore: parseFloat(avgScore.toFixed(1)),
       highestScore: parseFloat(highestScore.toFixed(1)),
       lowestScore: parseFloat(lowestScore.toFixed(1)),
+      
+      // Practice vs Assignment Stats (from ALL sessions)
+      practiceStats: {
+        totalSessions: practiceSessions.length,
+        completedSessions: practiceSessions.filter(s => s.status === 'completed').length,
+        avgScore: parseFloat(practiceAvgScore.toFixed(1)),
+        avgDuration: parseFloat(practiceAvgDuration.toFixed(1))
+      },
+      assignmentStats: {
+        totalSessions: assignmentSessions.length,
+        completedSessions: assignmentSessions.filter(s => s.status === 'completed').length,
+        avgScore: parseFloat(assignmentAvgScore.toFixed(1)),
+        avgDuration: parseFloat(assignmentAvgDuration.toFixed(1))
+      },
       
       // Assignment Progress
       assignmentsCompleted,
