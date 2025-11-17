@@ -411,7 +411,7 @@ const MyAnalytics: React.FC = () => {
                     onChange={(e) => setStatsFilter(e.target.value as 'all' | 'practice' | 'assignment')}
                     size="sm"
                     bg={cardBg}
-                    borderColor={borderColor}
+                    borderColor={accentColor}
                     borderRadius="xl"
                     w="auto"
                     minW="140px"
@@ -428,7 +428,7 @@ const MyAnalytics: React.FC = () => {
                     onChange={(e) => setTimeRange(e.target.value)}
                     size="sm"
                     bg={cardBg}
-                    borderColor={borderColor}
+                    borderColor={accentColor}
                     borderRadius="xl"
                     w="auto"
                     minW="120px"
@@ -748,7 +748,7 @@ const MyAnalytics: React.FC = () => {
                   minW="140px"
                   borderRadius="xl"
                   border="1px solid"
-                  borderColor={borderColor}
+                  borderColor={accentColor}
                   bg={cardBg}
                   _hover={{ borderColor: accentColor }}
                   _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
