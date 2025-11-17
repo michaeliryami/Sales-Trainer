@@ -861,6 +861,16 @@ function App() {
               <Text color="gray.600">•</Text>
               <Text
                 as="a"
+                href="mailto:andersholly@clozone.ai"
+                color="gray.400"
+                _hover={{ color: 'white' }}
+                transition="color 0.2s"
+              >
+                andersholly@clozone.ai
+              </Text>
+              <Text color="gray.600">•</Text>
+              <Text
+                as="a"
                 href="/terms-of-service.html"
                 target="_blank"
                 color="gray.400"
