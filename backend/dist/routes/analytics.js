@@ -56,10 +56,43 @@ router.get('/admin/:orgId', async (req, res) => {
         const avgScore = grades && grades.length > 0
             ? grades.reduce((sum, g) => sum + (g.percentage || 0), 0) / grades.length
             : 0;
+        const practiceSessions = sessions?.filter(s => !s.assignment_id) || [];
+        const assignmentOnlySessions = sessions?.filter(s => s.assignment_id !== null) || [];
+        const practiceGrades = grades?.filter(g => {
+            const session = sessions?.find(s => s.id === g.session_id);
+            return session && !session.assignment_id;
+        }) || [];
+        const practiceAvgScore = practiceGrades.length > 0
+            ? practiceGrades.reduce((sum, g) => sum + (g.percentage || 0), 0) / practiceGrades.length
+            : 0;
+        const practiceAvgDuration = practiceSessions.length > 0
+            ? practiceSessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / practiceSessions.length / 60
+            : 0;
+        const practiceUsers = new Set(practiceSessions.map(s => s.user_id)).size;
+        const assignmentGrades = grades?.filter(g => {
+            const session = sessions?.find(s => s.id === g.session_id);
+            return session && session.assignment_id !== null;
+        }) || [];
+        const assignmentAvgScore = assignmentGrades.length > 0
+            ? assignmentGrades.reduce((sum, g) => sum + (g.percentage || 0), 0) / assignmentGrades.length
+            : 0;
+        const assignmentAvgDuration = assignmentOnlySessions.length > 0
+            ? assignmentOnlySessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / assignmentOnlySessions.length / 60
+            : 0;
+        const { data: orgAssignments } = await supabase_1.supabase
+            .from('assignments')
+            .select('assignees')
+            .eq('org_id', orgId);
+        const usersWithAssignments = new Set();
+        orgAssignments?.forEach(assignment => {
+            if (assignment.assignees && Array.isArray(assignment.assignees)) {
+                assignment.assignees.forEach((userId) => usersWithAssignments.add(userId));
+            }
+        });
+        const assignmentUsers = usersWithAssignments.size;
         const recentSessionsData = sessions
-            ?.filter(s => s.assignment_id !== null && s.submitted_for_review === true)
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            .slice(0, 10) || [];
+            ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 20) || [];
         const recentSessionUserIds = recentSessionsData.map(s => s.user_id);
         const metricsUserIds = userMetrics?.map(m => m.user_id) || [];
         const allUserIds = [...new Set([...recentSessionUserIds, ...metricsUserIds])];
@@ -81,6 +114,7 @@ router.get('/admin/:orgId', async (req, res) => {
             if (!templateName) {
                 templateName = 'Unknown Template';
             }
+            const isPlayground = !session.assignment_id;
             return {
                 id: session.id,
                 userId: session.user_id,
@@ -93,7 +127,9 @@ router.get('/admin/:orgId', async (req, res) => {
                 status: session.status,
                 pdfUrl: session.pdf_url,
                 hasGrade: !!grade,
-                sessionType: session.session_type
+                sessionType: session.session_type,
+                isPlayground: isPlayground,
+                assignment_id: session.assignment_id
             };
         });
         const topPerformers = userMetrics
@@ -136,6 +172,20 @@ router.get('/admin/:orgId', async (req, res) => {
             avgSessionDuration: parseFloat(avgDuration.toFixed(1)),
             completionRate: parseFloat(completionRate.toFixed(1)),
             avgScore: parseFloat(avgScore.toFixed(1)),
+            practiceStats: {
+                totalSessions: practiceSessions.length,
+                completedSessions: practiceSessions.filter(s => s.status === 'completed').length,
+                avgScore: parseFloat(practiceAvgScore.toFixed(1)),
+                avgDuration: parseFloat(practiceAvgDuration.toFixed(1)),
+                totalUsers: practiceUsers
+            },
+            assignmentStats: {
+                totalSessions: assignmentOnlySessions.length,
+                completedSessions: assignmentOnlySessions.filter(s => s.status === 'completed').length,
+                avgScore: parseFloat(assignmentAvgScore.toFixed(1)),
+                avgDuration: parseFloat(assignmentAvgDuration.toFixed(1)),
+                totalUsers: assignmentUsers
+            },
             recentSessions,
             topPerformers: topPerformers || [],
             weeklyTrends

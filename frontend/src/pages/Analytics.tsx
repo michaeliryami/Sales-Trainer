@@ -69,6 +69,8 @@ const Analytics: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [timeRange, setTimeRange] = useState('7d')
+  const [statsFilter, setStatsFilter] = useState<'all' | 'practice' | 'assignment'>('all')
+  const [sessionListFilter, setSessionListFilter] = useState<'all' | 'practice' | 'assignment'>('all')
   const [analyticsData, setAnalyticsData] = useState<any>(null)
   const [lastFetch, setLastFetch] = useState<number>(0)
   const [selectedSession, setSelectedSession] = useState<any>(null)
@@ -281,6 +283,41 @@ const Analytics: React.FC = () => {
     
     return () => clearInterval(interval)
   }, [organization, timeRange, analyticsData])
+
+  // Use pre-calculated stats from backend based on statsFilter
+  const filteredAnalytics = React.useMemo(() => {
+    if (!analyticsData) return null
+    
+    if (statsFilter === 'all') return analyticsData
+    
+    if (statsFilter === 'practice') {
+      // Use practice stats calculated from ALL sessions by backend
+      return {
+        ...analyticsData,
+        totalSessions: analyticsData.practiceStats?.totalSessions || 0,
+        assignmentSessions: 0,
+        playgroundSessions: analyticsData.practiceStats?.totalSessions || 0,
+        totalUsers: analyticsData.practiceStats?.totalUsers || 0,
+        avgScore: analyticsData.practiceStats?.avgScore || 0,
+        avgSessionDuration: analyticsData.practiceStats?.avgDuration || 0
+      }
+    }
+    
+    if (statsFilter === 'assignment') {
+      // Use assignment stats calculated from ALL sessions by backend
+      return {
+        ...analyticsData,
+        totalSessions: analyticsData.assignmentStats?.totalSessions || 0,
+        assignmentSessions: analyticsData.assignmentStats?.totalSessions || 0,
+        playgroundSessions: 0,
+        totalUsers: analyticsData.assignmentStats?.totalUsers || 0,
+        avgScore: analyticsData.assignmentStats?.avgScore || 0,
+        avgSessionDuration: analyticsData.assignmentStats?.avgDuration || 0
+      }
+    }
+    
+    return analyticsData
+  }, [analyticsData, statsFilter])
 
   // Fetch grade details when session is selected
   const fetchSessionGrade = async (sessionId: number) => {
@@ -527,7 +564,7 @@ const Analytics: React.FC = () => {
                     )}
                   </Text>
                 </VStack>
-                <HStack spacing={2}>
+                <HStack spacing={3}>
                   <Button
                     leftIcon={<Icon as={RefreshCw} boxSize={4} />}
                     size="sm"
@@ -539,13 +576,32 @@ const Analytics: React.FC = () => {
                     Refresh
                   </Button>
                   <Select
+                    value={statsFilter}
+                    onChange={(e) => setStatsFilter(e.target.value as 'all' | 'practice' | 'assignment')}
+                    size="sm"
+                    bg={cardBg}
+                    borderRadius="xl"
+                    w="auto"
+                    minW="140px"
+                    border={`1px solid ${accentColor}`}
+                    _hover={{ borderColor: accentColor }}
+                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                  >
+                    <option value="all">All Sessions</option>
+                    <option value="practice">Practice</option>
+                    <option value="assignment">Assignments</option>
+                  </Select>
+                  <Select
                     value={timeRange}
                     onChange={(e) => setTimeRange(e.target.value)}
                     size="sm"
                     bg={cardBg}
-                    borderColor={borderColor}
                     borderRadius="xl"
-                    w="120px"
+                    w="auto"
+                    minW="120px"
+                    border={`1px solid ${accentColor}`}
+                    _hover={{ borderColor: accentColor }}
+                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
                   >
                     <option value="7d">Last 7 days</option>
                     <option value="30d">Last 30 days</option>
@@ -567,7 +623,7 @@ const Analytics: React.FC = () => {
                           Total Sessions
                         </StatLabel>
                         <StatNumber fontSize="2xl" color={useColorModeValue('gray.900', 'white')} fontWeight="700">
-                          {analyticsData?.totalSessions || 0}
+                          {filteredAnalytics?.totalSessions || 0}
                         </StatNumber>
                         <StatHelpText fontSize="xs">
                           All completed training calls
@@ -583,10 +639,10 @@ const Analytics: React.FC = () => {
                           Active Users
                         </StatLabel>
                         <StatNumber fontSize="2xl" color={useColorModeValue('gray.900', 'white')} fontWeight="700">
-                          {analyticsData?.totalUsers || 0}
+                          {filteredAnalytics?.totalUsers || 0}
                         </StatNumber>
                         <StatHelpText fontSize="xs">
-                          Users with sessions
+                          {statsFilter === 'assignment' ? 'Users with assignments' : 'Users with sessions'}
                         </StatHelpText>
                       </Stat>
                     </CardBody>
@@ -599,7 +655,7 @@ const Analytics: React.FC = () => {
                           Avg Duration
                         </StatLabel>
                         <StatNumber fontSize="2xl" color={useColorModeValue('gray.900', 'white')} fontWeight="700">
-                          {analyticsData?.avgSessionDuration || 0}m
+                          {filteredAnalytics?.avgSessionDuration || 0}m
                         </StatNumber>
                         <StatHelpText fontSize="xs">
                           Average call length
@@ -615,7 +671,7 @@ const Analytics: React.FC = () => {
                           Avg Score
                         </StatLabel>
                         <StatNumber fontSize="2xl" color={useColorModeValue('gray.900', 'white')} fontWeight="700">
-                          {analyticsData?.avgScore || 0}%
+                          {filteredAnalytics?.avgScore || 0}%
                         </StatNumber>
                         <StatHelpText fontSize="xs">
                           Overall performance
@@ -817,6 +873,21 @@ const Analytics: React.FC = () => {
                 </VStack>
                 <HStack spacing={2}>
                   <Select
+                    value={sessionListFilter}
+                    onChange={(e) => setSessionListFilter(e.target.value as 'all' | 'practice' | 'assignment')}
+                    size="sm"
+                    maxW="160px"
+                    bg={useColorModeValue('white', 'gray.800')}
+                    borderRadius="xl"
+                    border={`1px solid ${accentColor}`}
+                    _hover={{ borderColor: accentColor }}
+                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                  >
+                    <option value="all">All Sessions</option>
+                    <option value="practice">Practice</option>
+                    <option value="assignment">Assignments</option>
+                  </Select>
+                  <Select
                     size="sm"
                     maxW="200px"
                     value={filterAssignmentId || 'all'}
@@ -831,8 +902,9 @@ const Analytics: React.FC = () => {
                     }}
                     bg={useColorModeValue('white', 'gray.800')}
                     borderRadius="xl"
-                    border="1px solid"
-                    borderColor={borderColor}
+                    border={`1px solid ${accentColor}`}
+                    _hover={{ borderColor: accentColor }}
+                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
                   >
                     <option value="all">All Assignments</option>
                     {assignments.map((assignment) => (
@@ -848,8 +920,9 @@ const Analytics: React.FC = () => {
                     onChange={(e) => setFilterUserId(e.target.value === 'all' ? null : e.target.value)}
                     bg={useColorModeValue('white', 'gray.800')}
                     borderRadius="xl"
-                    border="1px solid"
-                    borderColor={borderColor}
+                    border={`1px solid ${accentColor}`}
+                    _hover={{ borderColor: accentColor }}
+                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
                   >
                     <option value="all">All Users</option>
                     {teamMembers.map((member) => (
@@ -866,6 +939,12 @@ const Analytics: React.FC = () => {
             <Box flex={1} overflowY="auto" p={6}>
               <VStack spacing={4} align="stretch">
                 {analyticsData?.recentSessions
+                  ?.filter((session: any) => {
+                    // Session type filter
+                    if (sessionListFilter === 'practice') return session.isPlayground === true
+                    if (sessionListFilter === 'assignment') return session.isPlayground === false
+                    return true
+                  })
                   ?.filter((session: any) => !filterAssignmentId || session.assignmentId === filterAssignmentId)
                   ?.filter((session: any) => !filterUserId || session.userId === filterUserId)
                   .map((session: any, index: number) => (
