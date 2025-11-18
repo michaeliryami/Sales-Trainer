@@ -58,11 +58,14 @@ function App() {
   }, [])
 
   useEffect(() => {
+    let timeouts: ReturnType<typeof setTimeout>[] = []
+    let isHeroVisible = true // Start visible
+
     // Animate conversation in a loop
     const animateConversation = () => {
       setVisibleMessages([])
       const delays = [500, 3000, 5500, 8000, 10500, 13000]
-      const timeouts: ReturnType<typeof setTimeout>[] = []
+      timeouts = []
 
       delays.forEach((delay, index) => {
         const timeout = setTimeout(() => {
@@ -73,15 +76,42 @@ function App() {
 
       // Reset and loop after all messages shown
       const loopTimeout = setTimeout(() => {
-        animateConversation()
+        if (isHeroVisible) {
+          animateConversation()
+        }
       }, 16000)
       timeouts.push(loopTimeout)
-
-      return timeouts
     }
 
-    const timeouts = animateConversation()
-    return () => timeouts.forEach(t => clearTimeout(t))
+    // Observe when hero section is in view
+    const heroObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            isHeroVisible = true
+            // Restart animation when hero comes into view
+            timeouts.forEach(t => clearTimeout(t))
+            animateConversation()
+          } else {
+            isHeroVisible = false
+          }
+        })
+      },
+      { threshold: 0.3 } // Trigger when 30% of hero is visible
+    )
+
+    const heroElement = document.querySelector('section')
+    if (heroElement) {
+      heroObserver.observe(heroElement)
+    }
+
+    // Start initial animation
+    animateConversation()
+
+    return () => {
+      timeouts.forEach(t => clearTimeout(t))
+      heroObserver.disconnect()
+    }
   }, [])
 
 
@@ -225,144 +255,125 @@ function App() {
             </GridItem>
 
             <GridItem display={{ base: 'none', lg: 'flex' }} justifyContent="center">
-              <Box position="relative" className="fade-in-right" w="500px" h="500px">
-                {/* Floating stat badges around logo - arranged in a circle */}
-                {/* Card 1 - Top (0 degrees) */}
+              {/* Product Demo - moved from below */}
+              <Box
+                position="relative"
+                w="full"
+                maxW="550px"
+                h="500px"
+                bg="white"
+                rounded="3xl"
+                boxShadow="2xl"
+                overflow="hidden"
+                borderWidth="1px"
+                borderColor="gray.200"
+                className="fade-in-right"
+              >
+                {/* Browser chrome */}
                 <Box
                   position="absolute"
-                  top="-10%"
-                  left="50%"
-                  transform="translateX(-50%)"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float-fade-1"
-                  style={{ animationDelay: '0s' }}
-                >
-                  <VStack spacing={1}>
-                    <Icon as={Phone} boxSize={6} color="brand.500" />
-                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Voice Training</Text>
-                  </VStack>
-                </Box>
-
-                {/* Card 2 - Top-right (51 degrees) */}
-                <Box
-                  position="absolute"
-                  top="2%"
-                  right="-8%"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float-fade-2"
-                  style={{ animationDelay: '0.3s' }}
-                >
-                  <VStack spacing={1}>
-                    <Icon as={Zap} boxSize={6} color="brand.500" />
-                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Instant Setup</Text>
-                  </VStack>
-                </Box>
-
-                {/* Card 3 - Right (103 degrees) */}
-                <Box
-                  position="absolute"
-                  bottom="20%"
-                  right="-10%"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float-fade-3"
-                  style={{ animationDelay: '0.6s' }}
-                >
-                  <VStack spacing={1}>
-                    <Icon as={BarChart2} boxSize={6} color="brand.500" />
-                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Real-time Analytics</Text>
-                  </VStack>
-                </Box>
-
-                {/* Card 5 - Bottom-left (206 degrees) */}
-                <Box
-                  position="absolute"
-                  bottom="-5%"
-                  left="20%"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float-fade-1"
-                  style={{ animationDelay: '1.2s' }}
-                >
-                  <VStack spacing={1}>
-                    <Icon as={TrendingUp} boxSize={6} color="brand.500" />
-                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Smart Feedback</Text>
-                  </VStack>
-                </Box>
-
-                {/* Card 6 - Left (257 degrees) */}
-                <Box
-                  position="absolute"
-                  bottom="20%"
-                  left="-10%"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float-fade-2"
-                  style={{ animationDelay: '1.5s' }}
-                >
-                  <VStack spacing={1}>
-                    <Icon as={Check} boxSize={6} color="brand.500" />
-                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Unlimited Practice</Text>
-                  </VStack>
-                </Box>
-
-                {/* Card 7 - Top-left (309 degrees) */}
-                <Box
-                  position="absolute"
-                  top="2%"
-                  left="-8%"
-                  bg="white"
-                  p={4}
-                  rounded="xl"
-                  boxShadow="xl"
-                  className="float-fade-3"
-                  style={{ animationDelay: '1.8s' }}
-                >
-                  <VStack spacing={1}>
-                    <Icon as={Users} boxSize={6} color="brand.500" />
-                    <Text fontSize="xs" color="gray.600" fontWeight="semibold">Team Management</Text>
-                  </VStack>
-                </Box>
-
-                {/* Main logo */}
-                <Box
-                  position="relative"
-                  w="full"
-                  h="full"
+                  top="0"
+                  left="0"
+                  right="0"
+                  h="45px"
+                  bg="gray.50"
+                  borderBottomWidth="1px"
+                  borderColor="gray.200"
                   display="flex"
                   alignItems="center"
-                  justifyContent="center"
-                  className="float"
+                  px={6}
                 >
-                  <Box
-                    position="absolute"
-                    w="full"
-                    h="full"
-                    bg="brand.500"
-                    opacity="0.15"
-                    borderRadius="full"
-                    filter="blur(80px)"
-                    className="pulse-glow"
-                  />
+                  <HStack spacing={2}>
+                    <Box w="10px" h="10px" rounded="full" bg="red.400" />
+                    <Box w="10px" h="10px" rounded="full" bg="yellow.400" />
+                    <Box w="10px" h="10px" rounded="full" bg="green.400" />
+                  </HStack>
+                </Box>
+
+                {/* Call interface */}
+                <Box h="full" pt="45px" bg="white" overflow="hidden" display="flex" flexDirection="column">
+                  <Box p={5} pb={3}>
+                    <HStack spacing={3}>
+                      <Box 
+                        w="45px" 
+                        h="45px" 
+                        rounded="full" 
+                        bg="brand.100" 
+                        display="flex" 
+                        alignItems="center" 
+                        justifyContent="center"
+                      >
+                        <Icon as={Phone} w={5} h={5} color="brand.500" />
+                      </Box>
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="bold" fontSize="md">Live Training Call</Text>
+                        <HStack spacing={2}>
+                          <Box w="2" h="2" rounded="full" bg="green.500" className="pulse-dot" />
+                          <Text color="gray.500" fontSize="xs">
+                            In progress
+                          </Text>
+                        </HStack>
+                      </VStack>
+                    </HStack>
+                  </Box>
+
+                  {/* Conversation bubbles with scroll */}
+                  <Box 
+                    ref={messagesContainerRef}
+                    flex="1" 
+                    overflowY="auto" 
+                    px={5} 
+                    pb={5}
+                    css={{
+                      '&::-webkit-scrollbar': {
+                        width: '4px',
+                      },
+                      '&::-webkit-scrollbar-track': {
+                        background: 'transparent',
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        background: '#CBD5E0',
+                        borderRadius: '2px',
+                      },
+                    }}
+                  >
+                    <VStack align="stretch" spacing={4} w="full">
+                      {conversationTurns.map((turn, index) => (
+                        visibleMessages.includes(index) && (
+                          <Box
+                            key={index}
+                            bg={turn.speaker === 'prospect' ? 'gray.100' : 'brand.500'}
+                            color={turn.speaker === 'prospect' ? 'gray.700' : 'white'}
+                            p={4}
+                            rounded="2xl"
+                            roundedBottomLeft={turn.speaker === 'prospect' ? 'md' : '2xl'}
+                            roundedBottomRight={turn.speaker === 'rep' ? 'md' : '2xl'}
+                            maxW="75%"
+                            alignSelf={turn.speaker === 'rep' ? 'flex-end' : 'flex-start'}
+                            className="message-pop-in"
+                          >
+                            <Text fontSize="sm">{turn.text}</Text>
+                          </Box>
+                        )
+                      ))}
+                    </VStack>
+                  </Box>
+                </Box>
+
+                {/* Small logo in corner */}
+                <Box
+                  position="absolute"
+                  bottom={4}
+                  right={4}
+                  w="40px"
+                  h="40px"
+                  opacity={0.3}
+                >
                   <Image
                     src="/logo.png"
                     alt="Clozone"
-                    w="350px"
-                    h="350px"
-                    position="relative"
-                    zIndex={1}
+                    w="full"
+                    h="full"
                   />
                 </Box>
               </Box>
@@ -394,14 +405,14 @@ function App() {
         >
           <VStack spacing={2}>
             <Text fontSize="sm" color="gray.500" fontWeight="500">
-              See it in action
+              Watch the video
             </Text>
             <Icon as={ChevronDown} w={8} h={8} color="brand.500" />
           </VStack>
         </Box>
       )}
 
-      {/* Demo Section - Full Screen */}
+      {/* Video Demo Section - Placeholder for future video */}
       <Box
         as="section"
         id="demo-section"
@@ -420,115 +431,51 @@ function App() {
                 fontWeight="black"
                 letterSpacing="-0.02em"
               >
-                See Clozone in Action
+                Watch Clozone in Action
               </Heading>
               <Text fontSize={{ base: 'lg', md: 'xl' }} color="gray.600" maxW="2xl">
-                Here's how we help your sales team level up with AI-powered training
+                See how our AI-powered platform transforms sales training
               </Text>
             </VStack>
 
+            {/* Video placeholder */}
             <Box
               position="relative"
               w="full"
-              maxW="900px"
-              h={{ base: '400px', md: '450px' }}
-              bg="white"
+              maxW="1000px"
+              h={{ base: '400px', md: '600px' }}
+              bg="gray.900"
               rounded="3xl"
               boxShadow="2xl"
               overflow="hidden"
               borderWidth="1px"
-              borderColor="gray.200"
+              borderColor="gray.300"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
             >
-              {/* Browser chrome */}
-              <Box
-                position="absolute"
-                top="0"
-                left="0"
-                right="0"
-                h="50px"
-                bg="gray.50"
-                borderBottomWidth="1px"
-                borderColor="gray.200"
-                display="flex"
-                alignItems="center"
-                px={6}
+              {/* Placeholder for video - you can replace this with actual video element later */}
+              <VStack spacing={4}>
+                <Icon as={Phone} w={20} h={20} color="brand.500" />
+                <Text color="white" fontSize="xl" fontWeight="semibold">
+                  Demo Video Coming Soon
+                </Text>
+                <Text color="gray.400" fontSize="md">
+                  Video will be embedded here
+                </Text>
+              </VStack>
+              
+              {/* Uncomment when you have the video */}
+              {/* 
+              <video 
+                controls 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                poster="/video-thumbnail.jpg"
               >
-                <HStack spacing={2}>
-                  <Box w="10px" h="10px" rounded="full" bg="red.400" />
-                  <Box w="10px" h="10px" rounded="full" bg="yellow.400" />
-                  <Box w="10px" h="10px" rounded="full" bg="green.400" />
-                </HStack>
-              </Box>
-
-              {/* Call interface */}
-              <Box h="full" pt="50px" bg="white" overflow="hidden" display="flex" flexDirection="column">
-                <Box p={6} pb={4}>
-                  <HStack spacing={3}>
-                    <Box 
-                      w="50px" 
-                      h="50px" 
-                      rounded="full" 
-                      bg="brand.100" 
-                      display="flex" 
-                      alignItems="center" 
-                      justifyContent="center"
-                    >
-                      <Icon as={Phone} w={5} h={5} color="brand.500" />
-                    </Box>
-                    <VStack align="start" spacing={0}>
-                      <Text fontWeight="bold" fontSize="md">Product Demo</Text>
-                      <HStack spacing={2}>
-                        <Box w="2" h="2" rounded="full" bg="green.500" className="pulse-dot" />
-                        <Text color="gray.500" fontSize="xs">
-                          Live conversation
-                        </Text>
-                      </HStack>
-                    </VStack>
-                  </HStack>
-                </Box>
-
-                {/* Conversation bubbles with scroll */}
-                <Box 
-                  ref={messagesContainerRef}
-                  flex="1" 
-                  overflowY="auto" 
-                  px={6} 
-                  pb={6}
-                  css={{
-                    '&::-webkit-scrollbar': {
-                      width: '4px',
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      background: 'transparent',
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      background: '#CBD5E0',
-                      borderRadius: '2px',
-                    },
-                  }}
-                >
-                  <VStack align="stretch" spacing={4} w="full">
-                    {conversationTurns.map((turn, index) => (
-                      visibleMessages.includes(index) && (
-                        <Box
-                          key={index}
-                          bg={turn.speaker === 'prospect' ? 'gray.100' : 'brand.500'}
-                          color={turn.speaker === 'prospect' ? 'gray.700' : 'white'}
-                          p={4}
-                          rounded="2xl"
-                          roundedBottomLeft={turn.speaker === 'prospect' ? 'md' : '2xl'}
-                          roundedBottomRight={turn.speaker === 'rep' ? 'md' : '2xl'}
-                          maxW="70%"
-                          alignSelf={turn.speaker === 'rep' ? 'flex-end' : 'flex-start'}
-                          className="message-pop-in"
-                        >
-                          <Text fontSize="sm">{turn.text}</Text>
-                        </Box>
-                      )
-                    ))}
-                  </VStack>
-                </Box>
-              </Box>
+                <source src="/demo-video.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+              */}
             </Box>
 
             <Button
@@ -549,7 +496,7 @@ function App() {
               }}
               transition="all 0.3s"
             >
-              Watch Demo
+              Book a Demo
             </Button>
           </VStack>
         </Container>
