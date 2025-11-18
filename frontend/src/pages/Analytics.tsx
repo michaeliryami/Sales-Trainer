@@ -108,9 +108,12 @@ const Analytics: React.FC = () => {
   // Auto-expand first session when filtered by assignment
   useEffect(() => {
     if (filterAssignmentId && analyticsData?.recentSessions) {
-      const assignmentSessions = analyticsData.recentSessions.filter(
-        (s: any) => s.assignmentId === filterAssignmentId && s.sessionType === 'assignment'
-      )
+      const filterNum = typeof filterAssignmentId === 'string' ? parseInt(filterAssignmentId) : filterAssignmentId
+      const assignmentSessions = analyticsData.recentSessions.filter((s: any) => {
+        const assignmentIdNum = s.assignmentId != null ? (typeof s.assignmentId === 'string' ? parseInt(s.assignmentId) : s.assignmentId) : null
+        const assignment_idNum = s.assignment_id != null ? (typeof s.assignment_id === 'string' ? parseInt(s.assignment_id) : s.assignment_id) : null
+        return (assignmentIdNum === filterNum || assignment_idNum === filterNum) && s.sessionType === 'assignment'
+      })
       if (assignmentSessions.length > 0 && !selectedSession) {
         handleSessionClick(assignmentSessions[0])
       }
@@ -124,7 +127,7 @@ const Analytics: React.FC = () => {
   const accentColor = useColorModeValue('#f26f25', '#ff7d31')
 
   // Fetch real analytics data from API with caching
-  const fetchAnalytics = async (isBackground = false) => {
+  const fetchAnalytics = async (isBackground = false, forceRefresh = false) => {
     if (!organization?.id) return
     
     // If background refresh, don't show loading spinner
@@ -138,13 +141,12 @@ const Analytics: React.FC = () => {
       const cacheKey = `analytics_${organization.id}_${timeRange}`
       const now = Date.now()
       
-      // Check cache first (only for initial load, not background refresh)
-      if (!isBackground) {
+      // Check cache first (only for initial load, not background refresh, and not force refresh)
+      if (!isBackground && !forceRefresh) {
         const cached = localStorage.getItem(cacheKey)
         if (cached) {
           const { data, timestamp } = JSON.parse(cached)
           if (now - timestamp < CACHE_TTL) {
-            if (import.meta.env.DEV) console.log('Loading analytics from cache')
             setAnalyticsData(data)
             setLastFetch(timestamp)
             setLoading(false)
@@ -153,8 +155,13 @@ const Analytics: React.FC = () => {
         }
       }
       
-      // Fetch fresh data
-      const response = await apiFetch(`/api/analytics/admin/${organization.id}?period=${timeRange}`)
+      // If force refresh, clear the cache
+      if (forceRefresh) {
+        localStorage.removeItem(cacheKey)
+      }
+      
+      // Fetch fresh data - use 90d for sessions list to show all recent sessions
+      const response = await apiFetch(`/api/analytics/admin/${organization.id}?period=90d`)
       const result = await response.json()
       
       if (result.success) {
@@ -167,7 +174,6 @@ const Analytics: React.FC = () => {
           timestamp: now
         }))
       } else {
-        if (import.meta.env.DEV) console.error('Failed to fetch analytics:', result.error)
         // Set empty data on error
         setAnalyticsData({
           totalSessions: 0,
@@ -284,40 +290,67 @@ const Analytics: React.FC = () => {
     return () => clearInterval(interval)
   }, [organization, timeRange, analyticsData])
 
-  // Use pre-calculated stats from backend based on statsFilter
+  // Filter stats on left side by timeRange, but keep all sessions on right side
   const filteredAnalytics = React.useMemo(() => {
     if (!analyticsData) return null
     
-    if (statsFilter === 'all') return analyticsData
+    // Calculate time cutoff based on selected timeRange
+    const now = new Date()
+    let cutoffDate = new Date()
+    switch (timeRange) {
+      case '7d':
+        cutoffDate.setDate(now.getDate() - 7)
+        break
+      case '30d':
+        cutoffDate.setDate(now.getDate() - 30)
+        break
+      case '90d':
+        cutoffDate.setDate(now.getDate() - 90)
+        break
+    }
     
+    // Filter sessions by timeRange for stats only
+    const timeFilteredSessions = analyticsData.recentSessions?.filter((s: any) => 
+      new Date(s.date) >= cutoffDate
+    ) || []
+    
+    // Calculate stats from time-filtered sessions
+    const practiceSessionsInRange = timeFilteredSessions.filter((s: any) => s.isPlayground === true)
+    const assignmentSessionsInRange = timeFilteredSessions.filter((s: any) => s.isPlayground === false)
+    
+    // Calculate scores for time range
+    const scoresInRange = timeFilteredSessions.filter((s: any) => s.score !== null).map((s: any) => s.score)
+    const avgScoreInRange = scoresInRange.length > 0 
+      ? scoresInRange.reduce((a: number, b: number) => a + b, 0) / scoresInRange.length 
+      : 0
+    
+    // Apply statsFilter
     if (statsFilter === 'practice') {
-      // Use practice stats calculated from ALL sessions by backend
       return {
         ...analyticsData,
-        totalSessions: analyticsData.practiceStats?.totalSessions || 0,
-        assignmentSessions: 0,
-        playgroundSessions: analyticsData.practiceStats?.totalSessions || 0,
-        totalUsers: analyticsData.practiceStats?.totalUsers || 0,
-        avgScore: analyticsData.practiceStats?.avgScore || 0,
-        avgSessionDuration: analyticsData.practiceStats?.avgDuration || 0
+        totalSessions: practiceSessionsInRange.length,
+        avgScore: Math.round(avgScoreInRange),
+        recentSessions: analyticsData.recentSessions // Keep all sessions for right side
       }
     }
     
     if (statsFilter === 'assignment') {
-      // Use assignment stats calculated from ALL sessions by backend
       return {
         ...analyticsData,
-        totalSessions: analyticsData.assignmentStats?.totalSessions || 0,
-        assignmentSessions: analyticsData.assignmentStats?.totalSessions || 0,
-        playgroundSessions: 0,
-        totalUsers: analyticsData.assignmentStats?.totalUsers || 0,
-        avgScore: analyticsData.assignmentStats?.avgScore || 0,
-        avgSessionDuration: analyticsData.assignmentStats?.avgDuration || 0
+        totalSessions: assignmentSessionsInRange.length,
+        avgScore: Math.round(avgScoreInRange),
+        recentSessions: analyticsData.recentSessions // Keep all sessions for right side
       }
     }
     
-    return analyticsData
-  }, [analyticsData, statsFilter])
+    // All sessions
+    return {
+      ...analyticsData,
+      totalSessions: timeFilteredSessions.length,
+      avgScore: Math.round(avgScoreInRange),
+      recentSessions: analyticsData.recentSessions // Keep all sessions for right side
+    }
+  }, [analyticsData, statsFilter, timeRange])
 
   // Fetch grade details when session is selected
   const fetchSessionGrade = async (sessionId: number) => {
@@ -541,23 +574,27 @@ const Analytics: React.FC = () => {
           >
             {/* Header */}
             <Box 
-              px={6}
-              py={4}
+              bg={headerBg}
+              backdropFilter="blur(10px)"
               borderBottom="1px"
               borderColor={borderColor}
+              px={6}
+              py={5}
             >
               <Flex justify="space-between" align="center">
                 <VStack align="start" spacing={1} flex={1}>
                   <Heading 
-                    size="md" 
+                    size="lg" 
                     color={useColorModeValue('gray.900', 'white')}
                     fontWeight="600"
+                    letterSpacing="-0.02em"
                   >
                     Analytics Dashboard
                   </Heading>
                   <Text 
                     fontSize="sm" 
-                    color={useColorModeValue('gray.600', 'gray.400')}
+                    color={useColorModeValue('gray.500', 'gray.400')}
+                    fontWeight="400"
                   >
                     {lastFetch > 0 && (
                       <>Last updated {new Date(lastFetch).toLocaleTimeString()}</>
@@ -569,8 +606,8 @@ const Analytics: React.FC = () => {
                     leftIcon={<Icon as={RefreshCw} boxSize={4} />}
                     size="sm"
                     variant="ghost"
-                    onClick={() => fetchAnalytics()}
-                    isLoading={refreshing}
+                    onClick={() => fetchAnalytics(false, true)}
+                    isLoading={refreshing || loading}
                     loadingText="Refreshing..."
                   >
                     Refresh
@@ -850,88 +887,92 @@ const Analytics: React.FC = () => {
           >
             {/* Header */}
             <Box 
-              px={6}
-              py={4}
+              bg={headerBg}
+              backdropFilter="blur(10px)"
               borderBottom="1px"
               borderColor={borderColor}
+              px={6}
+              py={5}
             >
-              <HStack justify="space-between" align="center">
+              <HStack justify="space-between" align="center" w="full">
                 <VStack align="start" spacing={1}>
                   <Heading 
-                    size="md" 
+                    size="lg" 
                     color={useColorModeValue('gray.900', 'white')}
                     fontWeight="600"
+                    letterSpacing="-0.02em"
                   >
-                    Recent Activity
+                    Recent History
                   </Heading>
                   <Text 
                     fontSize="sm" 
-                    color={useColorModeValue('gray.600', 'gray.400')}
+                    color={useColorModeValue('gray.500', 'gray.400')}
+                    fontWeight="400"
                   >
-                    Latest assignments completed
+                    Training sessions by user
                   </Text>
                 </VStack>
-                <HStack spacing={2}>
-                  <Select
-                    value={sessionListFilter}
-                    onChange={(e) => setSessionListFilter(e.target.value as 'all' | 'practice' | 'assignment')}
-                    size="sm"
-                    maxW="160px"
-                    bg={useColorModeValue('white', 'gray.800')}
-                    borderRadius="xl"
-                    border={`1px solid ${accentColor}`}
-                    _hover={{ borderColor: accentColor }}
-                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
-                  >
-                    <option value="all">All Sessions</option>
-                    <option value="practice">Practice</option>
-                    <option value="assignment">Assignments</option>
-                  </Select>
-                  <Select
-                    size="sm"
-                    maxW="200px"
-                    value={filterAssignmentId || 'all'}
-                    onChange={(e) => {
-                      const value = e.target.value === 'all' ? null : parseInt(e.target.value)
-                      setFilterAssignmentId(value)
-                      if (value) {
-                        navigate(`/analytics?assignment=${value}`)
-                      } else {
-                        navigate('/analytics')
-                      }
-                    }}
-                    bg={useColorModeValue('white', 'gray.800')}
-                    borderRadius="xl"
-                    border={`1px solid ${accentColor}`}
-                    _hover={{ borderColor: accentColor }}
-                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
-                  >
-                    <option value="all">All Assignments</option>
-                    {assignments.map((assignment) => (
-                      <option key={assignment.id} value={assignment.id}>
-                        {assignment.title}
-                      </option>
-                    ))}
-                  </Select>
-                  <Select
-                    size="sm"
-                    maxW="200px"
-                    value={filterUserId || 'all'}
-                    onChange={(e) => setFilterUserId(e.target.value === 'all' ? null : e.target.value)}
-                    bg={useColorModeValue('white', 'gray.800')}
-                    borderRadius="xl"
-                    border={`1px solid ${accentColor}`}
-                    _hover={{ borderColor: accentColor }}
-                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
-                  >
-                    <option value="all">All Users</option>
-                    {teamMembers.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.display_name || member.email}
-                      </option>
-                    ))}
-                  </Select>
-                </HStack>
+                
+                {/* Filter dropdowns */}
+                <VStack align="end" spacing={2}>
+                  <HStack spacing={2}>
+                    <Select
+                      value={filterAssignmentId ? `assignment-${filterAssignmentId}` : sessionListFilter}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        if (value === 'all' || value === 'practice') {
+                          setSessionListFilter(value as 'all' | 'practice' | 'assignment')
+                          setFilterAssignmentId(null)
+                          navigate('/analytics')
+                        } else if (value.startsWith('assignment-')) {
+                          const assignmentId = parseInt(value.replace('assignment-', ''))
+                          setSessionListFilter('assignment')
+                          setFilterAssignmentId(assignmentId)
+                          navigate(`/analytics?assignment=${assignmentId}`)
+                        }
+                      }}
+                      size="sm"
+                      w="auto"
+                      minW="200px"
+                      maxW="250px"
+                      borderRadius="xl"
+                      bg={cardBg}
+                      border={`1px solid ${accentColor}`}
+                      _hover={{ borderColor: accentColor }}
+                      _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                    >
+                      <option value="all">All Sessions</option>
+                      <option value="practice">Practice</option>
+                      {assignments.map((assignment) => (
+                        <option key={assignment.id} value={`assignment-${assignment.id}`}>
+                          {assignment.title}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select
+                      size="sm"
+                      minW="180px"
+                      maxW="220px"
+                      value={filterUserId || 'all'}
+                      onChange={(e) => {
+                        const newValue = e.target.value === 'all' ? null : e.target.value
+                        setFilterUserId(newValue)
+                      }}
+                      borderRadius="xl"
+                      bg={cardBg}
+                      border={`1px solid ${accentColor}`}
+                      _hover={{ borderColor: accentColor }}
+                      _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                    >
+                      <option value="all">All Users</option>
+                      {teamMembers.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.display_name || member.email}
+                        </option>
+                      ))}
+                    </Select>
+                  </HStack>
+                </VStack>
               </HStack>
             </Box>
 
@@ -940,19 +981,47 @@ const Analytics: React.FC = () => {
               <VStack spacing={4} align="stretch">
                 {analyticsData?.recentSessions
                   ?.filter((session: any) => {
-                    // Session type filter
+                    // If specific assignment is selected, show only that assignment
+                    if (filterAssignmentId) {
+                      // Convert to numbers for comparison, handling null/undefined
+                      const assignmentIdNum = session.assignmentId != null ? (typeof session.assignmentId === 'string' ? parseInt(session.assignmentId) : session.assignmentId) : null
+                      const assignment_idNum = session.assignment_id != null ? (typeof session.assignment_id === 'string' ? parseInt(session.assignment_id) : session.assignment_id) : null
+                      const filterNum = typeof filterAssignmentId === 'string' ? parseInt(filterAssignmentId) : filterAssignmentId
+                      return assignmentIdNum === filterNum || assignment_idNum === filterNum
+                    }
+                    // Otherwise use session type filter
+                    if (sessionListFilter === 'practice') {
+                      return session.isPlayground === true
+                    }
+                    if (sessionListFilter === 'assignment') {
+                      return session.isPlayground === false
+                    }
+                    return true
+                  })
+                  ?.filter((session: any) => {
+                    return !filterUserId || session.userId === filterUserId
+                  })
+                  .length > 0 ? (
+                  analyticsData.recentSessions
+                  ?.filter((session: any) => {
+                    if (filterAssignmentId) {
+                      // Convert to numbers for comparison, handling null/undefined
+                      const assignmentIdNum = session.assignmentId != null ? (typeof session.assignmentId === 'string' ? parseInt(session.assignmentId) : session.assignmentId) : null
+                      const assignment_idNum = session.assignment_id != null ? (typeof session.assignment_id === 'string' ? parseInt(session.assignment_id) : session.assignment_id) : null
+                      const filterNum = typeof filterAssignmentId === 'string' ? parseInt(filterAssignmentId) : filterAssignmentId
+                      return assignmentIdNum === filterNum || assignment_idNum === filterNum
+                    }
                     if (sessionListFilter === 'practice') return session.isPlayground === true
                     if (sessionListFilter === 'assignment') return session.isPlayground === false
                     return true
                   })
-                  ?.filter((session: any) => !filterAssignmentId || session.assignmentId === filterAssignmentId)
                   ?.filter((session: any) => !filterUserId || session.userId === filterUserId)
                   .map((session: any, index: number) => (
                   <React.Fragment key={index}>
                   <Card 
                     bg={cardBg}
                     border="1px solid"
-                    borderColor={borderColor}
+                    borderColor={selectedSession?.id === session.id ? accentColor : borderColor}
                     borderRadius="2xl"
                     shadow="sm"
                     _hover={{ shadow: 'md', borderColor: accentColor }}
@@ -961,91 +1030,135 @@ const Analytics: React.FC = () => {
                     <CardBody p={4}>
                       <VStack align="stretch" spacing={3}>
                         <HStack justify="space-between" align="start">
-                          <VStack align="start" spacing={1}>
+                          <VStack align="start" spacing={1} flex={1}>
                             <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')} fontSize="sm">
                               {session.user}
                             </Text>
                             <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
                               {session.template}
                             </Text>
+                            <HStack spacing={2}>
+                              {session.isPlayground ? (
+                                <Badge 
+                                  colorScheme="orange"
+                                  variant="subtle"
+                                  fontSize="xs"
+                                >
+                                  Practice
+                                </Badge>
+                              ) : (
+                                <Badge 
+                                  colorScheme={session.sessionType === 'assignment' ? 'purple' : 'blue'}
+                                  variant="subtle"
+                                  fontSize="xs"
+                                  textTransform="capitalize"
+                                >
+                                  {session.sessionType}
+                                </Badge>
+                              )}
+                              <Badge 
+                                colorScheme={session.status === 'completed' ? 'green' : 'gray'}
+                                variant="subtle"
+                                fontSize="xs"
+                                textTransform="capitalize"
+                              >
+                                {session.status}
+                              </Badge>
+                            </HStack>
                           </VStack>
-                          <Badge 
-                            colorScheme={session.score >= 85 ? 'green' : session.score >= 70 ? 'yellow' : 'red'}
-                            variant="subtle"
-                            borderRadius="full"
-                            px={2}
-                            py={1}
-                            fontSize="xs"
-                          >
-                            {session.score}%
-                          </Badge>
+                          {session.score !== null && (
+                            <Badge 
+                              colorScheme={session.score >= 85 ? 'green' : session.score >= 70 ? 'yellow' : 'red'}
+                              variant="subtle"
+                              borderRadius="full"
+                              px={3}
+                              py={1}
+                              fontSize="sm"
+                              fontWeight="600"
+                            >
+                              {session.score}%
+                            </Badge>
+                          )}
                         </HStack>
                         
-                        <HStack spacing={2}>
-                          <HStack spacing={1}>
-                            <Icon as={Clock} boxSize={3} color={useColorModeValue('gray.400', 'gray.500')} />
-                            <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
-                              {session.duration}
-                            </Text>
+                        <HStack justify="space-between" align="center">
+                          <HStack spacing={4}>
+                            <HStack spacing={1}>
+                              <Icon as={Clock} boxSize={3} color={useColorModeValue('gray.400', 'gray.500')} />
+                              <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                                {session.duration}
+                              </Text>
+                            </HStack>
+                            <HStack spacing={1}>
+                              <Icon as={Calendar} boxSize={3} color={useColorModeValue('gray.400', 'gray.500')} />
+                              <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                                {new Date(session.date).toLocaleDateString()}
+                              </Text>
+                            </HStack>
                           </HStack>
-                          <HStack spacing={1}>
-                            <Icon as={Calendar} boxSize={3} color={useColorModeValue('gray.400', 'gray.500')} />
-                            <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
-                              {new Date(session.date).toLocaleDateString()}
-                            </Text>
-                          </HStack>
+                          {session.pdfUrl && (
+                            <Button
+                              as="a"
+                              href={session.pdfUrl}
+                              download
+                              size="xs"
+                              leftIcon={<Icon as={FileDown} boxSize={3} />}
+                              colorScheme="orange"
+                              variant="ghost"
+                            >
+                              PDF
+                            </Button>
+                          )}
                         </HStack>
 
-                        {/* Action Buttons */}
-                        {session.sessionType === 'assignment' && (
-                          <HStack spacing={2}>
-                            <Button
-                              size="xs"
-                              leftIcon={<Icon as={FileText} boxSize={3} />}
-                              colorScheme="orange"
-                              variant={selectedSession?.id === session.id && activeView === 'transcript' ? 'solid' : 'outline'}
-                              onClick={() => handleViewButtonClick('transcript', session)}
-                              flex={1}
-                            >
-                              Transcript
-                            </Button>
-                            <Button
-                              size="xs"
-                              leftIcon={<Icon as={ClipboardList} boxSize={3} />}
-                              colorScheme="orange"
-                              variant={selectedSession?.id === session.id && activeView === 'grade' ? 'solid' : 'outline'}
-                              onClick={() => handleViewButtonClick('grade', session)}
-                              flex={1}
-                            >
-                              Grade
-                            </Button>
-                            <Button
-                              size="xs"
-                              leftIcon={<Icon as={BarChart3} boxSize={3} />}
-                              colorScheme="orange"
-                              variant={selectedSession?.id === session.id && activeView === 'summary' ? 'solid' : 'outline'}
-                              onClick={() => handleViewButtonClick('summary', session)}
-                              flex={1}
-                            >
-                              Summary
-                            </Button>
-                            <Button
-                              size="xs"
-                              leftIcon={<Icon as={Volume2} boxSize={3} />}
-                              colorScheme="orange"
-                              variant="outline"
-                              isDisabled={!session.recording_url}
-                              flex={1}
-                              onClick={() => {
-                                if (session.recording_url) {
-                                  window.open(session.recording_url, '_blank')
-                                }
-                              }}
-                            >
-                              Audio
-                            </Button>
-                          </HStack>
-                        )}
+                        {/* Action Buttons - Show for ALL sessions */}
+                        <HStack spacing={2}>
+                          <Button
+                            size="xs"
+                            leftIcon={<Icon as={FileText} boxSize={3} />}
+                            colorScheme="orange"
+                            variant={selectedSession?.id === session.id && activeView === 'transcript' ? 'solid' : 'outline'}
+                            onClick={() => handleViewButtonClick('transcript', session)}
+                            flex={1}
+                          >
+                            Transcript
+                          </Button>
+                          <Button
+                            size="xs"
+                            leftIcon={<Icon as={ClipboardList} boxSize={3} />}
+                            colorScheme="orange"
+                            variant={selectedSession?.id === session.id && activeView === 'grade' ? 'solid' : 'outline'}
+                            onClick={() => handleViewButtonClick('grade', session)}
+                            flex={1}
+                          >
+                            Grade
+                          </Button>
+                          <Button
+                            size="xs"
+                            leftIcon={<Icon as={BarChart3} boxSize={3} />}
+                            colorScheme="orange"
+                            variant={selectedSession?.id === session.id && activeView === 'summary' ? 'solid' : 'outline'}
+                            onClick={() => handleViewButtonClick('summary', session)}
+                            flex={1}
+                          >
+                            Summary
+                          </Button>
+                          <Button
+                            size="xs"
+                            leftIcon={<Icon as={Volume2} boxSize={3} />}
+                            colorScheme="orange"
+                            variant="outline"
+                            isDisabled={!session.recordingUrl}
+                            flex={1}
+                            onClick={() => {
+                              if (session.recordingUrl) {
+                                window.open(session.recordingUrl, '_blank')
+                              }
+                            }}
+                          >
+                            Audio
+                          </Button>
+                        </HStack>
                       </VStack>
                     </CardBody>
                   </Card>
@@ -1179,7 +1292,7 @@ const Analytics: React.FC = () => {
                   
                   {/* Transcript View */}
                   {selectedSession?.id === session.id && activeView === 'transcript' && (
-                    <Card bg={cardBg} border="2px solid" borderColor="blue.500" borderRadius="2xl" shadow="lg">
+                    <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg">
                       <CardBody p={6}>
                         <VStack align="stretch" spacing={4}>
                           <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
@@ -1187,7 +1300,7 @@ const Analytics: React.FC = () => {
                           </Heading>
                           {loadingTranscript ? (
                             <VStack py={8}>
-                              <Spinner color="blue.500" />
+                              <Spinner color={accentColor} />
                               <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
                                 Loading transcript...
                               </Text>
@@ -1264,7 +1377,7 @@ const Analytics: React.FC = () => {
                   
                   {/* Summary View */}
                   {selectedSession?.id === session.id && activeView === 'summary' && (
-                    <Card bg={cardBg} border="2px solid" borderColor="green.500" borderRadius="2xl" shadow="lg">
+                    <Card bg={cardBg} border="2px solid" borderColor={accentColor} borderRadius="2xl" shadow="lg">
                       <CardBody p={6}>
                         <VStack align="stretch" spacing={4}>
                           <Heading size="md" color={useColorModeValue('gray.900', 'white')}>
@@ -1272,7 +1385,7 @@ const Analytics: React.FC = () => {
                           </Heading>
                           {loadingSummary ? (
                             <VStack py={8}>
-                              <Spinner color="green.500" />
+                              <Spinner color={accentColor} />
                               <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')}>
                                 Generating AI summary...
                               </Text>
@@ -1321,7 +1434,22 @@ const Analytics: React.FC = () => {
                     </Card>
                   )}
                   </React.Fragment>
-                ))}
+                ))
+                ) : (
+                  <Card bg={cardBg} border="1px solid" borderColor={borderColor} borderRadius="2xl">
+                    <CardBody p={8}>
+                      <VStack spacing={3}>
+                        <Icon as={BarChart3} boxSize={12} color={useColorModeValue('gray.300', 'gray.600')} />
+                        <Text color={useColorModeValue('gray.500', 'gray.400')} textAlign="center">
+                          No sessions found
+                        </Text>
+                        <Text fontSize="sm" color={useColorModeValue('gray.400', 'gray.500')} textAlign="center">
+                          {filterAssignmentId ? 'No sessions for this assignment yet' : sessionListFilter === 'practice' ? 'No practice sessions yet' : sessionListFilter === 'assignment' ? 'No assignment sessions yet' : 'No sessions available'}
+                        </Text>
+                      </VStack>
+                    </CardBody>
+                  </Card>
+                )}
               </VStack>
             </Box>
           </Box>

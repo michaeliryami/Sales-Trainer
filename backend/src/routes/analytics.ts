@@ -28,7 +28,7 @@ router.get('/admin/:orgId', async (req, res) => {
         startDate.setFullYear(2000) // All time
     }
 
-    // Get total sessions
+    // Get total sessions (same query as employee endpoint, just filtered by org_id)
     const { data: sessions, error: sessionsError } = await supabase
       .from('training_sessions')
       .select('*')
@@ -118,7 +118,7 @@ router.get('/admin/:orgId', async (req, res) => {
     // For admin: Show ALL sessions (practice + assignments) for filtering on frontend
     const recentSessionsData = sessions
       ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 20) || [] // Increased to 20 to show more sessions
+      .slice(0, 50) || [] // Increased to 50 to show more sessions
 
     // Get profiles for user names - include all users from sessions AND userMetrics
     const recentSessionUserIds = recentSessionsData.map(s => s.user_id)
@@ -166,7 +166,8 @@ router.get('/admin/:orgId', async (req, res) => {
         hasGrade: !!grade,
         sessionType: session.session_type,
         isPlayground: isPlayground,
-        assignment_id: session.assignment_id
+        assignment_id: session.assignment_id,
+        recordingUrl: session.recording_url
       }
     })
 
@@ -1647,6 +1648,63 @@ router.post('/session/:id/submit', async (req, res): Promise<void> => {
     console.error('Error in submit session:', error)
     res.status(500).json({
       error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})
+
+// DEBUG ENDPOINT: Check sessions for a specific assignment
+router.get('/debug-assignment-sessions/:orgId/:assignmentId', async (req, res) => {
+  try {
+    const { orgId, assignmentId } = req.params
+    
+    console.log('🔍 DEBUG: Querying training_sessions for orgId:', orgId, 'assignmentId:', assignmentId)
+    
+    // Query 1: Get all sessions for this org
+    const { data: allSessions, error: allError } = await supabase
+      .from('training_sessions')
+      .select('id, user_id, assignment_id, session_type, created_at')
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    
+    console.log('🔍 DEBUG: All sessions:', allSessions?.length)
+    
+    // Query 2: Get sessions specifically for this assignment
+    const { data: assignmentSessions, error: assignmentError } = await supabase
+      .from('training_sessions')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('assignment_id', parseInt(assignmentId))
+    
+    console.log('🔍 DEBUG: Sessions with assignment_id =', assignmentId, ':', assignmentSessions?.length)
+    
+    // Query 3: Get sessions with session_type = 'assignment'
+    const { data: typeSessions, error: typeError } = await supabase
+      .from('training_sessions')
+      .select('id, user_id, assignment_id, session_type, created_at')
+      .eq('org_id', orgId)
+      .eq('session_type', 'assignment')
+      .order('created_at', { ascending: false })
+    
+    console.log('🔍 DEBUG: Sessions with session_type="assignment":', typeSessions?.length)
+    
+    return res.json({
+      success: true,
+      data: {
+        allSessionsCount: allSessions?.length || 0,
+        allSessions: allSessions || [],
+        assignmentSessionsCount: assignmentSessions?.length || 0,
+        assignmentSessions: assignmentSessions || [],
+        typeSessionsCount: typeSessions?.length || 0,
+        typeSessions: typeSessions || []
+      }
+    })
+  } catch (error) {
+    console.error('❌ DEBUG: Error querying sessions:', error)
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to query sessions',
       details: error instanceof Error ? error.message : 'Unknown error'
     })
   }
