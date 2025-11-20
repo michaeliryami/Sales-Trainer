@@ -14,18 +14,12 @@ import {
   GridItem,
   Flex,
   Badge,
-  Divider,
 } from '@chakra-ui/react'
-import { 
-  Phone, 
-  BarChart2, 
-  Zap, 
-  TrendingUp, 
-  Check, 
-  ChevronDown, 
-  BookOpen, 
-  Target, 
-  PlayCircle 
+import {
+  Phone,
+  BarChart2,
+  BookOpen,
+  PlayCircle
 } from 'lucide-react'
 
 function App() {
@@ -140,11 +134,6 @@ function App() {
         <Container maxW="7xl">
           <Flex justify="space-between" align="center">
             <Image src="/logolong.png" alt="Clozone" h="40px" />
-            <HStack spacing={8} display={{ base: 'none', md: 'flex' }}>
-              <Button variant="ghost" fontWeight="500" color="gray.600" _hover={{ color: 'brand.500', bg: 'transparent' }}>Features</Button>
-              <Button variant="ghost" fontWeight="500" color="gray.600" _hover={{ color: 'brand.500', bg: 'transparent' }}>How it Works</Button>
-              <Button variant="ghost" fontWeight="500" color="gray.600" _hover={{ color: 'brand.500', bg: 'transparent' }}>Pricing</Button>
-            </HStack>
             <HStack spacing={4}>
               <Button 
                 as="a" 
@@ -187,28 +176,22 @@ function App() {
         {/* Background blobs */}
         <Box position="absolute" top="10%" left="-10%" w="600px" h="600px" bg="brand.200" filter="blur(120px)" opacity="0.2" borderRadius="full" />
         <Box position="absolute" bottom="10%" right="-10%" w="600px" h="600px" bg="purple.200" filter="blur(120px)" opacity="0.2" borderRadius="full" />
+        <Box
+          position="absolute"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          bgImage="radial-gradient(rgba(242, 111, 37, 0.35) 2px, transparent 2px)"
+          bgSize="32px 32px"
+          opacity={0.85}
+          pointerEvents="none"
+        />
 
         <Container maxW="7xl" position="relative">
           <Grid templateColumns={{ base: '1fr', lg: '1.2fr 1fr' }} gap={12} alignItems="center">
             <GridItem>
               <VStack align="flex-start" spacing={8}>
-                <Badge 
-                  bg="white" 
-                  color="brand.600" 
-                  px={4} 
-                  py={2} 
-                  rounded="full" 
-                  boxShadow="md"
-                  display="flex" 
-                  alignItems="center" 
-                  gap={2}
-                  fontSize="sm"
-                  className="fade-in-up"
-                >
-                  <Icon as={Zap} size={16} fill="currentColor" />
-                  <span>New: Advanced Voice Analytics 2.0</span>
-                </Badge>
-
                 <Heading
                   fontSize={{ base: '5xl', md: '6xl', lg: '7xl' }}
                   fontWeight="900"
@@ -254,9 +237,8 @@ function App() {
                     _hover={{ bg: 'brand.600', transform: 'translateY(-2px)', boxShadow: 'xl' }}
                     transition="all 0.3s"
                     rounded="2xl"
-                    rightIcon={<Icon as={ChevronDown} />}
                   >
-                    Start Training Now
+                    Book a Demo
                   </Button>
                   <Button
                     size="lg"
@@ -268,20 +250,12 @@ function App() {
                     _hover={{ bg: 'blackAlpha.50' }}
                     rounded="2xl"
                     leftIcon={<Icon as={PlayCircle} />}
+                    onClick={() => {
+                      document.getElementById('demo-video')?.scrollIntoView({ behavior: 'smooth' })
+                    }}
                   >
                     See How It Works
                   </Button>
-                </HStack>
-
-                <HStack spacing={6} pt={4} className="fade-in-up delay-3" color="gray.500" fontSize="sm">
-                  <HStack>
-                    <Icon as={Check} color="green.500" />
-                    <Text>No credit card required</Text>
-                  </HStack>
-                  <HStack>
-                    <Icon as={Check} color="green.500" />
-                    <Text>Setup in 2 minutes</Text>
-                  </HStack>
                 </HStack>
               </VStack>
             </GridItem>
@@ -376,69 +350,45 @@ function App() {
               </Box>
 
               {/* Floating Badge 1 */}
-              <Box
-                position="absolute"
-                top="20%"
-                right="-40px"
-                bg="white"
-                p={4}
-                rounded="2xl"
-                boxShadow="xl"
-                zIndex={2}
-                className="float-fade-1"
-              >
-                <HStack>
-                  <Box bg="green.100" p={2} rounded="lg">
-                    <Icon as={TrendingUp} color="green.600" size={20} />
-                  </Box>
-                  <VStack align="start" spacing={0}>
-                    <Text fontSize="xs" color="gray.500" fontWeight="600">Closing Rate</Text>
-                    <Text fontSize="lg" fontWeight="bold" color="green.600">+32%</Text>
-                  </VStack>
-                </HStack>
-              </Box>
-
-              {/* Floating Badge 2 */}
-              <Box
-                position="absolute"
-                bottom="15%"
-                left="-40px"
-                bg="white"
-                p={4}
-                rounded="2xl"
-                boxShadow="xl"
-                zIndex={2}
-                className="float-fade-2"
-              >
-                <HStack>
-                  <Box bg="brand.100" p={2} rounded="lg">
-                    <Icon as={Target} color="brand.600" size={20} />
-                  </Box>
-                  <VStack align="start" spacing={0}>
-                    <Text fontSize="xs" color="gray.500" fontWeight="600">Objection Score</Text>
-                    <Text fontSize="lg" fontWeight="bold" color="brand.600">9.8/10</Text>
-                  </VStack>
-                </HStack>
-              </Box>
-            </GridItem>
+              </GridItem>
           </Grid>
         </Container>
       </Box>
 
-      {/* Social Proof - Logos */}
-      <Box borderY="1px" borderColor="gray.100" bg="gray.50" py={12}>
-        <Container maxW="7xl">
-          <Text textAlign="center" fontSize="sm" fontWeight="600" color="gray.500" mb={8} letterSpacing="wide" textTransform="uppercase">
-            Trusted by high-performing sales teams
-          </Text>
-          <SimpleGrid columns={{ base: 2, md: 5 }} gap={8} alignItems="center" opacity={0.6}>
-            {/* Placeholders for logos - using text for now but styled as logos */}
-            <Heading size="md" color="gray.400" textAlign="center">INSURIFY</Heading>
-            <Heading size="md" color="gray.400" textAlign="center">Lemonade</Heading>
-            <Heading size="md" color="gray.400" textAlign="center">PolicyGenius</Heading>
-            <Heading size="md" color="gray.400" textAlign="center">SELECT</Heading>
-            <Heading size="md" color="gray.400" textAlign="center">Ladder</Heading>
-          </SimpleGrid>
+      {/* Demo Video Section */}
+      <Box as="section" id="demo-video" py={24} bg="gray.50">
+        <Container maxW="6xl">
+          <VStack spacing={6} mb={12} textAlign="center">
+            <Heading fontSize={{ base: '3xl', md: '4xl' }} color="gray.900">
+              Watch How Clozone Works
+            </Heading>
+            <Text fontSize="lg" color="gray.600" maxW="2xl">
+              A 3-minute walkthrough showing AI-powered practice calls, instant grading, and how sales leaders coach reps without joining every call.
+            </Text>
+          </VStack>
+          <Box
+            position="relative"
+            bg="gray.900"
+            rounded="3xl"
+            overflow="hidden"
+            boxShadow="2xl"
+            border="1px solid"
+            borderColor="gray.200"
+            minH={{ base: '280px', md: '420px' }}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <VStack spacing={4}>
+              <Icon as={PlayCircle} w={16} h={16} color="brand.400" />
+              <Text color="white" fontSize="xl" fontWeight="semibold">
+                Demo video coming soon
+              </Text>
+              <Text color="gray.300" fontSize="md">
+                Add your Loom or Vimeo link here when it\u2019s ready.
+              </Text>
+            </VStack>
+          </Box>
         </Container>
       </Box>
 
@@ -485,7 +435,7 @@ function App() {
               </Box>
               <Heading size="md" mb={3}>Scenario Library</Heading>
               <Text color="gray.600" lineHeight="relaxed">
-                Access 40+ pre-built insurance scenarios covering life, health, and P&C. Or build your own custom scenarios in minutes.
+                Access 40+ pre-built insurance scenarios covering a ton of potential life insurance leads. Or build your own custom scenarios in minutes.
               </Text>
             </Box>
           </SimpleGrid>
@@ -605,9 +555,7 @@ function App() {
                   Sign In
                 </Button>
               </HStack>
-              <Text color="whiteAlpha.700" fontSize="sm" pt={4}>
-                Free 14-day trial • No credit card required • Cancel anytime
-              </Text>
+         
             </VStack>
           </Box>
         </Container>
@@ -615,48 +563,18 @@ function App() {
 
       {/* Footer */}
       <Box bg="white" borderTop="1px" borderColor="gray.100" py={12}>
-        <Container maxW="7xl">
-          <Grid templateColumns={{ base: '1fr', md: '2fr 1fr 1fr 1fr' }} gap={12}>
-            <GridItem>
-              <Image src="/logolong.png" alt="Clozone" h="32px" mb={6} />
-              <Text color="gray.500" mb={6}>
-                The AI sales training platform that turns average reps into top performers through realistic practice.
-              </Text>
-              <HStack spacing={4}>
-                {/* Social icons could go here */}
-              </HStack>
-            </GridItem>
-            <GridItem>
-              <Heading size="sm" mb={4}>Product</Heading>
-              <VStack align="start" spacing={3} color="gray.600">
-                <Text as="a" href="#" _hover={{ color: 'brand.500' }}>Features</Text>
-                <Text as="a" href="#" _hover={{ color: 'brand.500' }}>Pricing</Text>
-                <Text as="a" href="#" _hover={{ color: 'brand.500' }}>Case Studies</Text>
-                <Text as="a" href="#" _hover={{ color: 'brand.500' }}>Reviews</Text>
-              </VStack>
-            </GridItem>
-            <GridItem>
-              <Heading size="sm" mb={4}>Company</Heading>
-              <VStack align="start" spacing={3} color="gray.600">
-                <Text as="a" href="#" _hover={{ color: 'brand.500' }}>About Us</Text>
-                <Text as="a" href="#" _hover={{ color: 'brand.500' }}>Careers</Text>
-                <Text as="a" href="#" _hover={{ color: 'brand.500' }}>Blog</Text>
-                <Text as="a" href="#" _hover={{ color: 'brand.500' }}>Contact</Text>
-              </VStack>
-            </GridItem>
-            <GridItem>
-              <Heading size="sm" mb={4}>Legal</Heading>
-              <VStack align="start" spacing={3} color="gray.600">
-                <Text as="a" href="/terms-of-service.html" _hover={{ color: 'brand.500' }}>Terms</Text>
-                <Text as="a" href="/privacy-policy.html" _hover={{ color: 'brand.500' }}>Privacy</Text>
-                <Text as="a" href="#" _hover={{ color: 'brand.500' }}>Security</Text>
-              </VStack>
-            </GridItem>
-          </Grid>
-          <Divider my={12} borderColor="gray.100" />
-          <Text textAlign="center" color="gray.400" fontSize="sm">
-            © 2025 Clozone AI. All rights reserved.
-          </Text>
+        <Container maxW="5xl">
+          <VStack spacing={4}>
+            <Image src="/logolong.png" alt="Clozone" h="32px" />
+            <Text color="gray.500" textAlign="center">
+              © 2025 Clozone AI. All rights reserved.
+            </Text>
+            <HStack spacing={4} color="gray.600" fontWeight="500">
+              <Text as="a" href="/terms-of-service.html" _hover={{ color: 'brand.500' }}>Terms</Text>
+              <Text color="gray.300">•</Text>
+              <Text as="a" href="/privacy-policy.html" _hover={{ color: 'brand.500' }}>Privacy</Text>
+            </HStack>
+          </VStack>
         </Container>
       </Box>
     </Box>
