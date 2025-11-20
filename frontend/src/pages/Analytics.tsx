@@ -237,11 +237,12 @@ const Analytics: React.FC = () => {
     }
   }
 
-  // Fetch individual user analytics
+  // Fetch individual user analytics - always use all-time data for team members
   const fetchUserAnalytics = async (userId: string) => {
     setLoadingUserAnalytics(true)
     try {
-      const response = await apiFetch(`/api/analytics/employee/${userId}?period=${timeRange}`)
+      // Always fetch all-time data for team member stats (not affected by time filter)
+      const response = await apiFetch(`/api/analytics/employee/${userId}?period=all`)
       const result = await response.json()
       
       if (result.success) {

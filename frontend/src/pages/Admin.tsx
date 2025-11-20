@@ -65,7 +65,7 @@ interface TemplateFormData {
 }
 
 function Admin() {
-  const { organization } = useProfile()
+  const { organization, userRole } = useProfile()
   const navigate = useNavigate()
   
   // Load form data from localStorage or use defaults
@@ -1404,21 +1404,23 @@ Speaker: Clear dialogue format"
             )}
           </ModalBody>
           <ModalFooter borderTop="1px solid" borderColor={useColorModeValue('gray.100', 'gray.700')}>
-            <Button
-              colorScheme="orange"
-              leftIcon={<Icon as={UserPlus} />}
-              onClick={() => {
-                if (selectedViewTemplate) {
-                  handleAssignTemplate(selectedViewTemplate)
-                }
-              }}
-              size="lg"
-              borderRadius="xl"
-              fontWeight="600"
-              mr={3}
-            >
-              Assign to Team
-            </Button>
+            {userRole.isAdmin && (
+              <Button
+                colorScheme="orange"
+                leftIcon={<Icon as={UserPlus} />}
+                onClick={() => {
+                  if (selectedViewTemplate) {
+                    handleAssignTemplate(selectedViewTemplate)
+                  }
+                }}
+                size="lg"
+                borderRadius="xl"
+                fontWeight="600"
+                mr={3}
+              >
+                Assign to Team
+              </Button>
+            )}
             <Button variant="outline" onClick={onViewClose} borderRadius="xl">
               Close
             </Button>

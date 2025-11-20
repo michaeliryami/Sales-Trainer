@@ -115,6 +115,27 @@ function Header() {
             </>
           )}
 
+          {/* Templates - Available to all users */}
+          <Button
+            variant={isActive('/admin') ? "solid" : "ghost"}
+            colorScheme="orange"
+            size="sm"
+            onClick={() => navigate('/admin')}
+            leftIcon={<Icon as={PlusCircle} boxSize={4} />}
+            fontWeight="600"
+            borderRadius="xl"
+            bg={isActive('/admin') ? '#f26f25' : 'transparent'}
+            color={isActive('/admin') ? 'white' : undefined}
+            _hover={isActive('/admin') ? {
+              transform: 'translateY(-2px)',
+              shadow: 'lg',
+              bg: '#d95e1e'
+            } : {}}
+            transition="all 0.2s"
+          >
+            Templates
+          </Button>
+
           {/* Admin Navigation */}
           {userRole.isAdmin && (
             <>
@@ -155,25 +176,6 @@ function Header() {
                 transition="all 0.2s"
               >
                 Assignments
-              </Button>
-              <Button
-                variant={isActive('/admin') ? "solid" : "ghost"}
-                colorScheme="orange"
-                size="sm"
-                onClick={() => navigate('/admin')}
-                leftIcon={<Icon as={PlusCircle} boxSize={4} />}
-                fontWeight="600"
-                borderRadius="xl"
-                bg={isActive('/admin') ? '#f26f25' : 'transparent'}
-                color={isActive('/admin') ? 'white' : undefined}
-                _hover={isActive('/admin') ? {
-                  transform: 'translateY(-2px)',
-                  shadow: 'lg',
-                  bg: '#d95e1e'
-                } : {}}
-                transition="all 0.2s"
-              >
-                Templates
               </Button>
               <Button
                 variant={isActive('/analytics') ? "solid" : "ghost"}

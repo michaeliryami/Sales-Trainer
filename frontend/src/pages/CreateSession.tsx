@@ -1666,6 +1666,22 @@ function CreateSession() {
                                         </Text>
                                       )}
                                       
+                                      {/* Show template */}
+                                      {(() => {
+                                        const assignmentTemplate = templates.find(t => t.id === assignment.template)
+                                        if (assignmentTemplate) {
+                                          return (
+                                            <HStack spacing={2} fontSize="xs">
+                                              <Icon as={FileText} boxSize={3} color={textSecondary} />
+                                              <Text color={textSecondary} fontWeight="500">
+                                                Template: {assignmentTemplate.title}
+                                              </Text>
+                                            </HStack>
+                                          )
+                                        }
+                                        return null
+                                      })()}
+                                      
                                       <HStack spacing={2} fontSize="xs" color={textSecondary}>
                                         {assignment.due && (
                                           <Text>
