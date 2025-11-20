@@ -40,6 +40,8 @@ export interface Template {
   difficulty: string
   type: string
   script: string
+  user_id?: string | null
+  org?: number | null
 }
 
 export default supabase

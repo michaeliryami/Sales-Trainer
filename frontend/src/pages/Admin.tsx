@@ -65,7 +65,7 @@ interface TemplateFormData {
 }
 
 function Admin() {
-  const { organization, userRole } = useProfile()
+  const { organization, userRole, profile } = useProfile()
   const navigate = useNavigate()
   
   // Load form data from localStorage or use defaults
@@ -143,19 +143,29 @@ function Admin() {
   const fetchTemplates = async () => {
     try {
       setIsLoadingTemplates(true)
-      const query = supabase
-        .from('templates')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      // Only show templates for this organization
-      if (organization?.id) {
-        query.eq('org', organization.id)
-      } else {
-        // If org is not ready yet, keep list empty
+      
+      // Only proceed if organization is ready
+      if (!organization?.id) {
         setTemplates([])
         setIsLoadingTemplates(false)
         return
+      }
+
+      // Fetch templates based on user permissions:
+      // - Templates with user_id = null are visible to everyone (built-in/shared)
+      // - Templates with user_id set are only visible to that specific user
+      const query = supabase
+        .from('templates')
+        .select('*')
+        .eq('org', organization.id)
+        .order('created_at', { ascending: false })
+
+      // Build filter: show shared templates OR templates created by this user
+      if (profile?.id) {
+        query.or(`user_id.is.null,user_id.eq.${profile.id}`)
+      } else {
+        // If no profile, only show shared templates
+        query.is('user_id', null)
       }
 
       const { data, error } = await query
@@ -301,7 +311,8 @@ function Admin() {
             insuranceType: 'life', // Hardcoded to life insurance
             difficulty: formData.difficulty,
             script: formData.script,
-            org: organization?.id
+            org: organization?.id,
+            userId: profile?.id // Track which user created this template
           })
         })
 

@@ -1141,21 +1141,41 @@ function CreateSession() {
         if (import.meta.env.DEV) console.log('Fetching templates for organization:', organization?.id)
         if (import.meta.env.DEV) console.log('User role isAdmin:', userRole.isAdmin)
         
-        // Fetch both NULL org templates (for lookups) and org-specific templates
-        // BUT we'll filter NULL org templates out of the Custom tab display
-        const { data, error } = await supabase
+        // Fetch templates based on user permissions:
+        // - Templates with user_id = null are visible to everyone (built-in/shared)
+        // - Templates with user_id set are only visible to that specific user
+        // - Also fetch templates from other orgs if user_id is null (for lookups in assignments)
+        const query = supabase
           .from('templates')
           .select('*')
           .or(`org.is.null,org.eq.${organization?.id}`)
           .order('created_at', { ascending: false })
 
-        if (error) {
-          if (import.meta.env.DEV) console.error('Error fetching templates:', error)
-          return
-        }
+        // Add user_id filter: show shared templates OR templates created by this user
+        if (profile?.id) {
+          // This will be applied as an additional AND condition after the org filter
+          // We want (org match) AND (user_id is null OR user_id equals current user)
+          const { data, error } = await query.or(`user_id.is.null,user_id.eq.${profile.id}`)
 
-        if (import.meta.env.DEV) console.log('Templates fetched:', data?.length || 0, 'templates found')
-        setTemplates(data || [])
+          if (error) {
+            if (import.meta.env.DEV) console.error('Error fetching templates:', error)
+            return
+          }
+
+          if (import.meta.env.DEV) console.log('Templates fetched:', data?.length || 0, 'templates found')
+          setTemplates(data || [])
+        } else {
+          // If no profile, only show shared templates
+          const { data, error } = await query.is('user_id', null)
+
+          if (error) {
+            if (import.meta.env.DEV) console.error('Error fetching templates:', error)
+            return
+          }
+
+          if (import.meta.env.DEV) console.log('Templates fetched:', data?.length || 0, 'templates found')
+          setTemplates(data || [])
+        }
       } catch (error) {
         if (import.meta.env.DEV) console.error('Error fetching templates:', error)
       } finally {

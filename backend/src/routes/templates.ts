@@ -15,7 +15,7 @@ interface TemplateCreateData {
 // Create new template
 router.post('/', async (req, res): Promise<void> => {
   try {
-    const { title, description, insuranceType, difficulty, script, org } = req.body
+    const { title, description, insuranceType, difficulty, script, org, userId } = req.body
 
     // Validate required fields
     if (!title || !description || !insuranceType || !difficulty || !script) {
@@ -33,7 +33,8 @@ router.post('/', async (req, res): Promise<void> => {
       difficulty,
       type: insuranceType,
       script,
-      org: org ? Number(org) : null
+      org: org ? Number(org) : null,
+      user_id: userId || null // Set user_id to track who created this template
     }
 
     const { data: newTemplate, error: insertError } = await supabase
@@ -70,10 +71,24 @@ router.post('/', async (req, res): Promise<void> => {
 // Get all templates
 router.get('/', async (req, res): Promise<void> => {
   try {
-    const { data: templates, error } = await supabase
+    const { userId } = req.query
+
+    // Fetch templates based on user permissions
+    // - Templates with user_id = null are visible to everyone (built-in/shared)
+    // - Templates with user_id set are only visible to that specific user
+    let query = supabase
       .from('templates')
       .select('*')
-      .order('created_at', { ascending: false })
+
+    if (userId) {
+      // Get templates that are either shared (user_id is null) OR created by this user
+      query = query.or(`user_id.is.null,user_id.eq.${userId}`)
+    } else {
+      // If no userId provided, only return shared templates
+      query = query.is('user_id', null)
+    }
+
+    const { data: templates, error } = await query.order('created_at', { ascending: false })
 
     if (error) {
       console.error('Supabase error:', error)
@@ -87,6 +102,7 @@ router.get('/', async (req, res): Promise<void> => {
       insuranceType: template.type, // Map 'type' back to 'insuranceType'
       difficulty: template.difficulty,
       createdAt: template.created_at,
+      user_id: template.user_id,
       // Include truncated script preview
       scriptPreview: template.script.substring(0, 150) + (template.script.length > 150 ? '...' : '')
     }))
