@@ -21,6 +21,7 @@ export interface Template {
   pdf_path?: string | null
   org?: string | null
   user_id?: string | null
+  age_range?: string | null
 }
 
 export default supabase

@@ -15,13 +15,13 @@ interface TemplateCreateData {
 // Create new template
 router.post('/', async (req, res): Promise<void> => {
   try {
-    const { title, description, insuranceType, difficulty, script, org, userId } = req.body
+    const { title, description, insuranceType, difficulty, script, org, userId, ageRange } = req.body
 
     // Validate required fields
-    if (!title || !description || !insuranceType || !difficulty || !script) {
+    if (!title || !description || !insuranceType || !difficulty || !script || !ageRange) {
       res.status(400).json({
         error: 'Missing required fields',
-        required: ['title', 'description', 'insuranceType', 'difficulty', 'script']
+        required: ['title', 'description', 'insuranceType', 'difficulty', 'script', 'ageRange']
       })
       return
     }
@@ -33,6 +33,7 @@ router.post('/', async (req, res): Promise<void> => {
       difficulty,
       type: insuranceType,
       script,
+      age_range: ageRange,
       org: org ? Number(org) : null,
       user_id: userId || null // Set user_id to track who created this template
     }
@@ -164,14 +165,15 @@ router.get('/:id', async (req, res): Promise<void> => {
 router.put('/:id', async (req, res): Promise<void> => {
   try {
     const { id } = req.params
-    const { title, description, insuranceType, difficulty, script } = req.body
+    const { title, description, insuranceType, difficulty, script, ageRange } = req.body
 
     const updateBody = {
       title,
       description,
       type: insuranceType,
       difficulty,
-      script
+      script,
+      age_range: ageRange
     }
 
     const { data: updatedTemplate, error } = await supabase

@@ -62,6 +62,7 @@ interface TemplateFormData {
   description: string
   difficulty: string
   script: string
+  ageRange: string
 }
 
 function Admin() {
@@ -82,7 +83,8 @@ function Admin() {
       title: '',
       description: '',
       difficulty: '',
-      script: ''
+      script: '',
+      ageRange: ''
     }
   }
 
@@ -261,7 +263,7 @@ function Admin() {
 
   const handleSubmit = async () => {
     // Validate required fields
-    if (!formData.title || !formData.description || !formData.difficulty || !formData.script) {
+    if (!formData.title || !formData.description || !formData.difficulty || !formData.script || !formData.ageRange) {
       toast({
         title: 'Missing fields',
         description: 'Please fill in all required fields',
@@ -285,7 +287,8 @@ function Admin() {
             description: formData.description,
             insuranceType: 'life', // Hardcoded to life insurance
             difficulty: formData.difficulty,
-            script: formData.script
+            script: formData.script,
+            ageRange: formData.ageRange
           })
         })
 
@@ -311,6 +314,7 @@ function Admin() {
             insuranceType: 'life', // Hardcoded to life insurance
             difficulty: formData.difficulty,
             script: formData.script,
+            ageRange: formData.ageRange,
             org: organization?.id,
             userId: profile?.id // Track which user created this template
           })
@@ -334,7 +338,8 @@ function Admin() {
         title: '',
         description: '',
         difficulty: '',
-        script: ''
+        script: '',
+        ageRange: ''
       }
       setFormData(emptyForm)
       localStorage.removeItem('templateFormData')
@@ -361,7 +366,8 @@ function Admin() {
       title: template.title,
       description: template.description,
       difficulty: template.difficulty,
-      script: template.script
+      script: template.script,
+      ageRange: template.age_range || ''
     })
     setEditingTemplate(template)
   }
@@ -371,7 +377,8 @@ function Admin() {
       title: `${template.title} (Copy)`,
       description: template.description,
       difficulty: template.difficulty,
-      script: template.script
+      script: template.script,
+      ageRange: template.age_range || ''
     })
     setEditingTemplate(null)
   }
@@ -658,6 +665,40 @@ function Admin() {
                     </Select>
                   </FormControl>
 
+                  <FormControl isRequired>
+                    <FormLabel 
+                      fontSize="sm" 
+                      color={useColorModeValue('gray.700', 'gray.300')} 
+                      fontWeight="semibold"
+                      mb={2}
+                    >
+                      Prospect Age Range
+                    </FormLabel>
+                    <Select
+                      placeholder="Select age range"
+                      value={formData.ageRange}
+                      onChange={(e) => handleInputChange('ageRange', e.target.value)}
+                      bg={cardBg}
+                      border="1px solid"
+                      borderColor={useColorModeValue('gray.100', 'gray.750')}
+                      borderRadius="xl"
+                      _hover={{
+                        borderColor: useColorModeValue('gray.300', 'gray.600')
+                      }}
+                      _focus={{
+                        borderColor: accentColor,
+                        boxShadow: `0 0 0 1px ${accentColor}`
+                      }}
+                    >
+                      <option value="18-25">18-25 (Recent Graduate/Entry Level)</option>
+                      <option value="26-35">26-35 (Young Professional)</option>
+                      <option value="36-45">36-45 (Mid-Career Professional)</option>
+                      <option value="46-55">46-55 (Established Professional)</option>
+                      <option value="56-65">56-65 (Pre-Retirement)</option>
+                      <option value="65+">65+ (Retired/Senior)</option>
+                    </Select>
+                  </FormControl>
+
                   {/* Preview of selected options */}
                   {formData.difficulty && (
                     <Flex gap={2} mt={2}>
@@ -667,6 +708,11 @@ function Admin() {
                       <Badge colorScheme={getDifficultyColor(formData.difficulty)} textTransform="capitalize">
                         {formData.difficulty}
                       </Badge>
+                      {formData.ageRange && (
+                        <Badge colorScheme="blue" textTransform="capitalize">
+                          Age: {formData.ageRange}
+                        </Badge>
+                      )}
                     </Flex>
                   )}
                 </VStack>

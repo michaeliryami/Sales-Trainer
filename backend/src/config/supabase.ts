@@ -42,6 +42,7 @@ export interface Template {
   script: string
   user_id?: string | null
   org?: number | null
+  age_range?: string | null
 }
 
 export default supabase
