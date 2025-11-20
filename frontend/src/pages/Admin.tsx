@@ -824,7 +824,8 @@ Speaker: Clear dialogue format"
                         title: '',
                         description: '',
                         difficulty: '',
-                        script: ''
+                        script: '',
+                        ageRange: ''
                       }
                       setFormData(emptyForm)
                       setEditingTemplate(null)
@@ -853,7 +854,8 @@ Speaker: Clear dialogue format"
                           title: '',
                           description: '',
                           difficulty: '',
-                          script: ''
+                          script: '',
+                          ageRange: ''
                         }
                         setFormData(emptyForm)
                         localStorage.removeItem('templateFormData')
