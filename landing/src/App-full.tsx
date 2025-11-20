@@ -170,12 +170,8 @@ function App() {
             <HStack spacing={8} pt={8} color={textSecondary} fontSize="sm">
               <HStack>
                 <Icon as={CheckCircle} color="brand.500" />
-                <Text>14-day free trial</Text>
               </HStack>
-              <HStack>
-                <Icon as={CheckCircle} color="brand.500" />
-                <Text>No credit card required</Text>
-              </HStack>
+          
               <HStack>
                 <Icon as={CheckCircle} color="brand.500" />
                 <Text>Cancel anytime</Text>
@@ -388,9 +384,7 @@ function App() {
                   Get Started
                 </Button>
 
-                <Text fontSize="xs" color={textSecondary} textAlign="center">
-                  14-day free trial • No credit card required
-                </Text>
+              
               </VStack>
             </Box>
 
