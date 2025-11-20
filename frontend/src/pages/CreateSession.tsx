@@ -1280,8 +1280,9 @@ function CreateSession() {
               </Box>
 
               {/* Tabs for Employees - Playground vs Assignments */}
+              {/* IMPORTANT: Playground/Train must always be the leftmost tab */}
               {!userRole.isAdmin && (
-                <HStack spacing={2} px={6} py={3}>
+                <HStack spacing={2} px={6} py={3} direction="row">
                   <Button
                     size="sm"
                     onClick={() => setLeftSideTab('playground')}
@@ -1295,6 +1296,7 @@ function CreateSession() {
                       transform: leftSideTab === 'playground' ? 'none' : 'translateY(-1px)',
                       bg: leftSideTab === 'playground' ? '#d95e1e' : undefined
                     }}
+                    order={1}
                   >
                     Playground
                   </Button>
@@ -1311,6 +1313,7 @@ function CreateSession() {
                       transform: leftSideTab === 'assignments' ? 'none' : 'translateY(-1px)',
                       bg: leftSideTab === 'assignments' ? '#d95e1e' : undefined
                     }}
+                    order={2}
                   >
                     Assignments
                   </Button>
