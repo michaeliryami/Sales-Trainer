@@ -356,39 +356,52 @@ function App() {
       </Box>
 
       {/* Demo Video Section */}
-      <Box as="section" id="demo-video" py={24} bg="gray.50">
-        <Container maxW="6xl">
-          <VStack spacing={6} mb={12} textAlign="center">
-            <Heading fontSize={{ base: '3xl', md: '4xl' }} color="gray.900">
-              Watch How Clozone Works
-            </Heading>
-            <Text fontSize="lg" color="gray.600" maxW="2xl">
-              A 3-minute walkthrough showing AI-powered practice calls, instant grading, and how sales leaders coach reps without joining every call.
-            </Text>
-          </VStack>
-          <Box
-            position="relative"
-            bg="gray.900"
-            rounded="3xl"
-            overflow="hidden"
-            boxShadow="2xl"
-            border="1px solid"
-            borderColor="gray.200"
-            minH={{ base: '280px', md: '420px' }}
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-          >
-            <VStack spacing={4}>
-              <Icon as={PlayCircle} w={16} h={16} color="brand.400" />
-              <Text color="white" fontSize="xl" fontWeight="semibold">
-                Demo video coming soon
-              </Text>
-              <Text color="gray.300" fontSize="md">
-                Add your Loom or Vimeo link here when it\u2019s ready.
+      <Box 
+        as="section" 
+        id="demo-video" 
+        minH="100vh"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        bg="gray.50"
+        py={12}
+      >
+        <Container maxW="6xl" h="full">
+          <VStack spacing={8} h="full" justify="center">
+            <VStack spacing={4} textAlign="center" mb={4}>
+              <Heading fontSize={{ base: '3xl', md: '4xl', lg: '5xl' }} color="gray.900">
+                Watch How Clozone Works
+              </Heading>
+              <Text fontSize={{ base: 'lg', md: 'xl' }} color="gray.600" maxW="2xl">
+                Here's Anders doing a live practice call with our AI prospect. See how realistic the conversation feels and how instant feedback helps improve performance.
               </Text>
             </VStack>
-          </Box>
+            <Box
+              position="relative"
+              bg="gray.900"
+              rounded="3xl"
+              overflow="hidden"
+              boxShadow="2xl"
+              border="1px solid"
+              borderColor="gray.200"
+              w="full"
+              h={{ base: '60vh', md: '75vh' }}
+              minH={{ base: '400px', md: '600px' }}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+            >
+              <VStack spacing={4}>
+                <Icon as={PlayCircle} w={20} h={20} color="brand.400" />
+                <Text color="white" fontSize="xl" fontWeight="semibold">
+                  Demo video coming soon
+                </Text>
+                <Text color="gray.300" fontSize="md">
+                  Add your Loom or Vimeo link here when it\u2019s ready.
+                </Text>
+              </VStack>
+            </Box>
+          </VStack>
         </Container>
       </Box>
 
