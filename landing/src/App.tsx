@@ -360,15 +360,16 @@ function App() {
         as="section" 
         id="demo-video" 
         minH="100vh"
+        position="relative"
+        pt={{ base: 32, lg: 20 }}
+        pb={20}
         display="flex"
         alignItems="center"
-        justifyContent="center"
         bg="gray.50"
-        py={12}
       >
-        <Container maxW="6xl" h="full">
-          <VStack spacing={8} h="full" justify="center">
-            <VStack spacing={4} textAlign="center" mb={4}>
+        <Container maxW="6xl" position="relative">
+          <VStack spacing={8} align="stretch">
+            <VStack spacing={4} textAlign="center">
               <Heading fontSize={{ base: '3xl', md: '4xl', lg: '5xl' }} color="gray.900">
                 Watch How Clozone Works
               </Heading>
@@ -385,8 +386,8 @@ function App() {
               border="1px solid"
               borderColor="gray.200"
               w="full"
-              h={{ base: '60vh', md: '75vh' }}
-              minH={{ base: '400px', md: '600px' }}
+              h={{ base: '50vh', md: '65vh' }}
+              minH={{ base: '350px', md: '500px' }}
               display="flex"
               alignItems="center"
               justifyContent="center"
