@@ -196,26 +196,32 @@ function App() {
           <Grid templateColumns={{ base: '1fr', lg: '1.2fr 1fr' }} gap={12} alignItems="center">
             <GridItem>
               <VStack align="flex-start" spacing={8}>
-                <Heading
+                <Box
                   fontSize={{ base: '5xl', md: '6xl', lg: '7xl' }}
                   fontWeight="900"
                   lineHeight="1.1"
                   letterSpacing="-0.02em"
                   className="fade-in-up"
                   color="gray.900"
+                  minH={{ base: '120px', md: 'auto' }}
                 >
-                  Turn Every Rep Into a{' '}
-                  <Box
-                    as="span"
-                    bgGradient="linear(to-r, brand.500, brand.600)"
-                    bgClip="text"
-                    className="rotate-text"
-                    display="inline-block"
-                    key={rotatingText}
-                  >
-                    {rotatingWords[rotatingText]}
+                  <Box as="span" display="block">
+                    Turn Every Rep
                   </Box>
-                </Heading>
+                  <Box as="span" display="block">
+                    Into a{' '}
+                    <Box
+                      as="span"
+                      bgGradient="linear(to-r, brand.500, brand.600)"
+                      bgClip="text"
+                      className="rotate-text"
+                      display="inline"
+                      key={rotatingText}
+                    >
+                      {rotatingWords[rotatingText]}
+                    </Box>
+                  </Box>
+                </Box>
                 
                 <Text 
                   fontSize={{ base: 'xl', md: '2xl' }} 
