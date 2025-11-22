@@ -16,6 +16,7 @@ import Auth from './pages/Auth'
 import AuthCallbackSimple from './pages/AuthCallbackSimple'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
+import MobileBlocker from './components/MobileBlocker'
 import { AuthProvider } from './contexts/AuthContext'
 import { ProfileProvider } from './contexts/ProfileContext'
 
@@ -46,65 +47,79 @@ function App() {
           
           {/* Protected Routes */}
           <Route path="/" element={
-            <ProtectedRoute>
-              <ProtectedLayout>
-                <Navigate to="/create-session" replace />
-              </ProtectedLayout>
-            </ProtectedRoute>
+            <MobileBlocker>
+              <ProtectedRoute>
+                <ProtectedLayout>
+                  <Navigate to="/create-session" replace />
+                </ProtectedLayout>
+              </ProtectedRoute>
+            </MobileBlocker>
           } />
           
           <Route path="/create-session" element={
-            <ProtectedRoute>
-              <ProtectedLayout>
-                <CreateSession />
-              </ProtectedLayout>
-            </ProtectedRoute>
+            <MobileBlocker>
+              <ProtectedRoute>
+                <ProtectedLayout>
+                  <CreateSession />
+                </ProtectedLayout>
+              </ProtectedRoute>
+            </MobileBlocker>
           } />
           
           <Route path="/my-analytics" element={
-            <ProtectedRoute>
-              <ProtectedLayout>
-                <MyAnalytics />
-              </ProtectedLayout>
-            </ProtectedRoute>
+            <MobileBlocker>
+              <ProtectedRoute>
+                <ProtectedLayout>
+                  <MyAnalytics />
+                </ProtectedLayout>
+              </ProtectedRoute>
+            </MobileBlocker>
           } />
           
           <Route path="/assignments" element={
-            <ProtectedRoute>
-              <AdminRoute>
-                <ProtectedLayout>
-                  <Assignments />
-                </ProtectedLayout>
-              </AdminRoute>
-            </ProtectedRoute>
+            <MobileBlocker>
+              <ProtectedRoute>
+                <AdminRoute>
+                  <ProtectedLayout>
+                    <Assignments />
+                  </ProtectedLayout>
+                </AdminRoute>
+              </ProtectedRoute>
+            </MobileBlocker>
           } />
           
           <Route path="/analytics" element={
-            <ProtectedRoute>
-              <AdminRoute>
-                <ProtectedLayout>
-                  <Analytics />
-                </ProtectedLayout>
-              </AdminRoute>
-            </ProtectedRoute>
+            <MobileBlocker>
+              <ProtectedRoute>
+                <AdminRoute>
+                  <ProtectedLayout>
+                    <Analytics />
+                  </ProtectedLayout>
+                </AdminRoute>
+              </ProtectedRoute>
+            </MobileBlocker>
           } />
           
           <Route path="/admin" element={
-            <ProtectedRoute>
-              <ProtectedLayout>
-                <Admin />
-              </ProtectedLayout>
-            </ProtectedRoute>
+            <MobileBlocker>
+              <ProtectedRoute>
+                <ProtectedLayout>
+                  <Admin />
+                </ProtectedLayout>
+              </ProtectedRoute>
+            </MobileBlocker>
           } />
           
           <Route path="/organization" element={
-            <ProtectedRoute>
-              <AdminRoute>
-                <ProtectedLayout>
-                  <Organization />
-                </ProtectedLayout>
-              </AdminRoute>
-            </ProtectedRoute>
+            <MobileBlocker>
+              <ProtectedRoute>
+                <AdminRoute>
+                  <ProtectedLayout>
+                    <Organization />
+                  </ProtectedLayout>
+                </AdminRoute>
+              </ProtectedRoute>
+            </MobileBlocker>
           } />
         </Routes>
       </ProfileProvider>

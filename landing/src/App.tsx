@@ -132,14 +132,16 @@ function App() {
         py={4}
       >
         <Container maxW="7xl">
-          <Flex justify="space-between" align="center">
-            <Image src="/logolong.png" alt="Clozone" h="40px" />
-            <HStack spacing={4}>
+          <Flex justify="space-between" align="center" flexWrap="wrap" gap={4}>
+            <Image src="/logolong.png" alt="Clozone" h={{ base: '32px', md: '40px' }} />
+            <HStack spacing={{ base: 2, md: 4 }}>
               <Button 
                 as="a" 
                 href="https://app.clozone.ai/auth" 
                 variant="ghost" 
                 color="gray.600"
+                size={{ base: 'sm', md: 'md' }}
+                fontSize={{ base: 'sm', md: 'md' }}
                 _hover={{ color: 'brand.500', bg: 'brand.50' }}
               >
                 Sign In
@@ -150,9 +152,11 @@ function App() {
                 target="_blank"
                 bg="brand.500" 
                 color="white" 
+                size={{ base: 'sm', md: 'md' }}
+                fontSize={{ base: 'sm', md: 'md' }}
                 _hover={{ bg: 'brand.600', transform: 'translateY(-2px)', boxShadow: 'lg' }}
                 transition="all 0.3s"
-                px={6}
+                px={{ base: 4, md: 6 }}
                 rounded="full"
               >
                 Book Demo
@@ -223,28 +227,29 @@ function App() {
                   Practice unlimited calls with realistic AI prospects. Get instant feedback, master objections, and close more deals—without burning leads.
                 </Text>
 
-                <HStack spacing={4} className="fade-in-up delay-2" flexWrap="wrap">
+                <HStack spacing={4} className="fade-in-up delay-2" flexWrap="wrap" w="full">
                   <Button
                     as="a"
                     href="https://calendly.com/your-link"
                     target="_blank"
-                    size="lg"
-                    h="64px"
-                    px={10}
-                    fontSize="xl"
+                    size={{ base: 'md', md: 'lg' }}
+                    h={{ base: '48px', md: '64px' }}
+                    px={{ base: 6, md: 10 }}
+                    fontSize={{ base: 'md', md: 'xl' }}
                     bg="brand.500"
                     color="white"
                     _hover={{ bg: 'brand.600', transform: 'translateY(-2px)', boxShadow: 'xl' }}
                     transition="all 0.3s"
                     rounded="2xl"
+                    flex={{ base: '1 1 100%', md: '0 1 auto' }}
                   >
                     Book a Demo
                   </Button>
                   <Button
-                    size="lg"
-                    h="64px"
-                    px={8}
-                    fontSize="lg"
+                    size={{ base: 'md', md: 'lg' }}
+                    h={{ base: '48px', md: '64px' }}
+                    px={{ base: 6, md: 8 }}
+                    fontSize={{ base: 'sm', md: 'lg' }}
                     variant="ghost"
                     color="gray.600"
                     _hover={{ bg: 'blackAlpha.50' }}
@@ -253,6 +258,7 @@ function App() {
                     onClick={() => {
                       document.getElementById('demo-video')?.scrollIntoView({ behavior: 'smooth' })
                     }}
+                    flex={{ base: '1 1 100%', md: '0 1 auto' }}
                   >
                     See How It Works
                   </Button>

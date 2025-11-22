@@ -32,16 +32,6 @@ router.get('/admin/:orgId', async (req, res) => {
             .gte('created_at', startDate.toISOString());
         if (sessionsError)
             throw sessionsError;
-        console.log('📊 Sample session from DB:', sessions?.[0]);
-        const withAssignment = sessions?.find(s => s.session_type === 'assignment');
-        if (withAssignment) {
-            console.log('📊 Assignment session from DB:', {
-                id: withAssignment.id,
-                session_type: withAssignment.session_type,
-                assignment_id: withAssignment.assignment_id,
-                hasAssignmentIdField: 'assignment_id' in withAssignment
-            });
-        }
         const { data: grades, error: gradesError } = await supabase_1.supabase
             .from('session_grades')
             .select('*')
@@ -125,14 +115,6 @@ router.get('/admin/:orgId', async (req, res) => {
                 templateName = 'Unknown Template';
             }
             const isPlayground = !session.assignment_id;
-            if (session.session_type === 'assignment') {
-                console.log('🎯 Mapping assignment session:', {
-                    id: session.id,
-                    session_type: session.session_type,
-                    assignment_id: session.assignment_id,
-                    assignment_id_type: typeof session.assignment_id
-                });
-            }
             return {
                 id: session.id,
                 userId: session.user_id,
@@ -151,11 +133,6 @@ router.get('/admin/:orgId', async (req, res) => {
                 recordingUrl: session.recording_url
             };
         });
-        const assignmentSessionsToSend = recentSessions.filter(s => s.sessionType === 'assignment');
-        console.log('📤 Sending to frontend - assignment sessions:', assignmentSessionsToSend.length);
-        if (assignmentSessionsToSend.length > 0) {
-            console.log('📤 Sample assignment session being sent:', assignmentSessionsToSend[0]);
-        }
         const topPerformers = userMetrics
             ?.sort((a, b) => (b.avg_score || 0) - (a.avg_score || 0))
             .slice(0, 5)
@@ -1326,6 +1303,51 @@ router.post('/session/:id/submit', async (req, res) => {
         console.error('Error in submit session:', error);
         res.status(500).json({
             error: 'Internal server error',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+router.get('/debug-assignment-sessions/:orgId/:assignmentId', async (req, res) => {
+    try {
+        const { orgId, assignmentId } = req.params;
+        console.log('🔍 DEBUG: Querying training_sessions for orgId:', orgId, 'assignmentId:', assignmentId);
+        const { data: allSessions, error: allError } = await supabase_1.supabase
+            .from('training_sessions')
+            .select('id, user_id, assignment_id, session_type, created_at')
+            .eq('org_id', orgId)
+            .order('created_at', { ascending: false })
+            .limit(50);
+        console.log('🔍 DEBUG: All sessions:', allSessions?.length);
+        const { data: assignmentSessions, error: assignmentError } = await supabase_1.supabase
+            .from('training_sessions')
+            .select('*')
+            .eq('org_id', orgId)
+            .eq('assignment_id', parseInt(assignmentId));
+        console.log('🔍 DEBUG: Sessions with assignment_id =', assignmentId, ':', assignmentSessions?.length);
+        const { data: typeSessions, error: typeError } = await supabase_1.supabase
+            .from('training_sessions')
+            .select('id, user_id, assignment_id, session_type, created_at')
+            .eq('org_id', orgId)
+            .eq('session_type', 'assignment')
+            .order('created_at', { ascending: false });
+        console.log('🔍 DEBUG: Sessions with session_type="assignment":', typeSessions?.length);
+        return res.json({
+            success: true,
+            data: {
+                allSessionsCount: allSessions?.length || 0,
+                allSessions: allSessions || [],
+                assignmentSessionsCount: assignmentSessions?.length || 0,
+                assignmentSessions: assignmentSessions || [],
+                typeSessionsCount: typeSessions?.length || 0,
+                typeSessions: typeSessions || []
+            }
+        });
+    }
+    catch (error) {
+        console.error('❌ DEBUG: Error querying sessions:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Failed to query sessions',
             details: error instanceof Error ? error.message : 'Unknown error'
         });
     }

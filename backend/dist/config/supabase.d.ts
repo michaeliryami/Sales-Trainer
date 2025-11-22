@@ -8,6 +8,9 @@ export interface Template {
     difficulty: string;
     type: string;
     script: string;
+    user_id?: string | null;
+    org?: number | null;
+    age_range?: string | null;
 }
 export default supabase;
 //# sourceMappingURL=supabase.d.ts.map

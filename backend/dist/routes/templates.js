@@ -5,11 +5,11 @@ const supabase_1 = require("../config/supabase");
 const router = (0, express_1.Router)();
 router.post('/', async (req, res) => {
     try {
-        const { title, description, insuranceType, difficulty, script, org } = req.body;
-        if (!title || !description || !insuranceType || !difficulty || !script) {
+        const { title, description, insuranceType, difficulty, script, org, userId, ageRange } = req.body;
+        if (!title || !description || !insuranceType || !difficulty || !script || !ageRange) {
             res.status(400).json({
                 error: 'Missing required fields',
-                required: ['title', 'description', 'insuranceType', 'difficulty', 'script']
+                required: ['title', 'description', 'insuranceType', 'difficulty', 'script', 'ageRange']
             });
             return;
         }
@@ -19,7 +19,9 @@ router.post('/', async (req, res) => {
             difficulty,
             type: insuranceType,
             script,
-            org: org ? Number(org) : null
+            age_range: ageRange,
+            org: org ? Number(org) : null,
+            user_id: userId || null
         };
         const { data: newTemplate, error: insertError } = await supabase_1.supabase
             .from('templates')
@@ -49,10 +51,17 @@ router.post('/', async (req, res) => {
 });
 router.get('/', async (req, res) => {
     try {
-        const { data: templates, error } = await supabase_1.supabase
+        const { userId } = req.query;
+        let query = supabase_1.supabase
             .from('templates')
-            .select('*')
-            .order('created_at', { ascending: false });
+            .select('*');
+        if (userId) {
+            query = query.or(`user_id.is.null,user_id.eq.${userId}`);
+        }
+        else {
+            query = query.is('user_id', null);
+        }
+        const { data: templates, error } = await query.order('created_at', { ascending: false });
         if (error) {
             console.error('Supabase error:', error);
             throw new Error(`Database error: ${error.message}`);
@@ -64,6 +73,7 @@ router.get('/', async (req, res) => {
             insuranceType: template.type,
             difficulty: template.difficulty,
             createdAt: template.created_at,
+            user_id: template.user_id,
             scriptPreview: template.script.substring(0, 150) + (template.script.length > 150 ? '...' : '')
         }));
         res.json({
@@ -118,13 +128,14 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, insuranceType, difficulty, script } = req.body;
+        const { title, description, insuranceType, difficulty, script, ageRange } = req.body;
         const updateBody = {
             title,
             description,
             type: insuranceType,
             difficulty,
-            script
+            script,
+            age_range: ageRange
         };
         const { data: updatedTemplate, error } = await supabase_1.supabase
             .from('templates')
