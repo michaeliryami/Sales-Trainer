@@ -54,8 +54,7 @@ import {
   FileDown,
   RefreshCw,
   FileText,
-  ClipboardList,
-  Volume2
+  ClipboardList
 } from 'lucide-react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useProfile } from '../contexts/ProfileContext'
@@ -179,7 +178,7 @@ const Analytics: React.FC = () => {
           totalSessions: 0,
           totalUsers: 0,
           avgSessionDuration: 0,
-          completionRate: 0,
+          clozeRate: 0,
           avgScore: 0,
           recentSessions: [],
           topPerformers: [],
@@ -722,13 +721,13 @@ const Analytics: React.FC = () => {
                     <CardBody p={4}>
                       <Stat>
                         <StatLabel fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')} fontWeight="500">
-                          Completion Rate
+                          Cloze Rate
                         </StatLabel>
                         <StatNumber fontSize="2xl" color={useColorModeValue('gray.900', 'white')} fontWeight="700">
-                          {analyticsData?.completionRate || 0}%
+                          {analyticsData?.clozeRate || 0}%
                         </StatNumber>
                         <StatHelpText fontSize="xs">
-                          Sessions completed
+                          Calls successfully closed
                         </StatHelpText>
                       </Stat>
                     </CardBody>
@@ -804,9 +803,9 @@ const Analytics: React.FC = () => {
                                     </Text>
                                   </Box>
                                   <Box>
-                                    <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Streak</Text>
+                                    <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Cloze Rate</Text>
                                     <Text fontSize="md" fontWeight="700" color={useColorModeValue('gray.900', 'white')}>
-                                      {userAnalytics.currentStreak || 0} days
+                                      {userAnalytics.clozeRate || 0}%
                                     </Text>
                                   </Box>
                                 </SimpleGrid>
@@ -1143,21 +1142,6 @@ const Analytics: React.FC = () => {
                             flex={1}
                           >
                             Summary
-                          </Button>
-                          <Button
-                            size="xs"
-                            leftIcon={<Icon as={Volume2} boxSize={3} />}
-                            colorScheme="orange"
-                            variant="outline"
-                            isDisabled={!session.recordingUrl}
-                            flex={1}
-                            onClick={() => {
-                              if (session.recordingUrl) {
-                                window.open(session.recordingUrl, '_blank')
-                              }
-                            }}
-                          >
-                            Audio
                           </Button>
                         </HStack>
                       </VStack>

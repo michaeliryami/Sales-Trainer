@@ -64,7 +64,10 @@ router.get('/admin/:orgId', async (req, res) => {
     const avgDuration = sessions && sessions.length > 0
       ? sessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / sessions.length / 60
       : 0
-    const completionRate = totalSessions > 0 ? (completedSessions / totalSessions) * 100 : 0
+    // Calculate Cloze Rate (percentage of sessions that were closed)
+    const closedSessions = sessions?.filter(s => s.closed === true).length || 0
+    const sessionsWithCloseStatus = sessions?.filter(s => s.closed !== null).length || 0
+    const clozeRate = sessionsWithCloseStatus > 0 ? (closedSessions / sessionsWithCloseStatus) * 100 : 0
     
     // Calculate average score
     const avgScore = grades && grades.length > 0
@@ -181,8 +184,7 @@ router.get('/admin/:orgId', async (req, res) => {
           userId: metric.user_id,
           name: profile?.display_name || profile?.email || 'Unknown User',
           avgScore: Math.round(metric.avg_score || 0),
-          completedSessions: metric.completed_sessions || 0,
-          streak: metric.current_streak_days || 0
+          completedSessions: metric.completed_sessions || 0
         }
       })
 
@@ -216,7 +218,7 @@ router.get('/admin/:orgId', async (req, res) => {
       playgroundSessions: playgroundSessionsCount,
       totalUsers: activeUsers,
       avgSessionDuration: parseFloat(avgDuration.toFixed(1)),
-      completionRate: parseFloat(completionRate.toFixed(1)),
+      clozeRate: parseFloat(clozeRate.toFixed(1)),
       avgScore: parseFloat(avgScore.toFixed(1)),
       
       // Practice vs Assignment Stats (from ALL sessions)
@@ -362,6 +364,11 @@ router.get('/employee/:userId', async (req, res) => {
     const assignmentAvgDuration = assignmentSessions.length > 0
       ? assignmentSessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / assignmentSessions.length / 60
       : 0
+
+    // Calculate Cloze Rate (percentage of sessions that were closed)
+    const closedSessions = sessions?.filter(s => s.closed === true).length || 0
+    const sessionsWithCloseStatus = sessions?.filter(s => s.closed !== null).length || 0
+    const clozeRate = sessionsWithCloseStatus > 0 ? (closedSessions / sessionsWithCloseStatus) * 100 : 0
 
     // Assignment progress - only count assignment sessions (not playground)
     const assignmentSessionIds = assignmentSessions.map(s => s.id)
@@ -543,10 +550,10 @@ router.get('/employee/:userId', async (req, res) => {
       assignmentsPending,
       totalAssignments: userAssignments?.length || 0,
       
-      // Streak
-      currentStreak: userMetrics?.current_streak_days || 0,
-      longestStreak: userMetrics?.longest_streak_days || 0,
-      lastSessionDate: userMetrics?.last_session_date,
+      // Cloze Rate
+      clozeRate: parseFloat(clozeRate.toFixed(1)),
+      closedSessions,
+      totalSessionsWithCloseStatus: sessionsWithCloseStatus,
       
       // Detailed Data
       recentSessions,
@@ -801,10 +808,18 @@ SCORING APPROACH:
 - Minimal points: Skill barely present or poorly executed
 - Zero points: Skill completely absent or not attempted
 
+CLOSE DETECTION:
+In addition to grading, determine if the salesperson successfully closed the deal (i.e., the customer/prospect agreed to move forward, did not reject the offer, and showed commitment to proceed). A close means:
+- Customer agreed to next steps, purchase, or commitment
+- Customer did not explicitly reject or decline
+- Customer showed positive intent to proceed
+- NOT just a "maybe" or "I'll think about it" - needs clear agreement
+
 RESPONSE FORMAT (JSON):
 {
   "totalScore": number,
   "maxPossibleScore": number,
+  "closed": boolean,
   "criteriaGrades": [
     {
       "title": "string",
@@ -855,6 +870,14 @@ Only return the JSON response, nothing else.`
           criteria_grades: gradingResult.criteriaGrades,
           grading_model: 'gpt-4o-mini'
         }])
+
+      // Update session with closed status
+      if (gradingResult.closed !== undefined) {
+        await supabase
+          .from('training_sessions')
+          .update({ closed: gradingResult.closed })
+          .eq('id', sessionId)
+      }
 
       console.log(`✅ Session ${sessionId} graded successfully`)
     } catch (error) {
@@ -1022,10 +1045,18 @@ SCORING APPROACH:
 - Minimal points: Skill barely present or poorly executed
 - Zero points: Skill completely absent or not attempted
 
+CLOSE DETECTION:
+In addition to grading, determine if the salesperson successfully closed the deal (i.e., the customer/prospect agreed to move forward, did not reject the offer, and showed commitment to proceed). A close means:
+- Customer agreed to next steps, purchase, or commitment
+- Customer did not explicitly reject or decline
+- Customer showed positive intent to proceed
+- NOT just a "maybe" or "I'll think about it" - needs clear agreement
+
 RESPONSE FORMAT (JSON):
 {
   "totalScore": number,
   "maxPossibleScore": number,
+  "closed": boolean,
   "criteriaGrades": [
     {
       "title": "string",
@@ -1108,6 +1139,14 @@ Only return the JSON response, nothing else.`
     if (gradeError) {
       console.error('Error saving grade:', gradeError)
       throw gradeError
+    }
+
+    // Update session with closed status
+    if (gradingResult.closed !== undefined) {
+      await supabase
+        .from('training_sessions')
+        .update({ closed: gradingResult.closed })
+        .eq('id', sessionId)
     }
 
     console.log('Grade saved successfully')

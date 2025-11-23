@@ -38,8 +38,7 @@ import {
   Clock,
   FileDown,
   FileText,
-  ClipboardList,
-  Volume2
+  ClipboardList
 } from 'lucide-react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useProfile } from '../contexts/ProfileContext'
@@ -500,13 +499,13 @@ const MyAnalytics: React.FC = () => {
                     <CardBody p={4}>
                       <Stat>
                         <StatLabel fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')} fontWeight="500">
-                          Current Streak
+                          Cloze Rate
                         </StatLabel>
                         <StatNumber fontSize="2xl" color={useColorModeValue('gray.900', 'white')} fontWeight="700">
-                          {filteredAnalytics?.currentStreak || 0}
+                          {filteredAnalytics?.clozeRate || 0}%
                         </StatNumber>
                         <StatHelpText fontSize="xs">
-                          {filteredAnalytics?.longestStreak || 0} longest
+                          {filteredAnalytics?.closedSessions || 0} of {filteredAnalytics?.totalSessionsWithCloseStatus || 0} closed
                         </StatHelpText>
                       </Stat>
                     </CardBody>
@@ -898,21 +897,6 @@ const MyAnalytics: React.FC = () => {
                                 flex={1}
                               >
                                 Summary
-                              </Button>
-                              <Button
-                                size="xs"
-                                leftIcon={<Icon as={Volume2} boxSize={3} />}
-                                colorScheme="orange"
-                                variant="outline"
-                                isDisabled={!session.recording_url}
-                                flex={1}
-                                onClick={() => {
-                                  if (session.recording_url) {
-                                    window.open(session.recording_url, '_blank')
-                                  }
-                                }}
-                              >
-                                Audio
                               </Button>
                             </HStack>
                           </VStack>
