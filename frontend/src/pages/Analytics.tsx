@@ -129,36 +129,44 @@ const Analytics: React.FC = () => {
   const fetchAnalytics = async (isBackground = false, forceRefresh = false) => {
     if (!organization?.id) return
     
-    // If background refresh, don't show loading spinner
-    if (!isBackground) {
-      setLoading(true)
-    } else {
-      setRefreshing(true)
-    }
+    const cacheKey = `analytics_${organization.id}_${timeRange}`
+    const now = Date.now()
     
-    try {
-      const cacheKey = `analytics_${organization.id}_${timeRange}`
-      const now = Date.now()
-      
-      // Check cache first (only for initial load, not background refresh, and not force refresh)
-      if (!isBackground && !forceRefresh) {
-        const cached = localStorage.getItem(cacheKey)
-        if (cached) {
+    // Check cache first - load immediately if available (even if expired)
+    if (!isBackground && !forceRefresh) {
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        try {
           const { data, timestamp } = JSON.parse(cached)
+          // Load cached data immediately, even if expired
+          setAnalyticsData(data)
+          setLastFetch(timestamp)
+          
+          // If cache is still fresh, don't fetch
           if (now - timestamp < CACHE_TTL) {
-            setAnalyticsData(data)
-            setLastFetch(timestamp)
             setLoading(false)
             return
           }
+          
+          // Cache expired but we showed the data - refresh in background
+          setRefreshing(true)
+        } catch (e) {
+          // Invalid cache, continue to fetch
         }
+      } else {
+        // No cache at all - show loading spinner
+        setLoading(true)
       }
-      
-      // If force refresh, clear the cache
-      if (forceRefresh) {
-        localStorage.removeItem(cacheKey)
-      }
-      
+    } else if (isBackground) {
+      // Background refresh - don't show spinner
+      setRefreshing(true)
+    } else if (forceRefresh) {
+      // Force refresh - show spinner and clear cache
+      setLoading(true)
+      localStorage.removeItem(cacheKey)
+    }
+    
+    try {
       // Fetch fresh data - use 90d for sessions list to show all recent sessions
       const response = await apiFetch(`/api/analytics/admin/${organization.id}?period=90d`)
       const result = await response.json()
@@ -173,7 +181,26 @@ const Analytics: React.FC = () => {
           timestamp: now
         }))
       } else {
-        // Set empty data on error
+        // Only set empty data if we don't have cached data
+        const cached = localStorage.getItem(cacheKey)
+        if (!cached) {
+          setAnalyticsData({
+            totalSessions: 0,
+            totalUsers: 0,
+            avgSessionDuration: 0,
+            clozeRate: 0,
+            avgScore: 0,
+            recentSessions: [],
+            topPerformers: [],
+            weeklyTrends: { sessions: [], completion: [] }
+          })
+        }
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) console.error('Error fetching analytics:', error)
+      // Only set empty data if we don't have cached data
+      const cached = localStorage.getItem(cacheKey)
+      if (!cached) {
         setAnalyticsData({
           totalSessions: 0,
           totalUsers: 0,
@@ -185,19 +212,6 @@ const Analytics: React.FC = () => {
           weeklyTrends: { sessions: [], completion: [] }
         })
       }
-    } catch (error) {
-      if (import.meta.env.DEV) console.error('Error fetching analytics:', error)
-      // Set empty data on error
-      setAnalyticsData({
-        totalSessions: 0,
-        totalUsers: 0,
-        avgSessionDuration: 0,
-        completionRate: 0,
-        avgScore: 0,
-        recentSessions: [],
-        topPerformers: [],
-        weeklyTrends: { sessions: [], completion: [] }
-      })
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -274,8 +288,35 @@ const Analytics: React.FC = () => {
     fetchAssignments()
   }, [organization])
 
+  // Load analytics - check cache first, then fetch if needed
   useEffect(() => {
-    fetchAnalytics()
+    if (!organization?.id) return
+    
+    const cacheKey = `analytics_${organization.id}_${timeRange}`
+    const cached = localStorage.getItem(cacheKey)
+    
+    // Load from cache immediately if available
+    if (cached) {
+      try {
+        const { data, timestamp } = JSON.parse(cached)
+        setAnalyticsData(data)
+        setLastFetch(timestamp)
+        
+        // Check if cache is still fresh
+        const now = Date.now()
+        if (now - timestamp >= CACHE_TTL) {
+          // Cache expired - refresh in background
+          fetchAnalytics(true)
+        }
+        // If cache is fresh, don't fetch at all
+      } catch (e) {
+        // Invalid cache - fetch fresh data
+        fetchAnalytics()
+      }
+    } else {
+      // No cache - fetch with loading spinner
+      fetchAnalytics()
+    }
   }, [timeRange, organization])
   
   // Background refresh every 2 minutes

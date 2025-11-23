@@ -71,12 +71,38 @@ const MyAnalytics: React.FC = () => {
   const headerBg = useColorModeValue('white', 'gray.800')
   const accentColor = useColorModeValue('#f26f25', '#ff7d31')
 
-  // Fetch employee analytics data
+  // Fetch employee analytics data with caching
   useEffect(() => {
+    if (!profile?.id) return
+    
+    const CACHE_TTL = 2 * 60 * 1000 // 2 minutes
+    const cacheKey = `my_analytics_${profile.id}_${timeRange}`
+    const cached = localStorage.getItem(cacheKey)
+    const now = Date.now()
+    
+    // Load from cache immediately if available
+    if (cached) {
+      try {
+        const { data, timestamp } = JSON.parse(cached)
+        setAnalyticsData(data)
+        
+        // Check if cache is still fresh
+        if (now - timestamp < CACHE_TTL) {
+          // Cache is fresh - don't fetch
+          return
+        }
+        // Cache expired - will fetch in background below
+      } catch (e) {
+        // Invalid cache - will fetch below
+      }
+    }
+    
+    // No cache or cache expired - fetch with loading spinner only if no cache
     const fetchAnalytics = async () => {
-      if (!profile?.id) return
+      if (!cached) {
+        setLoading(true)
+      }
       
-      setLoading(true)
       try {
         const response = await apiFetch(`/api/analytics/employee/${profile.id}?period=${timeRange}`)
         const result = await response.json()
@@ -86,13 +112,25 @@ const MyAnalytics: React.FC = () => {
         
         if (result.success) {
           setAnalyticsData(result.data)
+          
+          // Update cache
+          localStorage.setItem(cacheKey, JSON.stringify({
+            data: result.data,
+            timestamp: now
+          }))
         } else {
           if (import.meta.env.DEV) console.error('Failed to fetch analytics:', result.error)
-          setAnalyticsData(null)
+          // Only set null if we don't have cached data
+          if (!cached) {
+            setAnalyticsData(null)
+          }
         }
       } catch (error) {
         if (import.meta.env.DEV) console.error('Error fetching analytics:', error)
-        setAnalyticsData(null)
+        // Only set null if we don't have cached data
+        if (!cached) {
+          setAnalyticsData(null)
+        }
       } finally {
         setLoading(false)
       }
