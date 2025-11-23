@@ -48,6 +48,7 @@ import apiFetch from '../utils/api'
 const MyAnalytics: React.FC = () => {
   const { profile } = useProfile()
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [timeRange, setTimeRange] = useState('30d')
   const [statsFilter, setStatsFilter] = useState<'all' | 'practice' | 'assignment'>('all')
   const [sessionListFilter, setSessionListFilter] = useState<'all' | 'practice' | 'assignment'>('all')
@@ -99,7 +100,11 @@ const MyAnalytics: React.FC = () => {
     
     // No cache or cache expired - fetch with loading spinner only if no cache
     const fetchAnalytics = async () => {
-      if (!cached) {
+      // If we have cached data (even if expired), refresh in background
+      if (cached) {
+        setRefreshing(true)
+      } else {
+        // No cache - show loading spinner
         setLoading(true)
       }
       
@@ -133,6 +138,7 @@ const MyAnalytics: React.FC = () => {
         }
       } finally {
         setLoading(false)
+        setRefreshing(false)
       }
     }
 
