@@ -301,6 +301,7 @@ const Analytics: React.FC = () => {
         const { data, timestamp } = JSON.parse(cached)
         setAnalyticsData(data)
         setLastFetch(timestamp)
+        setLoading(false) // Stop loading since we have cached data
         
         // Check if cache is still fresh
         const now = Date.now()
@@ -309,8 +310,10 @@ const Analytics: React.FC = () => {
           fetchAnalytics(true)
         }
         // If cache is fresh, don't fetch at all
+        return
       } catch (e) {
         // Invalid cache - fetch fresh data
+        setLoading(true) // Show loading since cache is invalid
         fetchAnalytics()
       }
     } else {

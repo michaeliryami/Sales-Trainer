@@ -86,6 +86,7 @@ const MyAnalytics: React.FC = () => {
       try {
         const { data, timestamp } = JSON.parse(cached)
         setAnalyticsData(data)
+        setLoading(false) // Stop loading since we have cached data
         
         // Check if cache is still fresh
         if (now - timestamp < CACHE_TTL) {
@@ -95,6 +96,7 @@ const MyAnalytics: React.FC = () => {
         // Cache expired - will fetch in background below
       } catch (e) {
         // Invalid cache - will fetch below
+        setLoading(true) // Show loading since cache is invalid
       }
     }
     
