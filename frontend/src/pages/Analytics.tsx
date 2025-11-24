@@ -257,6 +257,7 @@ const Analytics: React.FC = () => {
   // Fetch individual user analytics - always use all-time data for team members
   const fetchUserAnalytics = async (userId: string) => {
     setLoadingUserAnalytics(true)
+    // Don't clear userAnalytics immediately - keep previous data visible while loading
     try {
       // Always fetch all-time data for team member stats (not affected by time filter)
       // Pass adminView=true so only submitted assignment sessions are shown
@@ -283,6 +284,8 @@ const Analytics: React.FC = () => {
       setUserAnalytics(null)
     } else {
       setSelectedUser(user)
+      // Only clear analytics if switching to a different user
+      // This prevents flicker by keeping previous data visible while loading
       fetchUserAnalytics(user.id)
     }
   }
@@ -831,39 +834,60 @@ const Analytics: React.FC = () => {
                               </HStack>
                               
                               {/* Show stats inline when selected */}
-                              {selectedUser?.id === member.id && userAnalytics && !loadingUserAnalytics && (
-                                <SimpleGrid columns={2} spacing={2} pt={2} borderTop="1px solid" borderColor={borderColor}>
-                                  <Box>
-                                    <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Sessions</Text>
-                                    <Text fontSize="md" fontWeight="700" color={useColorModeValue('gray.900', 'white')}>
-                                      {userAnalytics.totalSessions || 0}
-                                    </Text>
-                                  </Box>
-                                  <Box>
-                                    <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Avg Score</Text>
-                                    <Text fontSize="md" fontWeight="700" color={useColorModeValue('gray.900', 'white')}>
-                                      {userAnalytics.avgScore?.toFixed(1) || 0}%
-                                    </Text>
-                                  </Box>
-                                  <Box>
-                                    <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Assignments</Text>
-                                    <Text fontSize="md" fontWeight="700" color={useColorModeValue('gray.900', 'white')}>
-                                      {userAnalytics.assignmentsCompleted || 0}/{userAnalytics.totalAssignments || 0}
-                                    </Text>
-                                  </Box>
-                                  <Box>
-                                    <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Cloze Rate</Text>
-                                    <Text fontSize="md" fontWeight="700" color={useColorModeValue('gray.900', 'white')}>
-                                      {userAnalytics.clozeRate || 0}%
-                                    </Text>
-                                  </Box>
-                                </SimpleGrid>
-                              )}
-                              
-                              {selectedUser?.id === member.id && loadingUserAnalytics && (
-                                <HStack justify="center" py={2}>
-                                  <Spinner size="sm" color={accentColor} />
-                                </HStack>
+                              {selectedUser?.id === member.id && (
+                                <>
+                                  {loadingUserAnalytics && !userAnalytics ? (
+                                    // Show spinner only if no data exists yet
+                                    <HStack justify="center" py={4} borderTop="1px solid" borderColor={borderColor}>
+                                      <Spinner size="sm" color={accentColor} />
+                                      <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                                        Loading analytics...
+                                      </Text>
+                                    </HStack>
+                                  ) : userAnalytics ? (
+                                    // Show stats (with opacity if loading new data)
+                                    <SimpleGrid 
+                                      columns={2} 
+                                      spacing={2} 
+                                      pt={2} 
+                                      borderTop="1px solid" 
+                                      borderColor={borderColor}
+                                      opacity={loadingUserAnalytics ? 0.6 : 1}
+                                      transition="opacity 0.2s"
+                                    >
+                                      <Box>
+                                        <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Sessions</Text>
+                                        <Text fontSize="md" fontWeight="700" color={useColorModeValue('gray.900', 'white')}>
+                                          {userAnalytics.totalSessions || 0}
+                                        </Text>
+                                      </Box>
+                                      <Box>
+                                        <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Avg Score</Text>
+                                        <Text fontSize="md" fontWeight="700" color={useColorModeValue('gray.900', 'white')}>
+                                          {userAnalytics.avgScore?.toFixed(1) || 0}%
+                                        </Text>
+                                      </Box>
+                                      <Box>
+                                        <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Assignments</Text>
+                                        <Text fontSize="md" fontWeight="700" color={useColorModeValue('gray.900', 'white')}>
+                                          {userAnalytics.assignmentsCompleted || 0}/{userAnalytics.totalAssignments || 0}
+                                        </Text>
+                                      </Box>
+                                      <Box>
+                                        <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Cloze Rate</Text>
+                                        <Text fontSize="md" fontWeight="700" color={useColorModeValue('gray.900', 'white')}>
+                                          {userAnalytics.clozeRate || 0}%
+                                        </Text>
+                                      </Box>
+                                    </SimpleGrid>
+                                  ) : null}
+                                  {loadingUserAnalytics && userAnalytics && (
+                                    // Show subtle loading indicator when refreshing existing data
+                                    <HStack justify="center" pt={1}>
+                                      <Spinner size="xs" color={accentColor} />
+                                    </HStack>
+                                  )}
+                                </>
                               )}
                             </VStack>
                           </Box>
