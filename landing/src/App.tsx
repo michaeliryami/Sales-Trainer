@@ -468,6 +468,79 @@ function App() {
         </Container>
       </Box>
 
+      {/* Platform Screenshots */}
+      <Box py={24} bg="gray.50">
+        <Container maxW="7xl">
+          <VStack spacing={4} mb={12} textAlign="center">
+            <Badge bg="brand.50" color="brand.600" px={3} py={1} rounded="full">See It In Action</Badge>
+            <Heading fontSize={{ base: '3xl', md: '5xl' }} fontWeight="bold" color="gray.900">
+              Built for reps and managers
+            </Heading>
+            <Text fontSize="xl" color="gray.500" maxW="2xl">
+              Practice sessions and performance tracking, all in one platform
+            </Text>
+          </VStack>
+
+          <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={8}>
+            {/* Playground Screenshot */}
+            <Box
+              rounded="3xl"
+              overflow="hidden"
+              bg="white"
+              boxShadow="2xl"
+              border="1px solid"
+              borderColor="gray.200"
+              _hover={{ boxShadow: '2xl', transform: 'translateY(-4px)' }}
+              transition="all 0.3s"
+            >
+              <Image 
+                src="/1.png" 
+                alt="Playground - Practice with AI prospects"
+                w="full"
+                h="auto"
+                objectFit="cover"
+              />
+              <Box p={6}>
+                <Heading size="md" mb={2} color="gray.900">
+                  Playground
+                </Heading>
+                <Text color="gray.600" lineHeight="relaxed">
+                  Unlimited practice calls with realistic AI prospects. Choose from built-in scenarios or create custom ones.
+                </Text>
+              </Box>
+            </Box>
+
+            {/* My Performance Screenshot */}
+            <Box
+              rounded="3xl"
+              overflow="hidden"
+              bg="white"
+              boxShadow="2xl"
+              border="1px solid"
+              borderColor="gray.200"
+              _hover={{ boxShadow: '2xl', transform: 'translateY(-4px)' }}
+              transition="all 0.3s"
+            >
+              <Image 
+                src="/2.png" 
+                alt="My Performance - Track your progress"
+                w="full"
+                h="auto"
+                objectFit="cover"
+              />
+              <Box p={6}>
+                <Heading size="md" mb={2} color="gray.900">
+                  My Performance
+                </Heading>
+                <Text color="gray.600" lineHeight="relaxed">
+                  Track your progress, review detailed feedback, and see your improvement over time with comprehensive analytics.
+                </Text>
+              </Box>
+            </Box>
+          </SimpleGrid>
+        </Container>
+      </Box>
+
       {/* How it Works - Alternate Layout */}
       <Box py={24} bg="gray.900" color="white">
         <Container maxW="7xl">
@@ -595,11 +668,37 @@ function App() {
             <Text color="gray.500" textAlign="center">
               © 2025 Clozone AI. All rights reserved.
             </Text>
-            <HStack spacing={4} color="gray.600" fontWeight="500">
+            <HStack spacing={4} color="gray.600" fontWeight="500" flexWrap="wrap" justify="center">
               <Text as="a" href="/terms-of-service.html" _hover={{ color: 'brand.500' }}>Terms</Text>
               <Text color="gray.300">•</Text>
               <Text as="a" href="/privacy-policy.html" _hover={{ color: 'brand.500' }}>Privacy</Text>
             </HStack>
+            <VStack spacing={2} mt={4}>
+              <Text fontSize="sm" color="gray.500" fontWeight="500">
+                Contact
+              </Text>
+              <HStack spacing={4} flexWrap="wrap" justify="center">
+                <Text 
+                  as="a" 
+                  href="mailto:michael@clozone.ai" 
+                  fontSize="sm"
+                  color="gray.600" 
+                  _hover={{ color: 'brand.500' }}
+                >
+                  michael@clozone.ai
+                </Text>
+                <Text color="gray.300">•</Text>
+                <Text 
+                  as="a" 
+                  href="mailto:andersholly@clozone.ai" 
+                  fontSize="sm"
+                  color="gray.600" 
+                  _hover={{ color: 'brand.500' }}
+                >
+                  andersholly@clozone.ai
+                </Text>
+              </HStack>
+            </VStack>
           </VStack>
         </Container>
       </Box>
