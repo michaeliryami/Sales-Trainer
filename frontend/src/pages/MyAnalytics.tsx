@@ -38,7 +38,9 @@ import {
   Clock,
   FileDown,
   FileText,
-  ClipboardList
+  ClipboardList,
+  CheckCircle,
+  XCircle
 } from 'lucide-react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useProfile } from '../contexts/ProfileContext'
@@ -64,6 +66,8 @@ const MyAnalytics: React.FC = () => {
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [selectedCriterion, setSelectedCriterion] = useState<any>(null)
   const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure()
+  const { isOpen: isClosedModalOpen, onOpen: onClosedModalOpen, onClose: onClosedModalClose } = useDisclosure()
+  const [selectedClosedSession, setSelectedClosedSession] = useState<any>(null)
   const toast = useToast()
 
   const bg = useColorModeValue('gray.50', 'gray.900')
@@ -865,6 +869,25 @@ const MyAnalytics: React.FC = () => {
                                   >
                                     {session.status}
                                   </Badge>
+                                  {session.closed !== null && (
+                                    <Badge
+                                      as="button"
+                                      onClick={() => {
+                                        setSelectedClosedSession(session)
+                                        onClosedModalOpen()
+                                      }}
+                                      colorScheme={session.closed ? 'green' : 'red'}
+                                      variant="subtle"
+                                      fontSize="xs"
+                                      cursor="pointer"
+                                      _hover={{ opacity: 0.8 }}
+                                    >
+                                      <HStack spacing={1}>
+                                        <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
+                                        <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
+                                      </HStack>
+                                    </Badge>
+                                  )}
                                 </HStack>
                               </VStack>
                               {session.score !== null && (
@@ -1329,6 +1352,67 @@ const MyAnalytics: React.FC = () => {
               </VStack>
             )}
           </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      {/* Closed Evidence Modal */}
+      <Modal isOpen={isClosedModalOpen} onClose={onClosedModalClose} size="lg" isCentered>
+        <ModalOverlay />
+        <ModalContent maxW="600px" mx={4}>
+          <ModalHeader pr={12}>
+            <VStack align="start" spacing={2}>
+              <Text fontSize="lg" fontWeight="700" color={useColorModeValue('gray.900', 'white')} pr={8}>
+                Close Status
+              </Text>
+              {selectedClosedSession && (
+                <Badge 
+                  colorScheme={selectedClosedSession.closed ? 'green' : 'red'}
+                  borderRadius="full"
+                  px={3}
+                  py={1}
+                  fontSize="sm"
+                >
+                  <HStack spacing={1}>
+                    <Icon as={selectedClosedSession.closed ? CheckCircle : XCircle} boxSize={4} />
+                    <Text>{selectedClosedSession.closed ? 'Call Closed' : 'Call Not Closed'}</Text>
+                  </HStack>
+                </Badge>
+              )}
+            </VStack>
+          </ModalHeader>
+          <ModalCloseButton top={4} right={4} />
+          <ModalBody pb={6}>
+            {selectedClosedSession && (
+              <VStack align="stretch" spacing={4}>
+                <Box>
+                  <Text fontSize="sm" fontWeight="600" color={useColorModeValue('gray.600', 'gray.400')} mb={2}>
+                    AI Analysis:
+                  </Text>
+                  <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')} whiteSpace="pre-wrap">
+                    {selectedClosedSession.closedEvidence || 'No evidence available. The AI determined this call was ' + (selectedClosedSession.closed ? 'successfully closed' : 'not closed') + ' based on the conversation transcript.'}
+                  </Text>
+                </Box>
+                {selectedClosedSession.template && (
+                  <>
+                    <Divider />
+                    <Box>
+                      <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                        Template: {selectedClosedSession.template}
+                      </Text>
+                      <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                        Date: {new Date(selectedClosedSession.date).toLocaleString()}
+                      </Text>
+                    </Box>
+                  </>
+                )}
+              </VStack>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button onClick={onClosedModalClose} colorScheme="orange">
+              Close
+            </Button>
+          </ModalFooter>
         </ModalContent>
       </Modal>
     </Box>

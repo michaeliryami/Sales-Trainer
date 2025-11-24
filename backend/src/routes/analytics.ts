@@ -176,7 +176,9 @@ router.get('/admin/:orgId', async (req, res) => {
         sessionType: session.session_type,
         isPlayground: isPlayground,
         assignment_id: session.assignment_id,
-        recordingUrl: session.recording_url
+        recordingUrl: session.recording_url,
+        closed: session.closed,
+        closedEvidence: session.closed_evidence || null
       }
     })
 
@@ -331,8 +333,13 @@ router.get('/employee/:userId', async (req, res) => {
     })
 
     // Filter sessions for admin view: only show submitted assignment sessions
+    // IMPORTANT: This endpoint is for a specific user (userId), so all sessions are already user-specific
     const { adminView } = req.query
     const filteredSessionsForStats = (sessions || []).filter(s => {
+      // Ensure we only use sessions for this specific user (safety check)
+      if (s.user_id !== userId) {
+        return false
+      }
       // If admin view, filter out unsubmitted assignment sessions
       if (adminView === 'true' && s.assignment_id) {
         return s.submitted_for_review === true
@@ -449,7 +456,9 @@ router.get('/employee/:userId', async (req, res) => {
           pdfUrl: session.pdf_url,
           hasGrade: !!grade,
           isPlayground: isPlayground,
-          assignment_id: session.assignment_id
+          assignment_id: session.assignment_id,
+          closed: session.closed,
+          closedEvidence: session.closed_evidence || null
         }
       })
 
@@ -835,11 +844,14 @@ In addition to grading, determine if the salesperson successfully closed the dea
 - Customer showed positive intent to proceed
 - NOT just a "maybe" or "I'll think about it" - needs clear agreement
 
+Provide specific evidence (quotes from the transcript) that supports your determination of whether the call was closed or not.
+
 RESPONSE FORMAT (JSON):
 {
   "totalScore": number,
   "maxPossibleScore": number,
   "closed": boolean,
+  "closedEvidence": "string - specific quotes/reasoning explaining why the call was or wasn't closed",
   "criteriaGrades": [
     {
       "title": "string",
@@ -891,11 +903,14 @@ Only return the JSON response, nothing else.`
           grading_model: 'gpt-4o-mini'
         }])
 
-      // Update session with closed status
+      // Update session with closed status and evidence
       if (gradingResult.closed !== undefined) {
         await supabase
           .from('training_sessions')
-          .update({ closed: gradingResult.closed })
+          .update({ 
+            closed: gradingResult.closed,
+            closed_evidence: gradingResult.closedEvidence || null
+          })
           .eq('id', sessionId)
       }
 
@@ -1161,11 +1176,14 @@ Only return the JSON response, nothing else.`
       throw gradeError
     }
 
-    // Update session with closed status
+    // Update session with closed status and evidence
     if (gradingResult.closed !== undefined) {
       await supabase
         .from('training_sessions')
-        .update({ closed: gradingResult.closed })
+        .update({ 
+          closed: gradingResult.closed,
+          closed_evidence: gradingResult.closedEvidence || null
+        })
         .eq('id', sessionId)
     }
 
