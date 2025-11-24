@@ -118,9 +118,15 @@ router.get('/admin/:orgId', async (req, res) => {
     const assignmentUsers = usersWithAssignments.size
 
     // Get recent sessions with user and template details
-    // For admin: Show ALL sessions (practice + assignments) for filtering on frontend
+    // For admin: Show ALL playground sessions, but only submitted assignment sessions
     const recentSessionsData = sessions
-      ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      ?.filter(s => {
+        // Include all playground sessions
+        if (!s.assignment_id) return true
+        // For assignment sessions, only include if submitted for review
+        return s.submitted_for_review === true
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 50) || [] // Increased to 50 to show more sessions
 
     // Get profiles for user names - include all users from sessions AND userMetrics
@@ -324,26 +330,39 @@ router.get('/employee/:userId', async (req, res) => {
       }
     })
 
-    // Calculate stats
-    const totalSessions = sessions?.length || 0
-    const completedSessions = sessions?.filter(s => s.status === 'completed').length || 0
-    const avgDuration = sessions && sessions.length > 0
-      ? sessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / sessions.length / 60
+    // Filter sessions for admin view: only show submitted assignment sessions
+    const { adminView } = req.query
+    const filteredSessionsForStats = (sessions || []).filter(s => {
+      // If admin view, filter out unsubmitted assignment sessions
+      if (adminView === 'true' && s.assignment_id) {
+        return s.submitted_for_review === true
+      }
+      // Otherwise show all sessions (employee viewing their own data)
+      return true
+    })
+
+    // Calculate stats using filtered sessions
+    const totalSessions = filteredSessionsForStats?.length || 0
+    const completedSessions = filteredSessionsForStats?.filter(s => s.status === 'completed').length || 0
+    const avgDuration = filteredSessionsForStats && filteredSessionsForStats.length > 0
+      ? filteredSessionsForStats.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / filteredSessionsForStats.length / 60
       : 0
     
-    // Score stats
-    const scores = grades?.map(g => g.percentage || 0) || []
+    // Score stats - only include grades for filtered sessions
+    const filteredSessionIds = new Set(filteredSessionsForStats.map(s => s.id))
+    const filteredGrades = grades?.filter(g => filteredSessionIds.has(g.session_id)) || []
+    const scores = filteredGrades.map(g => g.percentage || 0) || []
     const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0
     const highestScore = scores.length > 0 ? Math.max(...scores) : 0
     const lowestScore = scores.length > 0 ? Math.min(...scores) : 0
 
     // Separate stats for practice vs assignment sessions
-    const practiceSessions = sessions?.filter(s => !s.assignment_id) || []
-    const assignmentSessions = sessions?.filter(s => s.assignment_id !== null) || []
+    const practiceSessions = filteredSessionsForStats?.filter(s => !s.assignment_id) || []
+    const assignmentSessions = filteredSessionsForStats?.filter(s => s.assignment_id !== null) || []
     
     // Practice stats
-    const practiceGrades = grades?.filter(g => {
-      const session = sessions?.find(s => s.id === g.session_id)
+    const practiceGrades = filteredGrades.filter(g => {
+      const session = filteredSessionsForStats?.find(s => s.id === g.session_id)
       return session && !session.assignment_id
     }) || []
     const practiceAvgScore = practiceGrades.length > 0 
@@ -354,8 +373,8 @@ router.get('/employee/:userId', async (req, res) => {
       : 0
     
     // Assignment stats
-    const assignmentGrades = grades?.filter(g => {
-      const session = sessions?.find(s => s.id === g.session_id)
+    const assignmentGrades = filteredGrades.filter(g => {
+      const session = filteredSessionsForStats?.find(s => s.id === g.session_id)
       return session && session.assignment_id !== null
     }) || []
     const assignmentAvgScore = assignmentGrades.length > 0
@@ -366,8 +385,8 @@ router.get('/employee/:userId', async (req, res) => {
       : 0
 
     // Calculate Cloze Rate (percentage of sessions that were closed)
-    const closedSessions = sessions?.filter(s => s.closed === true).length || 0
-    const sessionsWithCloseStatus = sessions?.filter(s => s.closed !== null).length || 0
+    const closedSessions = filteredSessionsForStats?.filter(s => s.closed === true).length || 0
+    const sessionsWithCloseStatus = filteredSessionsForStats?.filter(s => s.closed !== null).length || 0
     const clozeRate = sessionsWithCloseStatus > 0 ? (closedSessions / sessionsWithCloseStatus) * 100 : 0
 
     // Assignment progress - only count assignment sessions (not playground)
@@ -383,7 +402,8 @@ router.get('/employee/:userId', async (req, res) => {
     console.log(`📊 Found ${grades?.length || 0} total grades for user`)
     console.log(`📋 Processing ${sessions?.length || 0} total sessions`)
     
-    const recentSessions = (sessions || [])
+    // Use the same filtered sessions for recent sessions list
+    const recentSessions = filteredSessionsForStats
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 10)
       .map(session => {
@@ -433,8 +453,8 @@ router.get('/employee/:userId', async (req, res) => {
         }
       })
 
-    // Score trend over time (most recent 10 sessions, newest first)
-    const scoreTrend = grades
+    // Score trend over time (most recent 10 sessions, newest first) - use filtered grades
+    const scoreTrend = filteredGrades
       ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) // Newest first
       .slice(0, 10) // Only show most recent 10
       .map(g => ({
@@ -442,9 +462,9 @@ router.get('/employee/:userId', async (req, res) => {
         score: Math.round(g.percentage || 0)
       })) || []
 
-    // Skills breakdown (from criteria grades)
+    // Skills breakdown (from criteria grades) - use filtered grades
     const skillsBreakdown: any = {}
-    grades?.forEach(grade => {
+    filteredGrades?.forEach(grade => {
       if (grade.criteria_grades) {
         const criteria = Array.isArray(grade.criteria_grades) 
           ? grade.criteria_grades 
@@ -468,9 +488,9 @@ router.get('/employee/:userId', async (req, res) => {
       sessions: data.count
     })).sort((a, b) => b.avgScore - a.avgScore)
 
-    // Group playground sessions by template
+    // Group playground sessions by template - use filtered sessions
     const playgroundSessionsByTemplate: any = {}
-    sessions?.forEach(session => {
+    filteredSessionsForStats?.forEach(session => {
       if (!session.assignment_id) { // Playground session
         // Get template name - check database first, then metadata for built-in templates
         let templateName: string | null = null
@@ -489,7 +509,7 @@ router.get('/employee/:userId', async (req, res) => {
           templateName = 'Unknown Template'
         }
         
-        const grade = grades?.find(g => g.session_id === session.id)
+        const grade = filteredGrades?.find(g => g.session_id === session.id)
         
         if (!playgroundSessionsByTemplate[templateName]) {
           playgroundSessionsByTemplate[templateName] = {

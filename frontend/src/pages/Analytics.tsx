@@ -255,7 +255,8 @@ const Analytics: React.FC = () => {
     setLoadingUserAnalytics(true)
     try {
       // Always fetch all-time data for team member stats (not affected by time filter)
-      const response = await apiFetch(`/api/analytics/employee/${userId}?period=all`)
+      // Pass adminView=true so only submitted assignment sessions are shown
+      const response = await apiFetch(`/api/analytics/employee/${userId}?period=all&adminView=true`)
       const result = await response.json()
       
       if (result.success) {
