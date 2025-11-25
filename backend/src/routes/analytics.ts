@@ -567,6 +567,12 @@ router.get('/employee/:userId', async (req, res) => {
         : null
     })).sort((a: any, b: any) => new Date(b.lastPlayed).getTime() - new Date(a.lastPlayed).getTime())
 
+    console.log(`🎮 Playground stats for user ${userId}:`, {
+      totalPlaygroundSessions: practiceSessions.length,
+      templatesCount: playgroundStats.length,
+      templates: playgroundStats.slice(0, 3).map(s => ({ name: s.templateName, count: s.count }))
+    })
+
     const analyticsData = {
       // Overview Stats
       totalSessions,
