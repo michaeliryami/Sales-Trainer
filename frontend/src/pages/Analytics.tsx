@@ -133,7 +133,7 @@ const Analytics: React.FC = () => {
   const fetchAnalytics = async (isBackground = false, forceRefresh = false) => {
     if (!organization?.id) return
 
-    const cacheKey = `analytics_${organization.id}_${timeRange}`
+    const cacheKey = `analytics_v2_${organization.id}_${timeRange}` // v2 to invalidate old cache
     const now = Date.now()
 
     // Check cache first - load immediately if available (even if expired)
@@ -300,7 +300,7 @@ const Analytics: React.FC = () => {
   useEffect(() => {
     if (!organization?.id) return
 
-    const cacheKey = `analytics_${organization.id}_${timeRange}`
+    const cacheKey = `analytics_v2_${organization.id}_${timeRange}`
     const cached = localStorage.getItem(cacheKey)
 
     // Load from cache immediately if available
