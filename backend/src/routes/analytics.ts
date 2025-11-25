@@ -37,6 +37,17 @@ router.get('/admin/:orgId', async (req, res) => {
 
     if (sessionsError) throw sessionsError
 
+    // Filter sessions for Admin Analytics:
+    // 1. Include ALL playground sessions (assignment_id is null)
+    // 2. For assignments, ONLY include if submitted_for_review is true
+    const filteredSessions = sessions?.filter(s => {
+      if (!s.assignment_id) return true // Keep playground sessions
+      return s.submitted_for_review === true // Only keep submitted assignments
+    }) || []
+
+    // Use filteredSessions for all stats calculations
+    const sessionsForStats = filteredSessions
+
     // Get session grades
     const { data: grades, error: gradesError } = await supabase
       .from('session_grades')
@@ -54,35 +65,39 @@ router.get('/admin/:orgId', async (req, res) => {
     if (metricsError) throw metricsError
 
     // Calculate stats (includes both assignment and playground sessions for usage metrics)
-    const totalSessions = sessions?.length || 0
-    const completedSessions = sessions?.filter(s => s.status === 'completed').length || 0
-    const activeUsers = new Set(sessions?.map(s => s.user_id)).size
+    const totalSessions = sessionsForStats.length
+    const completedSessions = sessionsForStats.filter(s => s.status === 'completed').length
+    const activeUsers = new Set(sessionsForStats.map(s => s.user_id)).size
 
     // Track assignment-only sessions for detailed performance metrics
-    const assignmentSessions = sessions?.filter(s => s.assignment_id !== null) || []
+    const assignmentSessions = sessionsForStats.filter(s => s.assignment_id !== null)
     const playgroundSessionsCount = totalSessions - assignmentSessions.length
-    const avgDuration = sessions && sessions.length > 0
-      ? sessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / sessions.length / 60
+    const avgDuration = sessionsForStats.length > 0
+      ? sessionsForStats.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / sessionsForStats.length / 60
       : 0
     // Calculate Cloze Rate (percentage of sessions that were closed)
-    const closedSessions = sessions?.filter(s => s.closed === true).length || 0
-    const sessionsWithCloseStatus = sessions?.filter(s => s.closed !== null).length || 0
+    const closedSessions = sessionsForStats.filter(s => s.closed === true).length
+    const sessionsWithCloseStatus = sessionsForStats.filter(s => s.closed !== null).length
     const clozeRate = sessionsWithCloseStatus > 0 ? (closedSessions / sessionsWithCloseStatus) * 100 : 0
 
     // Calculate average score
-    const avgScore = grades && grades.length > 0
-      ? grades.reduce((sum, g) => sum + (g.percentage || 0), 0) / grades.length
+    // We need to filter grades to match the filtered sessions
+    const filteredSessionIds = new Set(sessionsForStats.map(s => s.id))
+    const filteredGrades = grades?.filter(g => filteredSessionIds.has(g.session_id)) || []
+
+    const avgScore = filteredGrades.length > 0
+      ? filteredGrades.reduce((sum, g) => sum + (g.percentage || 0), 0) / filteredGrades.length
       : 0
 
     // Separate stats for practice vs assignment sessions
-    const practiceSessions = sessions?.filter(s => !s.assignment_id) || []
-    const assignmentOnlySessions = sessions?.filter(s => s.assignment_id !== null) || []
+    const practiceSessions = sessionsForStats.filter(s => !s.assignment_id)
+    const assignmentOnlySessions = sessionsForStats.filter(s => s.assignment_id !== null)
 
     // Practice stats
-    const practiceGrades = grades?.filter(g => {
-      const session = sessions?.find(s => s.id === g.session_id)
+    const practiceGrades = filteredGrades.filter(g => {
+      const session = sessionsForStats.find(s => s.id === g.session_id)
       return session && !session.assignment_id
-    }) || []
+    })
     const practiceAvgScore = practiceGrades.length > 0
       ? practiceGrades.reduce((sum, g) => sum + (g.percentage || 0), 0) / practiceGrades.length
       : 0
@@ -92,10 +107,10 @@ router.get('/admin/:orgId', async (req, res) => {
     const practiceUsers = new Set(practiceSessions.map(s => s.user_id)).size
 
     // Assignment stats
-    const assignmentGrades = grades?.filter(g => {
-      const session = sessions?.find(s => s.id === g.session_id)
+    const assignmentGrades = filteredGrades.filter(g => {
+      const session = sessionsForStats.find(s => s.id === g.session_id)
       return session && session.assignment_id !== null
-    }) || []
+    })
     const assignmentAvgScore = assignmentGrades.length > 0
       ? assignmentGrades.reduce((sum, g) => sum + (g.percentage || 0), 0) / assignmentGrades.length
       : 0
@@ -118,16 +133,10 @@ router.get('/admin/:orgId', async (req, res) => {
     const assignmentUsers = usersWithAssignments.size
 
     // Get recent sessions with user and template details
-    // For admin: Show ALL playground sessions, but only submitted assignment sessions
-    const recentSessionsData = sessions
-      ?.filter(s => {
-        // Include all playground sessions
-        if (!s.assignment_id) return true
-        // For assignment sessions, only include if submitted for review
-        return s.submitted_for_review === true
-      })
+    // Use the filtered sessions
+    const recentSessionsData = sessionsForStats
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 50) || [] // Increased to 50 to show more sessions
+      .slice(0, 50)
 
     // Get profiles for user names - include all users from sessions AND userMetrics
     const recentSessionUserIds = recentSessionsData.map(s => s.user_id)
@@ -208,10 +217,10 @@ router.get('/admin/:orgId', async (req, res) => {
       const dayStart = new Date(date.setHours(0, 0, 0, 0))
       const dayEnd = new Date(date.setHours(23, 59, 59, 999))
 
-      const daySessions = sessions?.filter(s => {
+      const daySessions = sessionsForStats.filter(s => {
         const sessionDate = new Date(s.created_at)
         return sessionDate >= dayStart && sessionDate <= dayEnd
-      }) || []
+      })
 
       weeklyTrends.sessions[i] = daySessions.length
       const dayCompleted = daySessions.filter(s => s.status === 'completed').length
@@ -332,8 +341,9 @@ router.get('/employee/:userId', async (req, res) => {
       }
     })
 
-    // Filter sessions: only show submitted assignment sessions
-    // IMPORTANT: This endpoint is for a specific user (userId), so all sessions are already user-specific
+    // Filter sessions:
+    // 1. Employee View (default): Show ALL sessions (submitted or not)
+    // 2. Admin View (adminView=true): Show ONLY submitted assignments (and all playground)
     const { adminView } = req.query
     const filteredSessionsForStats = (sessions || []).filter(s => {
       // Ensure we only use sessions for this specific user (safety check)
@@ -341,13 +351,12 @@ router.get('/employee/:userId', async (req, res) => {
         return false
       }
 
-      // For assignments, ONLY show submitted sessions (per user request)
-      // This applies to both admin view and employee view
-      if (s.assignment_id) {
+      // If admin view, filter out unsubmitted assignment sessions
+      if (adminView === 'true' && s.assignment_id) {
         return s.submitted_for_review === true
       }
 
-      // Otherwise show all sessions (playground sessions)
+      // Otherwise show all sessions (employee viewing their own data)
       return true
     })
 
