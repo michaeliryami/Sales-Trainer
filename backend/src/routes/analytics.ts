@@ -507,6 +507,12 @@ router.get('/employee/:userId', async (req, res) => {
       sessions: data.count
     })).sort((a, b) => b.avgScore - a.avgScore)
 
+    console.log(`📊 Skills breakdown for user ${userId}:`, {
+      totalGrades: filteredGrades?.length,
+      skillsCount: skills.length,
+      skills: skills.slice(0, 3)
+    })
+
     // Group playground sessions by template - use filtered sessions
     const playgroundSessionsByTemplate: any = {}
     filteredSessionsForStats?.forEach(session => {
@@ -923,28 +929,35 @@ Only return the JSON response, nothing else.`
       // Update session with closed status and evidence
       // Handle both boolean and string values, and check for null/undefined
       const closedValue = gradingResult.closed
+      let closedBool = false
+      let closedEvidence = null
+
       if (closedValue !== undefined && closedValue !== null) {
         // Convert string "true"/"false" to boolean if needed
-        const closedBool = typeof closedValue === 'string'
+        closedBool = typeof closedValue === 'string'
           ? closedValue.toLowerCase() === 'true'
           : Boolean(closedValue)
-
-        const { error: updateError, data: updateData } = await supabase
-          .from('training_sessions')
-          .update({
-            closed: closedBool,
-            closed_evidence: gradingResult.closedEvidence || null
-          })
-          .eq('id', sessionId)
-          .select()
-
-        if (updateError) {
-          console.error(`❌ Error updating closed status for session ${sessionId}:`, updateError)
-        } else {
-          console.log(`✅ Updated closed status for session ${sessionId}: ${closedBool}`, updateData?.[0]?.closed)
-        }
+        closedEvidence = gradingResult.closedEvidence || null
       } else {
-        console.warn(`⚠️ No closed status in grading result for session ${sessionId}. Result keys:`, Object.keys(gradingResult))
+        // AI didn't return closed status - default to false
+        console.warn(`⚠️ No closed status in grading result for session ${sessionId}. Defaulting to false.`)
+        closedBool = false
+        closedEvidence = 'AI did not provide close determination for this session.'
+      }
+
+      const { error: updateError, data: updateData } = await supabase
+        .from('training_sessions')
+        .update({
+          closed: closedBool,
+          closed_evidence: closedEvidence
+        })
+        .eq('id', sessionId)
+        .select()
+
+      if (updateError) {
+        console.error(`❌ Error updating closed status for session ${sessionId}:`, updateError)
+      } else {
+        console.log(`✅ Updated closed status for session ${sessionId}: ${closedBool}`, updateData?.[0]?.closed)
       }
 
       console.log(`✅ Session ${sessionId} graded successfully`)
@@ -1219,28 +1232,35 @@ Only return the JSON response, nothing else.`
     // Update session with closed status and evidence
     // Handle both boolean and string values, and check for null/undefined
     const closedValue = gradingResult.closed
+    let closedBool = false
+    let closedEvidence = null
+
     if (closedValue !== undefined && closedValue !== null) {
       // Convert string "true"/"false" to boolean if needed
-      const closedBool = typeof closedValue === 'string'
+      closedBool = typeof closedValue === 'string'
         ? closedValue.toLowerCase() === 'true'
         : Boolean(closedValue)
-
-      const { error: updateError, data: updateData } = await supabase
-        .from('training_sessions')
-        .update({
-          closed: closedBool,
-          closed_evidence: gradingResult.closedEvidence || null
-        })
-        .eq('id', sessionId)
-        .select()
-
-      if (updateError) {
-        console.error(`❌ Error updating closed status for session ${sessionId}:`, updateError)
-      } else {
-        console.log(`✅ Updated closed status for session ${sessionId}: ${closedBool}`, updateData?.[0]?.closed)
-      }
+      closedEvidence = gradingResult.closedEvidence || null
     } else {
-      console.warn(`⚠️ No closed status in grading result for session ${sessionId}. Result keys:`, Object.keys(gradingResult))
+      // AI didn't return closed status - default to false
+      console.warn(`⚠️ No closed status in grading result for session ${sessionId}. Defaulting to false.`)
+      closedBool = false
+      closedEvidence = 'AI did not provide close determination for this session.'
+    }
+
+    const { error: updateError, data: updateData } = await supabase
+      .from('training_sessions')
+      .update({
+        closed: closedBool,
+        closed_evidence: closedEvidence
+      })
+      .eq('id', sessionId)
+      .select()
+
+    if (updateError) {
+      console.error(`❌ Error updating closed status for session ${sessionId}:`, updateError)
+    } else {
+      console.log(`✅ Updated closed status for session ${sessionId}: ${closedBool}`, updateData?.[0]?.closed)
     }
 
     console.log('Grade saved successfully')
