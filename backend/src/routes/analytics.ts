@@ -150,25 +150,20 @@ router.get('/admin/:orgId', async (req, res) => {
       .select('id, display_name, email')
       .in('id', allUserIds)
 
-    // Get templates for recent sessions
-    const { data: templates } = await supabase
-      .from('templates')
+    // Get assignments for recent sessions
+    const assignmentIds = [...new Set(recentSessionsData.map(s => s.assignment_id).filter(Boolean))]
+    const { data: assignments } = await supabase
+      .from('assignments')
       .select('id, title')
+      .in('id', assignmentIds)
 
     const recentSessions = recentSessionsData.map(session => {
       const profile = profiles?.find(p => p.id === session.user_id)
-      const template = templates?.find(t => t.id === session.template_id)
+      const assignment = assignments?.find(a => a.id === session.assignment_id)
       const grade = grades?.find(g => g.session_id === session.id)
 
-      // Get template name - check database first, then metadata for built-in templates
-      let templateName = template?.title
-      if (!templateName && session.metadata?.builtInTemplateTitle) {
-        // Built-in template stored in metadata (template_id is null due to FK constraint)
-        templateName = session.metadata.builtInTemplateTitle
-      }
-      if (!templateName) {
-        templateName = 'Unknown Template'
-      }
+      // Use assignment name instead of template name
+      const assignmentName = assignment?.title || 'Unknown Assignment'
 
       const isPlayground = !session.assignment_id
 
@@ -177,7 +172,7 @@ router.get('/admin/:orgId', async (req, res) => {
         userId: session.user_id,
         assignmentId: session.assignment_id,
         user: profile?.display_name || profile?.email || 'Unknown User',
-        template: templateName,
+        template: assignmentName, // This is actually the assignment name now
         duration: session.duration_seconds ? `${Math.round(session.duration_seconds / 60)}m` : 'N/A',
         score: grade ? Math.round(grade.percentage) : null,
         date: session.created_at,
