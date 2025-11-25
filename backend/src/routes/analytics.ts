@@ -133,8 +133,10 @@ router.get('/admin/:orgId', async (req, res) => {
     const assignmentUsers = usersWithAssignments.size
 
     // Get recent sessions with user and template details
-    // Use the filtered sessions
+    // RECENT SESSIONS LIST: Show ONLY submitted assignments (no playground sessions)
+    // This is distinct from stats which include playground sessions
     const recentSessionsData = sessionsForStats
+      .filter(s => s.assignment_id && s.submitted_for_review === true)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 50)
 
