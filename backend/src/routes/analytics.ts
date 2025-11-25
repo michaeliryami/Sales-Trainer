@@ -57,7 +57,7 @@ router.get('/admin/:orgId', async (req, res) => {
     const totalSessions = sessions?.length || 0
     const completedSessions = sessions?.filter(s => s.status === 'completed').length || 0
     const activeUsers = new Set(sessions?.map(s => s.user_id)).size
-    
+
     // Track assignment-only sessions for detailed performance metrics
     const assignmentSessions = sessions?.filter(s => s.assignment_id !== null) || []
     const playgroundSessionsCount = totalSessions - assignmentSessions.length
@@ -68,7 +68,7 @@ router.get('/admin/:orgId', async (req, res) => {
     const closedSessions = sessions?.filter(s => s.closed === true).length || 0
     const sessionsWithCloseStatus = sessions?.filter(s => s.closed !== null).length || 0
     const clozeRate = sessionsWithCloseStatus > 0 ? (closedSessions / sessionsWithCloseStatus) * 100 : 0
-    
+
     // Calculate average score
     const avgScore = grades && grades.length > 0
       ? grades.reduce((sum, g) => sum + (g.percentage || 0), 0) / grades.length
@@ -77,20 +77,20 @@ router.get('/admin/:orgId', async (req, res) => {
     // Separate stats for practice vs assignment sessions
     const practiceSessions = sessions?.filter(s => !s.assignment_id) || []
     const assignmentOnlySessions = sessions?.filter(s => s.assignment_id !== null) || []
-    
+
     // Practice stats
     const practiceGrades = grades?.filter(g => {
       const session = sessions?.find(s => s.id === g.session_id)
       return session && !session.assignment_id
     }) || []
-    const practiceAvgScore = practiceGrades.length > 0 
-      ? practiceGrades.reduce((sum, g) => sum + (g.percentage || 0), 0) / practiceGrades.length 
+    const practiceAvgScore = practiceGrades.length > 0
+      ? practiceGrades.reduce((sum, g) => sum + (g.percentage || 0), 0) / practiceGrades.length
       : 0
     const practiceAvgDuration = practiceSessions.length > 0
       ? practiceSessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / practiceSessions.length / 60
       : 0
     const practiceUsers = new Set(practiceSessions.map(s => s.user_id)).size
-    
+
     // Assignment stats
     const assignmentGrades = grades?.filter(g => {
       const session = sessions?.find(s => s.id === g.session_id)
@@ -102,13 +102,13 @@ router.get('/admin/:orgId', async (req, res) => {
     const assignmentAvgDuration = assignmentOnlySessions.length > 0
       ? assignmentOnlySessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / assignmentOnlySessions.length / 60
       : 0
-    
+
     // Get users who have been assigned assignments
     const { data: orgAssignments } = await supabase
       .from('assignments')
       .select('assignees')
       .eq('org_id', orgId)
-    
+
     const usersWithAssignments = new Set<string>()
     orgAssignments?.forEach(assignment => {
       if (assignment.assignees && Array.isArray(assignment.assignees)) {
@@ -133,7 +133,7 @@ router.get('/admin/:orgId', async (req, res) => {
     const recentSessionUserIds = recentSessionsData.map(s => s.user_id)
     const metricsUserIds = userMetrics?.map(m => m.user_id) || []
     const allUserIds = [...new Set([...recentSessionUserIds, ...metricsUserIds])]
-    
+
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, display_name, email')
@@ -148,7 +148,7 @@ router.get('/admin/:orgId', async (req, res) => {
       const profile = profiles?.find(p => p.id === session.user_id)
       const template = templates?.find(t => t.id === session.template_id)
       const grade = grades?.find(g => g.session_id === session.id)
-      
+
       // Get template name - check database first, then metadata for built-in templates
       let templateName = template?.title
       if (!templateName && session.metadata?.builtInTemplateTitle) {
@@ -158,9 +158,9 @@ router.get('/admin/:orgId', async (req, res) => {
       if (!templateName) {
         templateName = 'Unknown Template'
       }
-      
+
       const isPlayground = !session.assignment_id
-      
+
       return {
         id: session.id,
         userId: session.user_id,
@@ -228,7 +228,7 @@ router.get('/admin/:orgId', async (req, res) => {
       avgSessionDuration: parseFloat(avgDuration.toFixed(1)),
       clozeRate: parseFloat(clozeRate.toFixed(1)),
       avgScore: parseFloat(avgScore.toFixed(1)),
-      
+
       // Practice vs Assignment Stats (from ALL sessions)
       practiceStats: {
         totalSessions: practiceSessions.length,
@@ -244,7 +244,7 @@ router.get('/admin/:orgId', async (req, res) => {
         avgDuration: parseFloat(assignmentAvgDuration.toFixed(1)),
         totalUsers: assignmentUsers
       },
-      
+
       recentSessions,
       topPerformers: topPerformers || [],
       weeklyTrends
@@ -332,7 +332,7 @@ router.get('/employee/:userId', async (req, res) => {
       }
     })
 
-    // Filter sessions for admin view: only show submitted assignment sessions
+    // Filter sessions: only show submitted assignment sessions
     // IMPORTANT: This endpoint is for a specific user (userId), so all sessions are already user-specific
     const { adminView } = req.query
     const filteredSessionsForStats = (sessions || []).filter(s => {
@@ -340,11 +340,14 @@ router.get('/employee/:userId', async (req, res) => {
       if (s.user_id !== userId) {
         return false
       }
-      // If admin view, filter out unsubmitted assignment sessions
-      if (adminView === 'true' && s.assignment_id) {
+
+      // For assignments, ONLY show submitted sessions (per user request)
+      // This applies to both admin view and employee view
+      if (s.assignment_id) {
         return s.submitted_for_review === true
       }
-      // Otherwise show all sessions (employee viewing their own data)
+
+      // Otherwise show all sessions (playground sessions)
       return true
     })
 
@@ -354,7 +357,7 @@ router.get('/employee/:userId', async (req, res) => {
     const avgDuration = filteredSessionsForStats && filteredSessionsForStats.length > 0
       ? filteredSessionsForStats.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / filteredSessionsForStats.length / 60
       : 0
-    
+
     // Score stats - only include grades for filtered sessions
     const filteredSessionIds = new Set(filteredSessionsForStats.map(s => s.id))
     const filteredGrades = grades?.filter(g => filteredSessionIds.has(g.session_id)) || []
@@ -366,19 +369,19 @@ router.get('/employee/:userId', async (req, res) => {
     // Separate stats for practice vs assignment sessions
     const practiceSessions = filteredSessionsForStats?.filter(s => !s.assignment_id) || []
     const assignmentSessions = filteredSessionsForStats?.filter(s => s.assignment_id !== null) || []
-    
+
     // Practice stats
     const practiceGrades = filteredGrades.filter(g => {
       const session = filteredSessionsForStats?.find(s => s.id === g.session_id)
       return session && !session.assignment_id
     }) || []
-    const practiceAvgScore = practiceGrades.length > 0 
-      ? practiceGrades.reduce((sum, g) => sum + (g.percentage || 0), 0) / practiceGrades.length 
+    const practiceAvgScore = practiceGrades.length > 0
+      ? practiceGrades.reduce((sum, g) => sum + (g.percentage || 0), 0) / practiceGrades.length
       : 0
     const practiceAvgDuration = practiceSessions.length > 0
       ? practiceSessions.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / practiceSessions.length / 60
       : 0
-    
+
     // Assignment stats
     const assignmentGrades = filteredGrades.filter(g => {
       const session = filteredSessionsForStats?.find(s => s.id === g.session_id)
@@ -408,7 +411,7 @@ router.get('/employee/:userId', async (req, res) => {
 
     console.log(`📊 Found ${grades?.length || 0} total grades for user`)
     console.log(`📋 Processing ${sessions?.length || 0} total sessions`)
-    
+
     // Use the same filtered sessions for recent sessions list
     const recentSessions = filteredSessionsForStats
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -416,7 +419,7 @@ router.get('/employee/:userId', async (req, res) => {
       .map(session => {
         const grade = grades?.find(g => g.session_id === session.id)
         const isPlayground = !session.assignment_id // Playground if no assignment
-        
+
         if (isPlayground) {
           console.log(`🎮 Playground session ${session.id}:`, {
             hasGrade: !!grade,
@@ -426,24 +429,24 @@ router.get('/employee/:userId', async (req, res) => {
             maxScore: grade?.max_possible_score
           })
         }
-        
+
         // Get template name - check database first, then metadata for built-in templates
         let templateName: string | null = null
-        
+
         if (session.template_id) {
           const template = templates?.find(t => t.id === session.template_id)
           templateName = template?.title || null
         }
-        
+
         if (!templateName && session.metadata?.builtInTemplateTitle) {
           // Built-in template stored in metadata (template_id is null due to FK constraint)
           templateName = session.metadata.builtInTemplateTitle
         }
-        
+
         if (!templateName) {
           templateName = 'Unknown Template'
         }
-        
+
         return {
           id: session.id,
           template: templateName,
@@ -458,7 +461,8 @@ router.get('/employee/:userId', async (req, res) => {
           isPlayground: isPlayground,
           assignment_id: session.assignment_id,
           closed: session.closed,
-          closedEvidence: session.closed_evidence || null
+          closedEvidence: session.closed_evidence || null,
+          submittedForReview: session.submitted_for_review
         }
       })
 
@@ -475,10 +479,10 @@ router.get('/employee/:userId', async (req, res) => {
     const skillsBreakdown: any = {}
     filteredGrades?.forEach(grade => {
       if (grade.criteria_grades) {
-        const criteria = Array.isArray(grade.criteria_grades) 
-          ? grade.criteria_grades 
+        const criteria = Array.isArray(grade.criteria_grades)
+          ? grade.criteria_grades
           : []
-        
+
         criteria.forEach((c: any) => {
           if (!skillsBreakdown[c.title]) {
             skillsBreakdown[c.title] = { scores: [], total: 0, count: 0 }
@@ -503,23 +507,23 @@ router.get('/employee/:userId', async (req, res) => {
       if (!session.assignment_id) { // Playground session
         // Get template name - check database first, then metadata for built-in templates
         let templateName: string | null = null
-        
+
         if (session.template_id) {
           const template = templates?.find(t => t.id === session.template_id)
           templateName = template?.title || null
         }
-        
+
         if (!templateName && session.metadata?.builtInTemplateTitle) {
           // Built-in template stored in metadata (template_id is null due to FK constraint)
           templateName = session.metadata.builtInTemplateTitle
         }
-        
+
         if (!templateName) {
           templateName = 'Unknown Template'
         }
-        
+
         const grade = filteredGrades?.find(g => g.session_id === session.id)
-        
+
         if (!playgroundSessionsByTemplate[templateName]) {
           playgroundSessionsByTemplate[templateName] = {
             templateName,
@@ -530,12 +534,12 @@ router.get('/employee/:userId', async (req, res) => {
             lastPlayed: session.created_at
           }
         }
-        
+
         playgroundSessionsByTemplate[templateName].count++
         if (grade) {
           playgroundSessionsByTemplate[templateName].scores.push(grade.percentage)
         }
-        
+
         // Update last played if this session is more recent
         if (new Date(session.created_at) > new Date(playgroundSessionsByTemplate[templateName].lastPlayed)) {
           playgroundSessionsByTemplate[templateName].lastPlayed = session.created_at
@@ -546,7 +550,7 @@ router.get('/employee/:userId', async (req, res) => {
     // Calculate average scores for each template
     const playgroundStats = Object.values(playgroundSessionsByTemplate).map((stat: any) => ({
       ...stat,
-      avgScore: stat.scores.length > 0 
+      avgScore: stat.scores.length > 0
         ? Math.round(stat.scores.reduce((a: number, b: number) => a + b, 0) / stat.scores.length)
         : null
     })).sort((a: any, b: any) => new Date(b.lastPlayed).getTime() - new Date(a.lastPlayed).getTime())
@@ -559,7 +563,7 @@ router.get('/employee/:userId', async (req, res) => {
       avgScore: parseFloat(avgScore.toFixed(1)),
       highestScore: parseFloat(highestScore.toFixed(1)),
       lowestScore: parseFloat(lowestScore.toFixed(1)),
-      
+
       // Practice vs Assignment Stats (from ALL sessions)
       practiceStats: {
         totalSessions: practiceSessions.length,
@@ -573,26 +577,26 @@ router.get('/employee/:userId', async (req, res) => {
         avgScore: parseFloat(assignmentAvgScore.toFixed(1)),
         avgDuration: parseFloat(assignmentAvgDuration.toFixed(1))
       },
-      
+
       // Assignment Progress
       assignmentsCompleted,
       assignmentsPending,
       totalAssignments: userAssignments?.length || 0,
-      
+
       // Cloze Rate
       clozeRate: parseFloat(clozeRate.toFixed(1)),
       closedSessions,
       totalSessionsWithCloseStatus: sessionsWithCloseStatus,
-      
+
       // Detailed Data
       recentSessions,
       scoreTrend,
       skills,
       playgroundStats, // Practice sessions grouped by template
-      
+
       // Performance Metrics
       // scoreTrend is sorted newest first, so improvement = newest - oldest
-      improvementRate: scoreTrend.length >= 2 
+      improvementRate: scoreTrend.length >= 2
         ? (scoreTrend[0]?.score || 0) - (scoreTrend[scoreTrend.length - 1]?.score || 0)
         : 0
     }
@@ -615,14 +619,14 @@ router.get('/employee/:userId', async (req, res) => {
 // Background processing function - runs after session is saved
 // Handles LLM transcript cleaning, summary generation, auto-grading, and recording URL fetch
 async function processSessionInBackground(
-  sessionId: number, 
-  userId: string, 
-  assignmentId: number | null, 
+  sessionId: number,
+  userId: string,
+  assignmentId: number | null,
   transcriptClean: string,
   vapiCallId: string | null
 ): Promise<void> {
   console.log(`🔄 Starting background processing for session ${sessionId}`)
-  
+
   const OpenAI = require('openai')
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -630,51 +634,51 @@ async function processSessionInBackground(
     // STEP 0: Fetch recording URL from VAPI (if we have a call ID)
     // VAPI recordings take time to process, so we need to wait and retry
     console.log(`🔍 VAPI Call ID for session ${sessionId}:`, vapiCallId || 'NULL/UNDEFINED')
-    
+
     if (vapiCallId) {
       console.log(`🎙️ Fetching recording URL for session ${sessionId}...`)
       try {
         const { vapiService } = require('../services/vapi')
-        
+
         // Helper function to wait
         const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-        
+
         // Retry logic: Try multiple times with increasing delays
         // VAPI needs time to process the recording after call ends
         const maxRetries = 6
         const delays = [10000, 15000, 20000, 30000, 40000, 50000] // 10s, 15s, 20s, 30s, 40s, 50s
-        
+
         let recordingUrl = null
-        
+
         for (let attempt = 0; attempt < maxRetries; attempt++) {
           // Wait before checking (give VAPI time to process)
           await wait(delays[attempt] || 30000)
-          
+
           console.log(`🔄 Attempt ${attempt + 1}/${maxRetries} to fetch recording for session ${sessionId}`)
-          
+
           const callDetails = await vapiService.getCall(vapiCallId)
-          
+
           // Check multiple possible locations for recording URL
-          recordingUrl = callDetails.artifact?.recordingUrl || 
-                        callDetails.recordingUrl || 
-                        callDetails.recording?.url ||
-                        callDetails.recordingPath ||
-                        null
-          
+          recordingUrl = callDetails.artifact?.recordingUrl ||
+            callDetails.recordingUrl ||
+            callDetails.recording?.url ||
+            callDetails.recordingPath ||
+            null
+
           if (recordingUrl) {
             console.log(`✅ Recording URL found on attempt ${attempt + 1}`)
             break
           }
-          
+
           console.log(`⏳ Recording not ready yet, will retry...`)
         }
-        
+
         if (recordingUrl) {
           await supabase
             .from('training_sessions')
             .update({ recording_url: recordingUrl })
             .eq('id', sessionId)
-          
+
           console.log(`✅ Recording URL saved for session ${sessionId}: ${recordingUrl}`)
         } else {
           console.log(`⚠️ No recording URL found after ${maxRetries} attempts for call ${vapiCallId}`)
@@ -693,13 +697,13 @@ async function processSessionInBackground(
       console.log(`📝 Cleaning transcript for session ${sessionId}...`)
       try {
         llmCleanedTranscript = await cleanTranscriptWithLLM(transcriptClean)
-        
+
         // Save cleaned transcript
         await supabase
           .from('training_sessions')
           .update({ transcript_llm_clean: llmCleanedTranscript })
           .eq('id', sessionId)
-        
+
         console.log(`✅ Transcript cleaned for session ${sessionId}`)
       } catch (error) {
         console.error(`❌ Failed to clean transcript for session ${sessionId}:`, error)
@@ -713,7 +717,7 @@ async function processSessionInBackground(
       console.log(`📊 Generating summary for session ${sessionId}...`)
       try {
         const transcriptForSummary = llmCleanedTranscript || transcriptClean
-        
+
         const summaryPrompt = `Analyze this sales call transcript and provide a concise summary focusing on:
 1. What the rep did well (strengths in their approach, techniques used effectively)
 2. What the rep could improve (missed opportunities, weak points, areas for development)
@@ -749,7 +753,7 @@ Provide a helpful, constructive summary for the sales rep.`
             .from('training_sessions')
             .update({ ai_summary: summary })
             .eq('id', sessionId)
-          
+
           console.log(`✅ Summary generated for session ${sessionId}`)
         }
       } catch (error) {
@@ -799,17 +803,17 @@ Provide a helpful, constructive summary for the sales rep.`
       }
 
       // Create rubric text
-      const rubricText = rubricCriteria.map((criteria: any) => 
+      const rubricText = rubricCriteria.map((criteria: any) =>
         `- ${criteria.title}: ${criteria.description} (Max: ${criteria.maxPoints} points)`
       ).join('\n')
 
       const transcriptForGrading = llmCleanedTranscript || transcriptClean
-      
+
       // Truncate if needed
       const MAX_TRANSCRIPT_CHARS = 200000
       let processedTranscript = transcriptForGrading
       if (transcriptForGrading && transcriptForGrading.length > MAX_TRANSCRIPT_CHARS) {
-        processedTranscript = transcriptForGrading.substring(0, MAX_TRANSCRIPT_CHARS) + 
+        processedTranscript = transcriptForGrading.substring(0, MAX_TRANSCRIPT_CHARS) +
           '\n\n[TRANSCRIPT TRUNCATED DUE TO LENGTH]'
       }
 
@@ -838,13 +842,12 @@ SCORING APPROACH:
 - Zero points: Skill completely absent or not attempted
 
 CLOSE DETECTION:
-In addition to grading, determine if the salesperson successfully closed the deal (i.e., the customer/prospect agreed to move forward, did not reject the offer, and showed commitment to proceed). A close means:
-- Customer agreed to next steps, purchase, or commitment
-- Customer did not explicitly reject or decline
-- Customer showed positive intent to proceed
-- NOT just a "maybe" or "I'll think about it" - needs clear agreement
+Determine if the call was "closed" based on these strict rules:
+1. IF the salesperson got rejected (customer said no, not interested, hung up in anger) -> Return FALSE
+2. IF the salesperson ended the call early (before reaching a conclusion/ask) -> Return FALSE
+3. ELSE (if the call finished naturally and wasn't a rejection) -> Return TRUE
 
-Provide specific evidence (quotes from the transcript) that supports your determination of whether the call was closed or not.
+Provide specific evidence (quotes from the transcript) that supports your determination.
 
 RESPONSE FORMAT (JSON):
 {
@@ -888,7 +891,7 @@ Only return the JSON response, nothing else.`
       }
 
       const gradingResult = JSON.parse(gradingResponse)
-      
+
       // Log the grading result to debug closed status
       console.log(`📊 Grading result for session ${sessionId}:`, {
         hasClosed: 'closed' in gradingResult,
@@ -916,19 +919,19 @@ Only return the JSON response, nothing else.`
       const closedValue = gradingResult.closed
       if (closedValue !== undefined && closedValue !== null) {
         // Convert string "true"/"false" to boolean if needed
-        const closedBool = typeof closedValue === 'string' 
-          ? closedValue.toLowerCase() === 'true' 
+        const closedBool = typeof closedValue === 'string'
+          ? closedValue.toLowerCase() === 'true'
           : Boolean(closedValue)
-        
+
         const { error: updateError, data: updateData } = await supabase
           .from('training_sessions')
-          .update({ 
+          .update({
             closed: closedBool,
             closed_evidence: gradingResult.closedEvidence || null
           })
           .eq('id', sessionId)
           .select()
-        
+
         if (updateError) {
           console.error(`❌ Error updating closed status for session ${sessionId}:`, updateError)
         } else {
@@ -1063,7 +1066,7 @@ router.post('/grade-transcript', async (req, res) => {
     })
 
     // Create rubric text
-    const rubricText = rubricCriteria.map((criteria: any) => 
+    const rubricText = rubricCriteria.map((criteria: any) =>
       `- ${criteria.title}: ${criteria.description} (Max: ${criteria.maxPoints} points)`
     ).join('\n')
 
@@ -1073,7 +1076,7 @@ router.post('/grade-transcript', async (req, res) => {
     const MAX_TRANSCRIPT_CHARS = 200000 // ~50k tokens, leaving room for rubric and response
     let processedTranscript = transcript
     let wasTruncated = false
-    
+
     if (transcript && transcript.length > MAX_TRANSCRIPT_CHARS) {
       console.warn(`⚠️ Transcript too long (${transcript.length} chars), truncating to ${MAX_TRANSCRIPT_CHARS}`)
       processedTranscript = transcript.substring(0, MAX_TRANSCRIPT_CHARS) + '\n\n[TRANSCRIPT TRUNCATED DUE TO LENGTH - Grading based on first portion of call]'
@@ -1105,11 +1108,10 @@ SCORING APPROACH:
 - Zero points: Skill completely absent or not attempted
 
 CLOSE DETECTION:
-In addition to grading, determine if the salesperson successfully closed the deal (i.e., the customer/prospect agreed to move forward, did not reject the offer, and showed commitment to proceed). A close means:
-- Customer agreed to next steps, purchase, or commitment
-- Customer did not explicitly reject or decline
-- Customer showed positive intent to proceed
-- NOT just a "maybe" or "I'll think about it" - needs clear agreement
+Determine if the call was "closed" based on these strict rules:
+1. IF the salesperson got rejected (customer said no, not interested, hung up in anger) -> Return FALSE
+2. IF the salesperson ended the call early (before reaching a conclusion/ask) -> Return FALSE
+3. ELSE (if the call finished naturally and wasn't a rejection) -> Return TRUE
 
 RESPONSE FORMAT (JSON):
 {
@@ -1155,13 +1157,13 @@ Only return the JSON response, nothing else.`
         code: openaiError.code,
         status: openaiError.status
       })
-      
+
       // Check if it's a token limit error
-      if (openaiError.message?.includes('maximum context length') || 
-          openaiError.code === 'context_length_exceeded') {
+      if (openaiError.message?.includes('maximum context length') ||
+        openaiError.code === 'context_length_exceeded') {
         throw new Error(`Transcript too long for AI processing. Please try a shorter training session. (${transcript?.length || 0} characters)`)
       }
-      
+
       throw new Error(`AI grading failed: ${openaiError.message || 'Unknown error'}`)
     }
 
@@ -1178,7 +1180,7 @@ Only return the JSON response, nothing else.`
       console.error('Failed to parse grading response:', response)
       throw new Error('AI returned invalid grading format')
     }
-    
+
     // Log the grading result to debug closed status
     console.log(`📊 Grading result for session ${sessionId}:`, {
       hasClosed: 'closed' in gradingResult,
@@ -1213,19 +1215,19 @@ Only return the JSON response, nothing else.`
     const closedValue = gradingResult.closed
     if (closedValue !== undefined && closedValue !== null) {
       // Convert string "true"/"false" to boolean if needed
-      const closedBool = typeof closedValue === 'string' 
-        ? closedValue.toLowerCase() === 'true' 
+      const closedBool = typeof closedValue === 'string'
+        ? closedValue.toLowerCase() === 'true'
         : Boolean(closedValue)
-      
+
       const { error: updateError, data: updateData } = await supabase
         .from('training_sessions')
-        .update({ 
+        .update({
           closed: closedBool,
           closed_evidence: gradingResult.closedEvidence || null
         })
         .eq('id', sessionId)
         .select()
-      
+
       if (updateError) {
         console.error(`❌ Error updating closed status for session ${sessionId}:`, updateError)
       } else {
@@ -1240,8 +1242,8 @@ Only return the JSON response, nothing else.`
     return res.json({
       success: true,
       data: grade,
-      message: wasTruncated 
-        ? 'Transcript graded successfully (Note: Very long call - graded based on first portion)' 
+      message: wasTruncated
+        ? 'Transcript graded successfully (Note: Very long call - graded based on first portion)'
         : 'Transcript graded and saved successfully',
       wasTruncated
     })
@@ -1379,17 +1381,17 @@ router.get('/session-transcript/:sessionId', async (req, res) => {
     // LAZY LOAD: If no LLM-cleaned version exists, run it NOW and save it
     if (!cleanedTranscript && session.transcript_clean) {
       console.log('No LLM-cleaned transcript found. Running LLM cleaning for first time...')
-      
+
       try {
         cleanedTranscript = await cleanTranscriptWithLLM(session.transcript_clean)
         console.log('LLM cleaning completed. Saving to database...')
-        
+
         // Save the LLM-cleaned transcript to the database for future use
         const { error: updateError } = await supabase
           .from('training_sessions')
           .update({ transcript_llm_clean: cleanedTranscript })
           .eq('id', sessionId)
-        
+
         if (updateError) {
           console.error('Error saving LLM-cleaned transcript:', updateError)
           // Don't fail - still return the cleaned transcript even if save fails
@@ -1585,7 +1587,7 @@ router.post('/manual-grade', async (req, res) => {
     }
 
     const sessionId = sessions[0]?.id
-    
+
     if (!sessionId) {
       return res.status(404).json({
         success: false,
@@ -1782,9 +1784,9 @@ router.post('/session/:id/submit', async (req, res): Promise<void> => {
 router.get('/debug-assignment-sessions/:orgId/:assignmentId', async (req, res) => {
   try {
     const { orgId, assignmentId } = req.params
-    
+
     console.log('🔍 DEBUG: Querying training_sessions for orgId:', orgId, 'assignmentId:', assignmentId)
-    
+
     // Query 1: Get all sessions for this org
     const { data: allSessions, error: allError } = await supabase
       .from('training_sessions')
@@ -1792,18 +1794,18 @@ router.get('/debug-assignment-sessions/:orgId/:assignmentId', async (req, res) =
       .eq('org_id', orgId)
       .order('created_at', { ascending: false })
       .limit(50)
-    
+
     console.log('🔍 DEBUG: All sessions:', allSessions?.length)
-    
+
     // Query 2: Get sessions specifically for this assignment
     const { data: assignmentSessions, error: assignmentError } = await supabase
       .from('training_sessions')
       .select('*')
       .eq('org_id', orgId)
       .eq('assignment_id', parseInt(assignmentId))
-    
+
     console.log('🔍 DEBUG: Sessions with assignment_id =', assignmentId, ':', assignmentSessions?.length)
-    
+
     // Query 3: Get sessions with session_type = 'assignment'
     const { data: typeSessions, error: typeError } = await supabase
       .from('training_sessions')
@@ -1811,9 +1813,9 @@ router.get('/debug-assignment-sessions/:orgId/:assignmentId', async (req, res) =
       .eq('org_id', orgId)
       .eq('session_type', 'assignment')
       .order('created_at', { ascending: false })
-    
+
     console.log('🔍 DEBUG: Sessions with session_type="assignment":', typeSessions?.length)
-    
+
     return res.json({
       success: true,
       data: {
@@ -1839,12 +1841,12 @@ router.get('/debug-assignment-sessions/:orgId/:assignmentId', async (req, res) =
 router.get('/debug-vapi-call/:callId', async (req, res) => {
   try {
     const { callId } = req.params
-    
+
     console.log('🔍 DEBUG: Fetching VAPI call details for:', callId)
-    
+
     const { vapiService } = require('../services/vapi')
     const callDetails = await vapiService.getCall(callId)
-    
+
     // Extract all possible recording URL locations
     const recordingInfo = {
       callId: callId,
@@ -1855,9 +1857,9 @@ router.get('/debug-vapi-call/:callId', async (req, res) => {
       recordingObject: callDetails.recording || null,
       fullCallDetails: callDetails // Send everything for inspection
     }
-    
+
     console.log('🔍 DEBUG: Recording info extracted:', JSON.stringify(recordingInfo, null, 2))
-    
+
     return res.json({
       success: true,
       data: recordingInfo
