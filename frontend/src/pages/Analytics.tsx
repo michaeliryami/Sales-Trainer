@@ -993,8 +993,8 @@ const Analytics: React.FC = () => {
                       value={filterAssignmentId ? `assignment-${filterAssignmentId}` : sessionListFilter}
                       onChange={(e) => {
                         const value = e.target.value
-                        if (value === 'all' || value === 'practice') {
-                          setSessionListFilter(value as 'all' | 'practice' | 'assignment')
+                        if (value === 'all') {
+                          setSessionListFilter('all')
                           setFilterAssignmentId(null)
                           navigate('/analytics')
                         } else if (value.startsWith('assignment-')) {
@@ -1015,7 +1015,6 @@ const Analytics: React.FC = () => {
                       _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
                     >
                       <option value="all">All Sessions</option>
-                      <option value="practice">Practice</option>
                       {assignments.map((assignment) => (
                         <option key={assignment.id} value={`assignment-${assignment.id}`}>
                           {assignment.title}
