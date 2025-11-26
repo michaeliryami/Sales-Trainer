@@ -289,20 +289,23 @@ const MyAnalytics: React.FC = () => {
     setSelectedSession(session)
     setActiveView(view)
 
-    // Fetch data based on view
-    if (view === 'grade' && !sessionGrade) {
+    // Clear old data when switching to a different session
+    if (selectedSession?.id !== session.id) {
+      setSessionGrade(null)
+      setSessionTranscript(null)
+      setSessionSummary(null)
+    }
+
+    // Always fetch data for the selected session
+    if (view === 'grade') {
       fetchSessionGrade(session.id)
     }
-    if (view === 'transcript' && !sessionTranscript) {
+    if (view === 'transcript') {
       fetchSessionTranscript(session.id)
     }
     if (view === 'summary') {
-      if (!sessionTranscript) {
-        fetchSessionTranscript(session.id)
-      }
-      if (!sessionSummary) {
-        generateSummary(session.id)
-      }
+      fetchSessionTranscript(session.id)
+      generateSummary(session.id)
     }
   }
 
