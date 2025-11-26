@@ -846,18 +846,17 @@ const MyAnalytics: React.FC = () => {
                                     {session.template}
                                   </Text>
                                   {session.closed !== null && (
-                                    <Box>
-                                      <Badge
-                                        colorScheme={session.closed ? 'green' : 'red'}
-                                        variant="subtle"
-                                        fontSize="xs"
-                                      >
-                                        <HStack spacing={1}>
-                                          <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
-                                          <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
-                                        </HStack>
-                                      </Badge>
-                                    </Box>
+                                    <Badge
+                                      colorScheme={session.closed ? 'green' : 'red'}
+                                      variant="subtle"
+                                      fontSize="xs"
+                                      alignSelf="flex-start"
+                                    >
+                                      <HStack spacing={1}>
+                                        <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
+                                        <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
+                                      </HStack>
+                                    </Badge>
                                   )}
                                   <HStack spacing={2} flexWrap="wrap">
                                     {session.isPlayground ? (
