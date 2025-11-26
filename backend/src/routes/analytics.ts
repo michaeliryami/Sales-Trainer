@@ -1775,19 +1775,7 @@ router.post('/session/:id/submit', async (req, res): Promise<void> => {
       return
     }
 
-    // If this is an assignment session, unsubmit all other sessions for this assignment
-    if (session.assignment_id) {
-      const { error: unsubmitError } = await supabase
-        .from('training_sessions')
-        .update({ submitted_for_review: false })
-        .eq('assignment_id', session.assignment_id)
-        .eq('user_id', session.user_id)
-        .neq('id', id)
-
-      if (unsubmitError) {
-        console.error('Error unsubmitting other sessions:', unsubmitError)
-      }
-    }
+    // Allow multiple submissions per assignment - no need to unsubmit others
 
     // Now submit this session
     const { data, error } = await supabase
