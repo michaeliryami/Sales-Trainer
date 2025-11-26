@@ -962,8 +962,7 @@ Only return the JSON response, nothing else.`
         const { error: updateError, data: updateData } = await supabase
           .from('training_sessions')
           .update({
-            closed: closedBool,
-            closed_evidence: closedEvidence
+            closed: closedBool
           })
           .eq('id', sessionId)
           .select()
@@ -1025,8 +1024,7 @@ Only return the JSON response, nothing else.`
           const { error: updateError, data: updateData } = await supabase
             .from('training_sessions')
             .update({
-              closed: closedBool,
-              closed_evidence: closedEvidence
+              closed: closedBool
             })
             .eq('id', sessionId)
             .select()
@@ -1333,8 +1331,7 @@ Only return the JSON response, nothing else.`
     const { error: updateError, data: updateData } = await supabase
       .from('training_sessions')
       .update({
-        closed: closedBool,
-        closed_evidence: closedEvidence
+        closed: closedBool
       })
       .eq('id', sessionId)
       .select()
