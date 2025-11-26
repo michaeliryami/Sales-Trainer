@@ -812,31 +812,34 @@ Provide a helpful, constructive summary for the sales rep.`
           .single()
 
         if (rubricError || !defaultRubric) {
-          console.log(`⚠️ No default rubric found, skipping grading for playground session ${sessionId}`)
-          return
+          console.log(`⚠️ No default rubric found for playground session ${sessionId}`)
+          console.log(`📍 Will still determine closed status without full grading`)
+          // Don't return - we'll still determine closed status below
+        } else {
+          rubricCriteria = defaultRubric.criteria || []
+          rubricId = defaultRubric.id
+        }
+      }
+
+      // Only do full grading if we have rubric criteria
+      if (rubricCriteria.length > 0) {
+        // Create rubric text
+        const rubricText = rubricCriteria.map((criteria: any) =>
+          `- ${criteria.title}: ${criteria.description} (Max: ${criteria.maxPoints} points)`
+        ).join('\n')
+
+        const transcriptForGrading = llmCleanedTranscript || transcriptClean
+
+        // Truncate if needed
+        const MAX_TRANSCRIPT_CHARS = 200000
+        let processedTranscript = transcriptForGrading
+        if (transcriptForGrading && transcriptForGrading.length > MAX_TRANSCRIPT_CHARS) {
+          processedTranscript = transcriptForGrading.substring(0, MAX_TRANSCRIPT_CHARS) +
+            '\n\n[TRANSCRIPT TRUNCATED DUE TO LENGTH]'
         }
 
-        rubricCriteria = defaultRubric.criteria || []
-        rubricId = defaultRubric.id
-      }
-
-      // Create rubric text
-      const rubricText = rubricCriteria.map((criteria: any) =>
-        `- ${criteria.title}: ${criteria.description} (Max: ${criteria.maxPoints} points)`
-      ).join('\n')
-
-      const transcriptForGrading = llmCleanedTranscript || transcriptClean
-
-      // Truncate if needed
-      const MAX_TRANSCRIPT_CHARS = 200000
-      let processedTranscript = transcriptForGrading
-      if (transcriptForGrading && transcriptForGrading.length > MAX_TRANSCRIPT_CHARS) {
-        processedTranscript = transcriptForGrading.substring(0, MAX_TRANSCRIPT_CHARS) +
-          '\n\n[TRANSCRIPT TRUNCATED DUE TO LENGTH]'
-      }
-
-      // Grade with AI
-      const gradingPrompt = `
+        // Grade with AI
+        const gradingPrompt = `
 You are an objective sales training evaluator. Analyze this sales conversation transcript against the provided rubric criteria and provide accurate, honest grading.
 
 RUBRIC CRITERIA:
@@ -887,94 +890,147 @@ RESPONSE FORMAT (JSON):
 
 Only return the JSON response, nothing else.`
 
-      const gradingCompletion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are an objective sales training evaluator. Provide accurate, fair grading based on actual performance demonstrated in the call. Be honest and constructive in your feedback."
-          },
-          {
-            role: "user",
-            content: gradingPrompt
-          }
-        ],
-        max_tokens: 4000,
-        temperature: 0.1
-      })
-
-      const gradingResponse = gradingCompletion.choices[0]?.message?.content
-      if (!gradingResponse) {
-        throw new Error('No grading response received')
-      }
-
-      const gradingResult = JSON.parse(gradingResponse)
-
-      // Log the full grading result for debugging
-      console.log(`📊 Full grading result for session ${sessionId}:`, JSON.stringify(gradingResult, null, 2))
-
-      // Save grade to database
-      await supabase
-        .from('session_grades')
-        .insert([{
-          session_id: sessionId,
-          user_id: userId,
-          assignment_id: assignmentId, // Will be null for playground sessions
-          rubric_id: rubricId,
-          total_score: gradingResult.totalScore,
-          max_possible_score: gradingResult.maxPossibleScore,
-          criteria_grades: gradingResult.criteriaGrades,
-          grading_model: 'gpt-4o-mini'
-        }])
-
-      // Update session with closed status and evidence
-      // Handle both boolean and string values, and check for null/undefined
-      const closedValue = gradingResult.closed
-      let closedBool = false
-      let closedEvidence = null
-
-      console.log(`🔍 Closed value from AI:`, {
-        raw: closedValue,
-        type: typeof closedValue,
-        hasClosedField: 'closed' in gradingResult,
-        hasEvidenceField: 'closedEvidence' in gradingResult
-      })
-
-      if (closedValue !== undefined && closedValue !== null) {
-        // Convert string "true"/"false" to boolean if needed
-        closedBool = typeof closedValue === 'string'
-          ? closedValue.toLowerCase() === 'true'
-          : Boolean(closedValue)
-        closedEvidence = gradingResult.closedEvidence || null
-        console.log(`✅ Using AI closed determination: ${closedBool}`)
-      } else {
-        // AI didn't return closed status - default to false
-        console.warn(`⚠️ No closed status in grading result for session ${sessionId}. Defaulting to false.`)
-        closedBool = false
-        closedEvidence = 'AI did not provide close determination for this session.'
-      }
-
-      console.log(`💾 Updating session ${sessionId} with closed=${closedBool}, evidence="${closedEvidence}"`)
-
-      const { error: updateError, data: updateData } = await supabase
-        .from('training_sessions')
-        .update({
-          closed: closedBool,
-          closed_evidence: closedEvidence
+        const gradingCompletion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: "You are an objective sales training evaluator. Provide accurate, fair grading based on actual performance demonstrated in the call. Be honest and constructive in your feedback."
+            },
+            {
+              role: "user",
+              content: gradingPrompt
+            }
+          ],
+          max_tokens: 4000,
+          temperature: 0.1
         })
-        .eq('id', sessionId)
-        .select()
 
-      if (updateError) {
-        console.error(`❌ Error updating closed status for session ${sessionId}:`, updateError)
-      } else {
-        console.log(`✅ Successfully updated closed status for session ${sessionId}:`, {
-          closed: updateData?.[0]?.closed,
-          evidence: updateData?.[0]?.closed_evidence
+        const gradingResponse = gradingCompletion.choices[0]?.message?.content
+        if (!gradingResponse) {
+          throw new Error('No grading response received')
+        }
+
+        const gradingResult = JSON.parse(gradingResponse)
+
+        // Log the full grading result for debugging
+        console.log(`📊 Full grading result for session ${sessionId}:`, JSON.stringify(gradingResult, null, 2))
+
+        // Save grade to database
+        await supabase
+          .from('session_grades')
+          .insert([{
+            session_id: sessionId,
+            user_id: userId,
+            assignment_id: assignmentId, // Will be null for playground sessions
+            rubric_id: rubricId,
+            total_score: gradingResult.totalScore,
+            max_possible_score: gradingResult.maxPossibleScore,
+            criteria_grades: gradingResult.criteriaGrades,
+            grading_model: 'gpt-4o-mini'
+          }])
+
+        // Update session with closed status and evidence
+        // Handle both boolean and string values, and check for null/undefined
+        const closedValue = gradingResult.closed
+        let closedBool = false
+        let closedEvidence = null
+
+        console.log(`🔍 Closed value from AI:`, {
+          raw: closedValue,
+          type: typeof closedValue,
+          hasClosedField: 'closed' in gradingResult,
+          hasEvidenceField: 'closedEvidence' in gradingResult
         })
-      }
 
-      console.log(`✅ Session ${sessionId} graded successfully`)
+        if (closedValue !== undefined && closedValue !== null) {
+          // Convert string "true"/"false" to boolean if needed
+          closedBool = typeof closedValue === 'string'
+            ? closedValue.toLowerCase() === 'true'
+            : Boolean(closedValue)
+          closedEvidence = gradingResult.closedEvidence || null
+          console.log(`✅ Using AI closed determination: ${closedBool}`)
+        } else {
+          // AI didn't return closed status - default to false
+          console.warn(`⚠️ No closed status in grading result for session ${sessionId}. Defaulting to false.`)
+          closedBool = false
+          closedEvidence = 'AI did not provide close determination for this session.'
+        }
+
+        console.log(`💾 Updating session ${sessionId} with closed=${closedBool}, evidence="${closedEvidence}"`)
+
+        const { error: updateError, data: updateData } = await supabase
+          .from('training_sessions')
+          .update({
+            closed: closedBool,
+            closed_evidence: closedEvidence
+          })
+          .eq('id', sessionId)
+          .select()
+
+        if (updateError) {
+          console.error(`❌ Error updating closed status for session ${sessionId}:`, updateError)
+        } else {
+          console.log(`✅ Successfully updated closed status for session ${sessionId}:`, {
+            closed: updateData?.[0]?.closed,
+            evidence: updateData?.[0]?.closed_evidence
+          })
+        }
+
+        console.log(`✅ Session ${sessionId} graded successfully`)
+      } else {
+        // No rubric - just determine closed status without full grading
+        console.log(`📍 No rubric criteria - determining closed status only for session ${sessionId}`)
+
+        const transcriptForClosing = llmCleanedTranscript || transcriptClean
+        const closePrompt = `Analyze this sales call transcript and determine if the call was "closed" based on these strict rules:
+
+1. IF the salesperson got rejected (customer said no, not interested, hung up in anger) -> Return FALSE
+2. IF the salesperson ended the call early (before reaching a conclusion/ask) -> Return FALSE
+3. ELSE (if the call finished naturally and wasn't a rejection) -> Return TRUE
+
+CONVERSATION TRANSCRIPT:
+${transcriptForClosing}
+
+Provide specific evidence (quotes from the transcript) that supports your determination.
+
+RESPONSE FORMAT (JSON):
+{
+  "closed": boolean,
+  "closedEvidence": "string - specific quotes/reasoning explaining why the call was or wasn't closed"
+}
+
+Only return the JSON response, nothing else.`
+
+        const closeCompletion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: "You are a sales call analyzer. Determine if the call was closed." },
+            { role: "user", content: closePrompt }
+          ],
+          max_tokens: 500,
+          temperature: 0.1
+        })
+
+        const closeResponse = closeCompletion.choices[0]?.message?.content
+        if (closeResponse) {
+          const closeResult = JSON.parse(closeResponse)
+          const closedBool = Boolean(closeResult.closed)
+          const closedEvidence = closeResult.closedEvidence || 'AI determined close status based on transcript analysis.'
+
+          console.log(`💾 Updating session ${sessionId} with closed=${closedBool} (no full grading)`)
+
+          await supabase
+            .from('training_sessions')
+            .update({
+              closed: closedBool,
+              closed_evidence: closedEvidence
+            })
+            .eq('id', sessionId)
+
+          console.log(`✅ Closed status determined for session ${sessionId}: ${closedBool}`)
+        }
+      }
     } catch (error) {
       console.error(`❌ Failed to grade session ${sessionId}:`, error)
       // Don't throw - other steps succeeded
