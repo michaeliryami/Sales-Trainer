@@ -841,11 +841,11 @@ const MyAnalytics: React.FC = () => {
                           <CardBody p={4}>
                             <VStack align="stretch" spacing={3}>
                               <HStack justify="space-between" align="start">
-                                <VStack align="start" spacing={1} flex={1}>
+                                <VStack align="stretch" spacing={1} flex={1}>
                                   <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')} fontSize="sm">
                                     {session.template}
                                   </Text>
-                                  <HStack spacing={2}>
+                                  <HStack spacing={2} flexWrap="wrap">
                                     {session.isPlayground ? (
                                       <Badge
                                         colorScheme="orange"
