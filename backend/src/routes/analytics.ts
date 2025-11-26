@@ -910,13 +910,8 @@ Only return the JSON response, nothing else.`
 
       const gradingResult = JSON.parse(gradingResponse)
 
-      // Log the grading result to debug closed status
-      console.log(`📊 Grading result for session ${sessionId}:`, {
-        hasClosed: 'closed' in gradingResult,
-        closedValue: gradingResult.closed,
-        closedType: typeof gradingResult.closed,
-        hasEvidence: 'closedEvidence' in gradingResult
-      })
+      // Log the full grading result for debugging
+      console.log(`📊 Full grading result for session ${sessionId}:`, JSON.stringify(gradingResult, null, 2))
 
       // Save grade to database
       await supabase
@@ -938,18 +933,28 @@ Only return the JSON response, nothing else.`
       let closedBool = false
       let closedEvidence = null
 
+      console.log(`🔍 Closed value from AI:`, {
+        raw: closedValue,
+        type: typeof closedValue,
+        hasClosedField: 'closed' in gradingResult,
+        hasEvidenceField: 'closedEvidence' in gradingResult
+      })
+
       if (closedValue !== undefined && closedValue !== null) {
         // Convert string "true"/"false" to boolean if needed
         closedBool = typeof closedValue === 'string'
           ? closedValue.toLowerCase() === 'true'
           : Boolean(closedValue)
         closedEvidence = gradingResult.closedEvidence || null
+        console.log(`✅ Using AI closed determination: ${closedBool}`)
       } else {
         // AI didn't return closed status - default to false
         console.warn(`⚠️ No closed status in grading result for session ${sessionId}. Defaulting to false.`)
         closedBool = false
         closedEvidence = 'AI did not provide close determination for this session.'
       }
+
+      console.log(`💾 Updating session ${sessionId} with closed=${closedBool}, evidence="${closedEvidence}"`)
 
       const { error: updateError, data: updateData } = await supabase
         .from('training_sessions')
@@ -963,7 +968,10 @@ Only return the JSON response, nothing else.`
       if (updateError) {
         console.error(`❌ Error updating closed status for session ${sessionId}:`, updateError)
       } else {
-        console.log(`✅ Updated closed status for session ${sessionId}: ${closedBool}`, updateData?.[0]?.closed)
+        console.log(`✅ Successfully updated closed status for session ${sessionId}:`, {
+          closed: updateData?.[0]?.closed,
+          evidence: updateData?.[0]?.closed_evidence
+        })
       }
 
       console.log(`✅ Session ${sessionId} graded successfully`)
