@@ -845,6 +845,20 @@ const MyAnalytics: React.FC = () => {
                                   <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')} fontSize="sm">
                                     {session.template}
                                   </Text>
+                                  {session.closed !== null && (
+                                    <Box>
+                                      <Badge
+                                        colorScheme={session.closed ? 'green' : 'red'}
+                                        variant="subtle"
+                                        fontSize="xs"
+                                      >
+                                        <HStack spacing={1}>
+                                          <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
+                                          <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
+                                        </HStack>
+                                      </Badge>
+                                    </Box>
+                                  )}
                                   <HStack spacing={2} flexWrap="wrap">
                                     {session.isPlayground ? (
                                       <Badge
@@ -880,25 +894,6 @@ const MyAnalytics: React.FC = () => {
                                         textTransform="capitalize"
                                       >
                                         Submitted
-                                      </Badge>
-                                    )}
-                                    {session.closed !== null && (
-                                      <Badge
-                                        as="button"
-                                        onClick={() => {
-                                          setSelectedClosedSession(session)
-                                          onClosedModalOpen()
-                                        }}
-                                        colorScheme={session.closed ? 'green' : 'red'}
-                                        variant="subtle"
-                                        fontSize="xs"
-                                        cursor="pointer"
-                                        _hover={{ opacity: 0.8 }}
-                                      >
-                                        <HStack spacing={1}>
-                                          <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
-                                          <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
-                                        </HStack>
                                       </Badge>
                                     )}
                                   </HStack>
