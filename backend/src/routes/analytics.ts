@@ -969,11 +969,13 @@ Only return the JSON response, nothing else.`
           .select()
 
         if (updateError) {
-          console.error(`❌ Error updating closed status for session ${sessionId}:`, updateError)
+          console.error(`❌ Error updating closed status for session ${sessionId}:`, JSON.stringify(updateError, null, 2))
+          console.error(`❌ Full error object:`, updateError)
         } else {
           console.log(`✅ Successfully updated closed status for session ${sessionId}:`, {
             closed: updateData?.[0]?.closed,
-            evidence: updateData?.[0]?.closed_evidence
+            evidence: updateData?.[0]?.closed_evidence,
+            fullData: updateData?.[0]
           })
         }
 
@@ -1020,15 +1022,25 @@ Only return the JSON response, nothing else.`
 
           console.log(`💾 Updating session ${sessionId} with closed=${closedBool} (no full grading)`)
 
-          await supabase
+          const { error: updateError, data: updateData } = await supabase
             .from('training_sessions')
             .update({
               closed: closedBool,
               closed_evidence: closedEvidence
             })
             .eq('id', sessionId)
+            .select()
 
-          console.log(`✅ Closed status determined for session ${sessionId}: ${closedBool}`)
+          if (updateError) {
+            console.error(`❌ Error updating closed status (no rubric) for session ${sessionId}:`, JSON.stringify(updateError, null, 2))
+            console.error(`❌ Full error object:`, updateError)
+          } else {
+            console.log(`✅ Closed status determined for session ${sessionId}:`, {
+              closed: updateData?.[0]?.closed,
+              evidence: updateData?.[0]?.closed_evidence,
+              fullData: updateData?.[0]
+            })
+          }
         }
       }
     } catch (error) {
