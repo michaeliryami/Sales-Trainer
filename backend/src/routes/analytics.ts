@@ -844,10 +844,19 @@ Provide a helpful, constructive summary for the sales rep.`
         // Truncate if needed
         const MAX_TRANSCRIPT_CHARS = 200000
         let processedTranscript = transcriptForGrading
+
+        if (!processedTranscript || processedTranscript.trim().length < 50) {
+          console.warn(`⚠️ Transcript too short for grading (length: ${processedTranscript?.length || 0}). Skipping grading.`)
+          // We can't grade an empty transcript
+          return
+        }
+
         if (transcriptForGrading && transcriptForGrading.length > MAX_TRANSCRIPT_CHARS) {
           processedTranscript = transcriptForGrading.substring(0, MAX_TRANSCRIPT_CHARS) +
             '\n\n[TRANSCRIPT TRUNCATED DUE TO LENGTH]'
         }
+
+        console.log(`📝 Grading transcript length: ${processedTranscript.length} chars`)
 
         // Grade with AI
         const gradingPrompt = `
@@ -1000,6 +1009,12 @@ Only return the JSON response, nothing else.`
         console.log(`📍 No rubric criteria - determining closed status only for session ${sessionId}`)
 
         const transcriptForClosing = llmCleanedTranscript || transcriptClean
+
+        if (!transcriptForClosing || transcriptForClosing.trim().length < 50) {
+          console.warn(`⚠️ Transcript too short for closing determination (length: ${transcriptForClosing?.length || 0}). Skipping.`)
+          return
+        }
+
         const closePrompt = `Analyze this sales call transcript and determine if the call was "closed" based on these strict rules:
 
 1. IF the salesperson got rejected (customer said no, not interested, hung up in anger) -> Return FALSE
