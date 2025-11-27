@@ -275,9 +275,12 @@ router.get('/admin/:orgId', async (req, res) => {
 router.get('/employee/:userId', async (req, res) => {
   try {
     const { userId } = req.params
-    const { period = '30d' } = req.query
+    const { period = '30d', limit = '10', offset = '0' } = req.query
 
-    console.log(`Fetching employee analytics for user ${userId}, period: ${period}`)
+    const limitNum = parseInt(limit as string, 10)
+    const offsetNum = parseInt(offset as string, 10)
+
+    console.log(`Fetching employee analytics for user ${userId}, period: ${period}, limit: ${limitNum}, offset: ${offsetNum}`)
 
     // Calculate date range
     const startDate = new Date()
@@ -295,12 +298,14 @@ router.get('/employee/:userId', async (req, res) => {
         startDate.setFullYear(2000) // All time
     }
 
-    // Get user's sessions
-    const { data: sessions, error: sessionsError } = await supabase
+    // Get user's sessions with pagination
+    const { data: sessions, error: sessionsError, count: totalCount } = await supabase
       .from('training_sessions')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('user_id', userId)
       .gte('created_at', startDate.toISOString())
+      .order('created_at', { ascending: false })
+      .range(offsetNum, offsetNum + limitNum - 1)
 
     if (sessionsError) throw sessionsError
 
@@ -621,7 +626,13 @@ router.get('/employee/:userId', async (req, res) => {
 
     return res.json({
       success: true,
-      data: analyticsData
+      data: analyticsData,
+      pagination: {
+        total: totalCount || 0,
+        limit: limitNum,
+        offset: offsetNum,
+        hasMore: (offsetNum + limitNum) < (totalCount || 0)
+      }
     })
 
   } catch (error) {
