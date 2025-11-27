@@ -28,7 +28,7 @@ function Header() {
   const location = useLocation()
   const { user, signOut } = useAuth()
   const { profile, organization, userRole } = useProfile()
-  
+
   const bg = useColorModeValue('white', 'gray.800')
   const borderColor = useColorModeValue('gray.200', 'gray.700')
   const brandColor = useColorModeValue('brand.600', 'brand.400')
@@ -41,7 +41,7 @@ function Header() {
   const isActive = (path: string) => location.pathname === path
 
   return (
-    <Box 
+    <Box
       bg={useColorModeValue('white', 'gray.800')}
       backdropFilter="blur(10px)"
       boxShadow="lg"
@@ -59,9 +59,9 @@ function Header() {
       >
         {/* Logo/Brand */}
         <HStack spacing={3}>
-          <Image 
-            src="/logolong.png" 
-            alt="Sales Trainer Logo" 
+          <Image
+            src="/logolong.png"
+            alt="Sales Trainer Logo"
             h="40px"
             objectFit="contain"
             cursor="pointer"
@@ -211,7 +211,7 @@ function Header() {
                 } : {}}
                 transition="all 0.2s"
               >
-                Analytics
+                Team Performance
               </Button>
               <Button
                 variant={isActive('/my-analytics') ? "solid" : "ghost"}
@@ -253,11 +253,11 @@ function Header() {
               </Button>
             </>
           )}
-          
+
           <Menu>
             <MenuButton>
-              <Avatar 
-                size="sm" 
+              <Avatar
+                size="sm"
                 bg={brandColor}
                 color="white"
                 name={profile?.display_name || user?.email || "User"}

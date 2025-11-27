@@ -641,7 +641,7 @@ const Analytics: React.FC = () => {
                     fontWeight="600"
                     letterSpacing="-0.02em"
                   >
-                    Analytics Dashboard
+                    Team Performance
                   </Heading>
                   <Text
                     fontSize="sm"
