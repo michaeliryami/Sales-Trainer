@@ -957,7 +957,11 @@ Only return the JSON response, nothing else.`
           closedEvidence = 'AI did not provide close determination for this session.'
         }
 
-        console.log(`💾 Updating session ${sessionId} with closed=${closedBool}, evidence="${closedEvidence}"`)
+        console.log(`💾 [SESSION ${sessionId}] About to update closed status:`, {
+          sessionId,
+          closedBool,
+          timestamp: new Date().toISOString()
+        })
 
         const { error: updateError, data: updateData } = await supabase
           .from('training_sessions')
@@ -968,12 +972,13 @@ Only return the JSON response, nothing else.`
           .select()
 
         if (updateError) {
-          console.error(`❌ Error updating closed status for session ${sessionId}:`, JSON.stringify(updateError, null, 2))
+          console.error(`❌ [SESSION ${sessionId}] Error updating closed status:`, JSON.stringify(updateError, null, 2))
           console.error(`❌ Full error object:`, updateError)
         } else {
-          console.log(`✅ Successfully updated closed status for session ${sessionId}:`, {
+          console.log(`✅ [SESSION ${sessionId}] Successfully updated closed status:`, {
+            sessionId: updateData?.[0]?.id,
             closed: updateData?.[0]?.closed,
-            evidence: updateData?.[0]?.closed_evidence,
+            updatedAt: new Date().toISOString(),
             fullData: updateData?.[0]
           })
         }
@@ -1019,7 +1024,11 @@ Only return the JSON response, nothing else.`
           const closedBool = Boolean(closeResult.closed)
           const closedEvidence = closeResult.closedEvidence || 'AI determined close status based on transcript analysis.'
 
-          console.log(`💾 Updating session ${sessionId} with closed=${closedBool} (no full grading)`)
+          console.log(`💾 [SESSION ${sessionId}] About to update closed status (no rubric):`, {
+            sessionId,
+            closedBool,
+            timestamp: new Date().toISOString()
+          })
 
           const { error: updateError, data: updateData } = await supabase
             .from('training_sessions')
@@ -1030,12 +1039,13 @@ Only return the JSON response, nothing else.`
             .select()
 
           if (updateError) {
-            console.error(`❌ Error updating closed status (no rubric) for session ${sessionId}:`, JSON.stringify(updateError, null, 2))
+            console.error(`❌ [SESSION ${sessionId}] Error updating closed status (no rubric):`, JSON.stringify(updateError, null, 2))
             console.error(`❌ Full error object:`, updateError)
           } else {
-            console.log(`✅ Closed status determined for session ${sessionId}:`, {
+            console.log(`✅ [SESSION ${sessionId}] Closed status determined (no rubric):`, {
+              sessionId: updateData?.[0]?.id,
               closed: updateData?.[0]?.closed,
-              evidence: updateData?.[0]?.closed_evidence,
+              updatedAt: new Date().toISOString(),
               fullData: updateData?.[0]
             })
           }
