@@ -68,6 +68,9 @@ const MyAnalytics: React.FC = () => {
   const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure()
   const { isOpen: isClosedModalOpen, onOpen: onClosedModalOpen, onClose: onClosedModalClose } = useDisclosure()
   const [selectedClosedSession, setSelectedClosedSession] = useState<any>(null)
+  const [sessionOffset, setSessionOffset] = useState(0)
+  const [hasMoreSessions, setHasMoreSessions] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const toast = useToast()
 
   const bg = useColorModeValue('gray.50', 'gray.900')
@@ -77,6 +80,75 @@ const MyAnalytics: React.FC = () => {
   const accentColor = useColorModeValue('#f26f25', '#ff7d31')
 
   // Fetch employee analytics data with caching
+  const fetchAnalytics = React.useCallback(async (loadMore = false) => {
+    if (!profile?.id) return
+
+    const CACHE_TTL = 2 * 60 * 1000 // 2 minutes
+    const cacheKey = `my_analytics_${profile.id}_${timeRange}`
+    const cached = localStorage.getItem(cacheKey)
+    const now = Date.now()
+    const offset = loadMore ? sessionOffset : 0
+
+    // If we have cached data (even if expired), refresh in background
+    if (cached && !loadMore) {
+      setRefreshing(true)
+    } else if (!loadMore) {
+      // No cache - show loading spinner
+      setLoading(true)
+    } else {
+      setLoadingMore(true)
+    }
+
+    try {
+      const response = await apiFetch(`/api/analytics/employee/${profile.id}?period=${timeRange}&limit=10&offset=${offset}`)
+      const result = await response.json()
+
+      if (import.meta.env.DEV) console.log('📊 Analytics data received:', result)
+      if (import.meta.env.DEV) console.log('📋 Recent sessions:', result?.data?.recentSessions)
+
+      if (result.success) {
+        if (loadMore) {
+          // Append new sessions to existing ones
+          setAnalyticsData((prev: any) => ({
+            ...result.data,
+            recentSessions: [...(prev?.recentSessions || []), ...(result.data.recentSessions || [])]
+          }))
+        } else {
+          setAnalyticsData(result.data)
+          setSessionOffset(0)
+        }
+
+        // Update pagination state
+        setHasMoreSessions(result.pagination?.hasMore || false)
+        setSessionOffset(offset + 10)
+
+        // Update cache (only for initial load)
+        if (!loadMore) {
+          localStorage.setItem(cacheKey, JSON.stringify({
+            data: result.data,
+            timestamp: now
+          }))
+        }
+      } else {
+        if (import.meta.env.DEV) console.error('Failed to fetch analytics:', result.error)
+        // Only set null if we don't have cached data
+        if (!cached && !loadMore) {
+          setAnalyticsData(null)
+        }
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) console.error('Error fetching analytics:', error)
+      // Only set null if we don't have cached data
+      if (!cached && !loadMore) {
+        setAnalyticsData(null)
+      }
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+      setLoadingMore(false)
+    }
+  }, [profile?.id, timeRange, sessionOffset])
+
   useEffect(() => {
     if (!profile?.id) return
 
@@ -104,52 +176,9 @@ const MyAnalytics: React.FC = () => {
       }
     }
 
-    // No cache or cache expired - fetch with loading spinner only if no cache
-    const fetchAnalytics = async () => {
-      // If we have cached data (even if expired), refresh in background
-      if (cached) {
-        setRefreshing(true)
-      } else {
-        // No cache - show loading spinner
-        setLoading(true)
-      }
-
-      try {
-        const response = await apiFetch(`/api/analytics/employee/${profile.id}?period=${timeRange}`)
-        const result = await response.json()
-
-        if (import.meta.env.DEV) console.log('📊 Analytics data received:', result)
-        if (import.meta.env.DEV) console.log('📋 Recent sessions:', result?.data?.recentSessions)
-
-        if (result.success) {
-          setAnalyticsData(result.data)
-
-          // Update cache
-          localStorage.setItem(cacheKey, JSON.stringify({
-            data: result.data,
-            timestamp: now
-          }))
-        } else {
-          if (import.meta.env.DEV) console.error('Failed to fetch analytics:', result.error)
-          // Only set null if we don't have cached data
-          if (!cached) {
-            setAnalyticsData(null)
-          }
-        }
-      } catch (error) {
-        if (import.meta.env.DEV) console.error('Error fetching analytics:', error)
-        // Only set null if we don't have cached data
-        if (!cached) {
-          setAnalyticsData(null)
-        }
-      } finally {
-        setLoading(false)
-        setRefreshing(false)
-      }
-    }
-
+    // No cache or cache expired - fetch
     fetchAnalytics()
-  }, [timeRange, profile])
+  }, [timeRange, profile, fetchAnalytics])
 
   // Use pre-calculated stats from backend based on statsFilter
   const filteredAnalytics = React.useMemo(() => {
@@ -1255,15 +1284,27 @@ const MyAnalytics: React.FC = () => {
                     <CardBody p={8}>
                       <VStack spacing={3}>
                         <Icon as={BarChart3} boxSize={12} color={useColorModeValue('gray.300', 'gray.600')} />
-                        <Text color={useColorModeValue('gray.500', 'gray.400')} textAlign="center">
-                          No training sessions yet
-                        </Text>
-                        <Text fontSize="sm" color={useColorModeValue('gray.400', 'gray.500')} textAlign="center">
-                          Complete your first assignment to see your stats here
+                        <Text color={useColorModeValue('gray.500', 'gray.400')}>
+                          No sessions in this period
                         </Text>
                       </VStack>
                     </CardBody>
                   </Card>
+                )}
+
+                {/* Load More Button */}
+                {hasMoreSessions && analyticsData?.recentSessions && analyticsData.recentSessions.length > 0 && (
+                  <Button
+                    onClick={() => fetchAnalytics(true)}
+                    isLoading={loadingMore}
+                    loadingText="Loading more..."
+                    colorScheme="orange"
+                    variant="outline"
+                    size="md"
+                    width="full"
+                  >
+                    Load More Sessions
+                  </Button>
                 )}
               </VStack>
             </Box>
