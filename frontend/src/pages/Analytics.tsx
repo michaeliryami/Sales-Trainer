@@ -1109,19 +1109,19 @@ const Analytics: React.FC = () => {
                                   <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
                                     {session.template}
                                   </Text>
-                                  {session.closed !== null && (
-                                    <Badge
-                                      colorScheme={session.closed ? 'green' : 'red'}
-                                      variant="subtle"
-                                      fontSize="xs"
-                                    >
-                                      <HStack spacing={1}>
-                                        <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
-                                        <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
-                                      </HStack>
-                                    </Badge>
-                                  )}
-                                  <HStack spacing={2}>
+                                  <HStack spacing={2} flexWrap="wrap">
+                                    {session.closed !== null && (
+                                      <Badge
+                                        colorScheme={session.closed ? 'green' : 'red'}
+                                        variant="subtle"
+                                        fontSize="xs"
+                                      >
+                                        <HStack spacing={1}>
+                                          <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
+                                          <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
+                                        </HStack>
+                                      </Badge>
+                                    )}
                                     <Badge
                                       colorScheme={session.status === 'completed' ? 'green' : 'gray'}
                                       variant="subtle"

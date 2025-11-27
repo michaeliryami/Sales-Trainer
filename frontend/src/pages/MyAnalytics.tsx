@@ -845,20 +845,19 @@ const MyAnalytics: React.FC = () => {
                                   <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')} fontSize="sm">
                                     {session.template}
                                   </Text>
-                                  {session.closed !== null && (
-                                    <Badge
-                                      colorScheme={session.closed ? 'green' : 'red'}
-                                      variant="subtle"
-                                      fontSize="xs"
-                                      alignSelf="flex-start"
-                                    >
-                                      <HStack spacing={1}>
-                                        <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
-                                        <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
-                                      </HStack>
-                                    </Badge>
-                                  )}
                                   <HStack spacing={2} flexWrap="wrap">
+                                    {session.closed !== null && (
+                                      <Badge
+                                        colorScheme={session.closed ? 'green' : 'red'}
+                                        variant="subtle"
+                                        fontSize="xs"
+                                      >
+                                        <HStack spacing={1}>
+                                          <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
+                                          <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
+                                        </HStack>
+                                      </Badge>
+                                    )}
                                     {session.isPlayground ? (
                                       <Badge
                                         colorScheme="orange"
