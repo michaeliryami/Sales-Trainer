@@ -834,9 +834,9 @@ Provide a helpful, constructive summary for the sales rep.`
 
       // Only do full grading if we have rubric criteria
       if (rubricCriteria.length > 0) {
-        // Create rubric text
+        // Create rubric text - FORCE 10 POINT SCALE
         const rubricText = rubricCriteria.map((criteria: any) =>
-          `- ${criteria.title}: ${criteria.description} (Max: ${criteria.maxPoints} points)`
+          `- ${criteria.title}: ${criteria.description} (Max: 10 points)`
         ).join('\n')
 
         const transcriptForGrading = llmCleanedTranscript || transcriptClean
@@ -860,35 +860,38 @@ Provide a helpful, constructive summary for the sales rep.`
 
         // Grade with AI
         const gradingPrompt = `
-You are an objective sales training evaluator. Analyze this sales conversation transcript against the provided rubric criteria and provide accurate, honest grading.
+You are an expert sales coach and evaluator. Analyze this sales conversation transcript against the provided rubric criteria.
 
-RUBRIC CRITERIA:
+RUBRIC CRITERIA (All graded out of 10 points):
 ${rubricText}
 
 CONVERSATION TRANSCRIPT:
 ${processedTranscript}
 
 INSTRUCTIONS:
-1. For each rubric criterion, objectively analyze the salesperson's performance
-2. Award points based on actual demonstration of the skill, not just attempts
-3. Provide specific quotes/examples from the transcript as evidence
-4. Give detailed reasoning explaining what they did well and where they fell short
-5. Be fair but honest - score reflects actual performance, not potential or effort alone
-6. If a criterion was not addressed, give 0 points (not applicable) or minimal points if barely touched
+1. **UNIFIED SCALING**: Grade EVERY criterion on a scale of 0 to 10.
+   - 9-10: Exceptional execution, perfect example.
+   - 7-8: Strong performance, minor polish needed.
+   - 5-6: Acceptable/Average, met the basic requirement but missed depth.
+   - 3-4: Weak attempt, missed key elements.
+   - 0-2: Not attempted or completely failed.
 
-SCORING APPROACH:
-- Full points: Skill demonstrated excellently with strong execution
-- Partial points: Skill attempted with moderate success but clear room for improvement
-- Minimal points: Skill barely present or poorly executed
-- Zero points: Skill completely absent or not attempted
+2. **EVIDENCE-BASED GRADING**:
+   - You MUST provide specific **direct quotes** from the transcript as evidence.
+   - The evidence must directly support the score given.
+   - If the score is low, show where they missed it. If high, show where they nailed it.
 
-CLOSE DETECTION:
-Determine if the call was "closed" based on these strict rules:
-1. IF the salesperson got rejected (customer said no, not interested, hung up in anger) -> Return FALSE
-2. IF the salesperson ended the call early (before reaching a conclusion/ask) -> Return FALSE
-3. ELSE (if the call finished naturally and wasn't a rejection) -> Return TRUE
+3. **CONSTRUCTIVE REASONING**:
+   - Explain *why* you gave the score.
+   - Be fair and constructive. Do not be overly harsh for minor stumbles if the overall intent and execution were good.
+   - Focus on the *effectiveness* of the communication, not just rigid adherence to a script.
 
-Provide specific evidence (quotes from the transcript) that supports your determination.
+4. **CLOSE DETECTION**:
+   Determine if the call was "closed" based on these strict rules:
+   - IF the salesperson got rejected (customer said no, not interested, hung up in anger) -> Return FALSE
+   - IF the salesperson ended the call early (before reaching a conclusion/ask) -> Return FALSE
+   - ELSE (if the call finished naturally and wasn't a rejection) -> Return TRUE
+   - Provide specific evidence (quotes) for this determination.
 
 RESPONSE FORMAT (JSON):
 {
@@ -900,7 +903,7 @@ RESPONSE FORMAT (JSON):
     {
       "title": "string",
       "description": "string", 
-      "maxPoints": number,
+      "maxPoints": 10,
       "earnedPoints": number,
       "evidence": ["specific quote 1", "specific quote 2"],
       "reasoning": "detailed explanation of performance"
@@ -915,7 +918,7 @@ Only return the JSON response, nothing else.`
           messages: [
             {
               role: "system",
-              content: "You are an objective sales training evaluator. Provide accurate, fair grading based on actual performance demonstrated in the call. Be honest and constructive in your feedback."
+              content: "You are a supportive and expert sales coach. Your goal is to help the salesperson improve with clear, actionable, and fair feedback. Avoid being overly punitive."
             },
             {
               role: "user",
