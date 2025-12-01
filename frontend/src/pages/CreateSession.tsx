@@ -1207,12 +1207,12 @@ function CreateSession() {
     }
   }, [selectedAssignment, profile?.id])
 
-  // Auto-scroll transcript to bottom when new messages arrive
-  useEffect(() => {
-    if (transcriptEndRef.current) {
-      transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [transcript])
+  // Auto-scroll disabled - users can freely scroll through transcript
+  // useEffect(() => {
+  //   if (transcriptEndRef.current) {
+  //     transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' })
+  //   }
+  // }, [transcript])
 
   // Cleanup on component unmount
   useEffect(() => {
