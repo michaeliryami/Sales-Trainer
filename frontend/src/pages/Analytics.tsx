@@ -982,7 +982,7 @@ const Analytics: React.FC = () => {
                     color={useColorModeValue('gray.500', 'gray.400')}
                     fontWeight="400"
                   >
-                    Training sessions by user
+                    Sessions submitted for review
                   </Text>
                 </VStack>
 
