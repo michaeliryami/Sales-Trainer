@@ -338,6 +338,46 @@ const MyAnalytics: React.FC = () => {
     }
   }
 
+  // Handle submitting practice session for review
+  const handleSubmitForReview = async (session: any) => {
+    try {
+      const response = await apiFetch(`/api/analytics/submit-for-review/${session.id}`, {
+        method: 'POST'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: 'Submitted for Review',
+          description: 'Your practice session has been submitted and will be visible in Team Performance.',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        })
+        
+        // Refresh analytics to show updated status
+        fetchAnalytics()
+      } else {
+        toast({
+          title: 'Submission Failed',
+          description: result.error || 'Failed to submit session',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        })
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) console.error('Error submitting for review:', error)
+      toast({
+        title: 'Submission Failed',
+        description: 'An error occurred while submitting your session',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    }
+  }
+
   const generatePdf = async () => {
     if (!selectedSession || !sessionGrade) return
 
@@ -1003,6 +1043,20 @@ const MyAnalytics: React.FC = () => {
                                   Summary
                                 </Button>
                               </HStack>
+                              
+                              {/* Submit for Review Button - Only for practice sessions */}
+                              {session.isPlayground && !session.submittedForReview && (
+                                <Button
+                                  size="sm"
+                                  colorScheme="purple"
+                                  variant="solid"
+                                  onClick={() => handleSubmitForReview(session)}
+                                  w="full"
+                                  mt={2}
+                                >
+                                  Submit for Review
+                                </Button>
+                              )}
                             </VStack>
                           </CardBody>
                         </Card>

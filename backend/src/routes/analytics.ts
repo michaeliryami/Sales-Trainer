@@ -133,10 +133,10 @@ router.get('/admin/:orgId', async (req, res) => {
     const assignmentUsers = usersWithAssignments.size
 
     // Get recent sessions with user and template details
-    // RECENT SESSIONS LIST: Show ONLY submitted assignments (no playground sessions)
-    // This is distinct from stats which include playground sessions
+    // RECENT SESSIONS LIST: Show submitted assignments AND submitted practice sessions
+    // This is distinct from stats which include all playground sessions
     const recentSessionsData = sessionsForStats
-      .filter(s => s.assignment_id && s.submitted_for_review === true)
+      .filter(s => s.submitted_for_review === true)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 50)
 
@@ -157,22 +157,37 @@ router.get('/admin/:orgId', async (req, res) => {
       .select('id, title')
       .in('id', assignmentIds)
 
+    // Get templates for practice sessions
+    const templateIds = [...new Set(recentSessionsData.map(s => s.template_id).filter(Boolean))]
+    const { data: templates } = await supabase
+      .from('templates')
+      .select('id, title')
+      .in('id', templateIds)
+
     const recentSessions = recentSessionsData.map(session => {
       const profile = profiles?.find(p => p.id === session.user_id)
       const assignment = assignments?.find(a => a.id === session.assignment_id)
+      const template = templates?.find(t => t.id === session.template_id)
       const grade = grades?.find(g => g.session_id === session.id)
 
-      // Use assignment name instead of template name
-      const assignmentName = assignment?.title || 'Unknown Assignment'
-
       const isPlayground = !session.assignment_id
+
+      // For practice sessions, show template name. For assignments, show assignment name
+      let displayName = 'Unknown'
+      if (isPlayground) {
+        // Practice session - use template name or metadata
+        displayName = template?.title || session.metadata?.builtInTemplateName || 'Practice Session'
+      } else {
+        // Assignment session - use assignment name
+        displayName = assignment?.title || 'Unknown Assignment'
+      }
 
       return {
         id: session.id,
         userId: session.user_id,
         assignmentId: session.assignment_id,
         user: profile?.display_name || profile?.email || 'Unknown User',
-        template: assignmentName, // This is actually the assignment name now
+        template: displayName,
         duration: session.duration_seconds ? `${Math.round(session.duration_seconds / 60)}m` : 'N/A',
         score: grade ? Math.round(grade.percentage) : null,
         date: session.created_at,
@@ -184,7 +199,8 @@ router.get('/admin/:orgId', async (req, res) => {
         assignment_id: session.assignment_id,
         recordingUrl: session.recording_url,
         closed: session.closed,
-        closedEvidence: session.closed_evidence || null
+        closedEvidence: session.closed_evidence || null,
+        submittedForReview: session.submitted_for_review || false
       }
     })
 
@@ -2001,6 +2017,50 @@ router.get('/debug-vapi-call/:callId', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Failed to fetch VAPI call details',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})
+
+// POST /api/analytics/submit-for-review/:sessionId - Submit practice session for review
+router.post('/submit-for-review/:sessionId',
+async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sessionId } = req.params
+
+    if (!sessionId) {
+      res.status(400).json({
+        error: 'Missing sessionId parameter'
+      })
+      return
+    }
+
+    // Update the session to mark it as submitted for review
+    const { data: session, error: updateError } = await supabase
+      .from('training_sessions')
+      .update({ submitted_for_review: true })
+      .eq('id', parseInt(sessionId))
+      .select()
+      .single()
+
+    if (updateError) {
+      console.error('Error submitting session for review:', updateError)
+      res.status(500).json({
+        error: 'Failed to submit session for review',
+        details: updateError.message
+      })
+      return
+    }
+
+    res.json({
+      success: true,
+      data: session
+    })
+
+  } catch (error) {
+    console.error('Error in submit for review:', error)
+    res.status(500).json({
+      error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     })
   }
