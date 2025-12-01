@@ -478,6 +478,14 @@ function Admin() {
     return 'isBuiltIn' in template && template.isBuiltIn === true
   }
 
+  // Check if current user can edit/delete a template
+  const canModifyTemplate = (template: Template): boolean => {
+    // Admins can modify any template
+    if (userRole.isAdmin) return true
+    // Users can only modify templates they created
+    return template.user_id === profile?.id
+  }
+
   const handleAssignTemplate = async (template: BuiltInTemplate | Template) => {
     // Check if this is a built-in template
     if (isBuiltInTemplate(template)) {
@@ -1360,14 +1368,16 @@ Speaker: Clear dialogue format"
                                     onClick={(e) => e.stopPropagation()}
                                   />
                                   <MenuList borderRadius="xl" border="1px solid" borderColor={useColorModeValue('gray.100', 'gray.700')}>
-                                    <MenuItem 
-                                      icon={<Icon as={Edit2} />}
-                                      onClick={() => handleEditTemplate(template)}
-                                      borderRadius="lg"
-                                      _hover={{ bg: useColorModeValue('orange.50', 'orange.900/30') }}
-                                    >
-                                      Edit
-                                    </MenuItem>
+                                    {canModifyTemplate(template) && (
+                                      <MenuItem 
+                                        icon={<Icon as={Edit2} />}
+                                        onClick={() => handleEditTemplate(template)}
+                                        borderRadius="lg"
+                                        _hover={{ bg: useColorModeValue('orange.50', 'orange.900/30') }}
+                                      >
+                                        Edit
+                                      </MenuItem>
+                                    )}
                                     <MenuItem 
                                       icon={<Icon as={Copy} />}
                                       onClick={() => handleDuplicateTemplate(template)}
@@ -1376,15 +1386,17 @@ Speaker: Clear dialogue format"
                                     >
                                       Duplicate
                                     </MenuItem>
-                                    <MenuItem 
-                                      icon={<Icon as={Trash2} />}
-                                      onClick={() => confirmDelete(template)}
-                                      color="red.500"
-                                      borderRadius="lg"
-                                      _hover={{ bg: useColorModeValue('red.50', 'red.900/30') }}
-                                    >
-                                      Delete
-                                    </MenuItem>
+                                    {canModifyTemplate(template) && (
+                                      <MenuItem 
+                                        icon={<Icon as={Trash2} />}
+                                        onClick={() => confirmDelete(template)}
+                                        color="red.500"
+                                        borderRadius="lg"
+                                        _hover={{ bg: useColorModeValue('red.50', 'red.900/30') }}
+                                      >
+                                        Delete
+                                      </MenuItem>
+                                    )}
                                   </MenuList>
                                 </Menu>
                               </Flex>
