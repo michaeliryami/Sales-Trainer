@@ -27,7 +27,7 @@ function App() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [visibleMessages, setVisibleMessages] = useState<number[]>([])
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  
+
   const rotatingWords = [
     'Revenue Driver',
     'Quota Breaker',
@@ -131,14 +131,14 @@ function App() {
         transition="all 0.3s"
         py={4}
       >
-        <Container maxW="7xl">
+        <Container maxW="100%" >
           <Flex justify="space-between" align="center" flexWrap="wrap" gap={4}>
             <Image src="/logolong.png" alt="Clozone" h={{ base: '32px', md: '40px' }} />
             <HStack spacing={{ base: 2, md: 4 }}>
-              <Button 
-                as="a" 
-                href="https://app.clozone.ai/auth" 
-                variant="ghost" 
+              <Button
+                as="a"
+                href="https://app.clozone.ai/auth"
+                variant="ghost"
                 color="gray.600"
                 size={{ base: 'sm', md: 'md' }}
                 fontSize={{ base: 'sm', md: 'md' }}
@@ -146,12 +146,12 @@ function App() {
               >
                 Sign In
               </Button>
-              <Button 
-                as="a" 
-                href="https://calendly.com/your-link" 
+              <Button
+                as="a"
+                href="https://calendly.com/your-link"
                 target="_blank"
-                bg="brand.500" 
-                color="white" 
+                bg="brand.500"
+                color="white"
                 size={{ base: 'sm', md: 'md' }}
                 fontSize={{ base: 'sm', md: 'md' }}
                 _hover={{ bg: 'brand.600', transform: 'translateY(-2px)', boxShadow: 'lg' }}
@@ -167,10 +167,10 @@ function App() {
       </Box>
 
       {/* Hero Section */}
-      <Box 
+      <Box
         as="section"
-        minH="100vh" 
-        position="relative" 
+        minH="100vh"
+        position="relative"
         pt={{ base: 32, lg: 20 }}
         pb={20}
         display="flex"
@@ -192,7 +192,7 @@ function App() {
           pointerEvents="none"
         />
 
-        <Container maxW="7xl" position="relative">
+        <Container maxW="100%" position="relative">
           <Grid templateColumns={{ base: '1fr', lg: '1.2fr 1fr' }} gap={12} alignItems="center">
             <GridItem>
               <VStack align="flex-start" spacing={8}>
@@ -222,10 +222,10 @@ function App() {
                     </Box>
                   </Box>
                 </Box>
-                
-                <Text 
-                  fontSize={{ base: 'xl', md: '2xl' }} 
-                  color="gray.600" 
+
+                <Text
+                  fontSize={{ base: 'xl', md: '2xl' }}
+                  color="gray.600"
                   lineHeight="tall"
                   className="fade-in-up delay-1"
                   maxW="lg"
@@ -321,11 +321,11 @@ function App() {
                 </Box>
 
                 {/* Messages Area */}
-                <Box 
-                  flex="1" 
+                <Box
+                  flex="1"
                   h="calc(100% - 130px)"
-                  bg="gray.50" 
-                  p={4} 
+                  bg="gray.50"
+                  p={4}
                   overflowY="auto"
                   ref={messagesContainerRef}
                   css={{ '&::-webkit-scrollbar': { display: 'none' } }}
@@ -362,15 +362,15 @@ function App() {
               </Box>
 
               {/* Floating Badge 1 */}
-              </GridItem>
+            </GridItem>
           </Grid>
         </Container>
       </Box>
 
       {/* Demo Video Section */}
-      <Box 
-        as="section" 
-        id="demo-video" 
+      <Box
+        as="section"
+        id="demo-video"
         minH="100vh"
         position="relative"
         pt={{ base: 32, lg: 20 }}
@@ -379,7 +379,7 @@ function App() {
         alignItems="center"
         bg="gray.50"
       >
-        <Container maxW="6xl" position="relative">
+        <Container maxW="100%" position="relative">
           <VStack spacing={8} align="stretch">
             <VStack spacing={4} textAlign="center">
               <Heading fontSize={{ base: '3xl', md: '4xl', lg: '5xl' }} color="gray.900">
@@ -420,7 +420,7 @@ function App() {
 
       {/* Features Grid */}
       <Box py={24} bg="white">
-        <Container maxW="7xl">
+        <Container maxW="100%">
           <VStack spacing={4} mb={16} textAlign="center">
             <Badge bg="brand.50" color="brand.600" px={3} py={1} rounded="full">Platform Features</Badge>
             <Heading fontSize={{ base: '3xl', md: '5xl' }} fontWeight="bold" color="gray.900">
@@ -470,7 +470,7 @@ function App() {
 
       {/* Platform Screenshots */}
       <Box py={24} bg="gray.50">
-        <Container maxW="7xl">
+        <Container maxW="100%">
           <VStack spacing={4} mb={12} textAlign="center">
             <Badge bg="brand.50" color="brand.600" px={3} py={1} rounded="full">See It In Action</Badge>
             <Heading fontSize={{ base: '3xl', md: '5xl' }} fontWeight="bold" color="gray.900">
@@ -493,8 +493,8 @@ function App() {
               _hover={{ boxShadow: '2xl', transform: 'translateY(-4px)' }}
               transition="all 0.3s"
             >
-              <Image 
-                src="/1.png" 
+              <Image
+                src="/1.png"
                 alt="Playground - Practice with AI prospects"
                 w="full"
                 h="auto"
@@ -521,8 +521,8 @@ function App() {
               _hover={{ boxShadow: '2xl', transform: 'translateY(-4px)' }}
               transition="all 0.3s"
             >
-              <Image 
-                src="/2.png" 
+              <Image
+                src="/2.png"
                 alt="My Performance - Track your progress"
                 w="full"
                 h="auto"
@@ -543,7 +543,7 @@ function App() {
 
       {/* How it Works - Alternate Layout */}
       <Box py={24} bg="gray.900" color="white">
-        <Container maxW="7xl">
+        <Container maxW="100%">
           <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={16} alignItems="center">
             <GridItem>
               <VStack align="start" spacing={8}>
@@ -555,7 +555,7 @@ function App() {
                 <Text fontSize="xl" color="gray.400">
                   Your reps are losing deals because they aren't ready for the tough questions. We fix that.
                 </Text>
-                
+
                 <VStack spacing={6} align="stretch" w="full" pt={4}>
                   <HStack spacing={4}>
                     <Flex w={10} h={10} rounded="full" bg="whiteAlpha.200" align="center" justify="center" flexShrink={0}>
@@ -566,7 +566,7 @@ function App() {
                       <Text color="gray.400">Select from library or custom scenarios.</Text>
                     </VStack>
                   </HStack>
-                  
+
                   <HStack spacing={4}>
                     <Flex w={10} h={10} rounded="full" bg="brand.500" align="center" justify="center" flexShrink={0}>
                       <Text fontWeight="bold">2</Text>
@@ -576,7 +576,7 @@ function App() {
                       <Text color="gray.400">Voice-to-voice conversation with AI.</Text>
                     </VStack>
                   </HStack>
-                  
+
                   <HStack spacing={4}>
                     <Flex w={10} h={10} rounded="full" bg="whiteAlpha.200" align="center" justify="center" flexShrink={0}>
                       <Text fontWeight="bold">3</Text>
@@ -590,9 +590,9 @@ function App() {
               </VStack>
             </GridItem>
             <GridItem>
-              <Image 
-                src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=2940" 
-                rounded="3xl" 
+              <Image
+                src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=2940"
+                rounded="3xl"
                 shadow="2xl"
                 alt="Team meeting"
                 opacity={0.9}
@@ -604,11 +604,11 @@ function App() {
 
       {/* CTA Section */}
       <Box py={32} position="relative" overflow="hidden">
-        <Container maxW="5xl">
-          <Box 
-            bg="brand.500" 
-            rounded="3xl" 
-            p={{ base: 10, md: 20 }} 
+        <Container maxW="100%">
+          <Box
+            bg="brand.500"
+            rounded="3xl"
+            p={{ base: 10, md: 20 }}
             textAlign="center"
             position="relative"
             overflow="hidden"
@@ -616,7 +616,7 @@ function App() {
           >
             {/* Background patterns */}
             <Box position="absolute" top="0" left="0" w="full" h="full" bgImage="radial-gradient(rgba(255,255,255,0.2) 1px, transparent 1px)" bgSize="30px 30px" opacity="0.3" />
-            
+
             <VStack spacing={8} position="relative" zIndex={1}>
               <Heading color="white" fontSize={{ base: '3xl', md: '5xl' }} fontWeight="bold">
                 Ready to start closing more deals?
@@ -625,13 +625,13 @@ function App() {
                 Join high-growth insurance teams using Clozone to ramp reps faster and boost win rates.
               </Text>
               <HStack spacing={4} justify="center" pt={4} flexWrap="wrap">
-                <Button 
-                  size="xl" 
-                  h="64px" 
-                  bg="white" 
-                  color="brand.600" 
-                  _hover={{ bg: 'gray.50' }} 
-                  fontSize="xl" 
+                <Button
+                  size="xl"
+                  h="64px"
+                  bg="white"
+                  color="brand.600"
+                  _hover={{ bg: 'gray.50' }}
+                  fontSize="xl"
                   px={10}
                   as="a"
                   href="https://calendly.com/your-link"
@@ -639,14 +639,14 @@ function App() {
                 >
                   Schedule Demo
                 </Button>
-                <Button 
-                  size="xl" 
-                  h="64px" 
-                  variant="outline" 
-                  color="white" 
+                <Button
+                  size="xl"
+                  h="64px"
+                  variant="outline"
+                  color="white"
                   borderColor="whiteAlpha.500"
-                  _hover={{ bg: 'whiteAlpha.100' }} 
-                  fontSize="xl" 
+                  _hover={{ bg: 'whiteAlpha.100' }}
+                  fontSize="xl"
                   px={10}
                   as="a"
                   href="https://app.clozone.ai/auth"
@@ -654,7 +654,7 @@ function App() {
                   Sign In
                 </Button>
               </HStack>
-         
+
             </VStack>
           </Box>
         </Container>
@@ -678,21 +678,21 @@ function App() {
                 Contact
               </Text>
               <HStack spacing={4} flexWrap="wrap" justify="center">
-                <Text 
-                  as="a" 
-                  href="mailto:michael@clozone.ai" 
+                <Text
+                  as="a"
+                  href="mailto:michael@clozone.ai"
                   fontSize="sm"
-                  color="gray.600" 
+                  color="gray.600"
                   _hover={{ color: 'brand.500' }}
                 >
                   michael@clozone.ai
                 </Text>
                 <Text color="gray.300">•</Text>
-                <Text 
-                  as="a" 
-                  href="mailto:andersholly@clozone.ai" 
+                <Text
+                  as="a"
+                  href="mailto:andersholly@clozone.ai"
                   fontSize="sm"
-                  color="gray.600" 
+                  color="gray.600"
                   _hover={{ color: 'brand.500' }}
                 >
                   andersholly@clozone.ai
