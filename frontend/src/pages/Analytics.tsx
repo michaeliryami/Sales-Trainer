@@ -1127,6 +1127,23 @@ const Analytics: React.FC = () => {
                                         </HStack>
                                       </Badge>
                                     )}
+                                    {session.isPlayground ? (
+                                      <Badge
+                                        colorScheme="orange"
+                                        variant="subtle"
+                                        fontSize="xs"
+                                      >
+                                        Practice
+                                      </Badge>
+                                    ) : (
+                                      <Badge
+                                        colorScheme="purple"
+                                        variant="subtle"
+                                        fontSize="xs"
+                                      >
+                                        Assignment
+                                      </Badge>
+                                    )}
                                     <Badge
                                       colorScheme={session.status === 'completed' ? 'green' : 'gray'}
                                       variant="subtle"
@@ -1135,6 +1152,15 @@ const Analytics: React.FC = () => {
                                     >
                                       {session.status}
                                     </Badge>
+                                    {session.submittedForReview && (
+                                      <Badge
+                                        colorScheme="purple"
+                                        variant="solid"
+                                        fontSize="xs"
+                                      >
+                                        Submitted
+                                      </Badge>
+                                    )}
                                   </HStack>
                                 </VStack>
                                 {session.score !== null && (
