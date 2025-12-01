@@ -372,14 +372,26 @@ function Admin() {
     setEditingTemplate(template)
   }
 
-  const handleDuplicateTemplate = (template: Template) => {
-    setFormData({
-      title: `${template.title} (Copy)`,
-      description: template.description,
-      difficulty: template.difficulty,
-      script: template.script,
-      ageRange: template.age_range || ''
-    })
+  const handleDuplicateTemplate = (template: Template | BuiltInTemplate) => {
+    if (isBuiltInTemplate(template)) {
+      // Handle built-in template duplication
+      setFormData({
+        title: `${template.title} (Copy)`,
+        description: template.description,
+        difficulty: template.difficulty,
+        script: template.script,
+        ageRange: '' // Built-in templates don't have age_range, will need to be set
+      })
+    } else {
+      // Handle custom template duplication
+      setFormData({
+        title: `${template.title} (Copy)`,
+        description: template.description,
+        difficulty: template.difficulty,
+        script: template.script,
+        ageRange: template.age_range || ''
+      })
+    }
     setEditingTemplate(null)
   }
 
@@ -1057,42 +1069,68 @@ Speaker: Clear dialogue format"
                             }}
                             transition="all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)"
                             shadow="lg"
-                            cursor="pointer"
-                            onClick={() => handleViewTemplate(template)}
                           >
-                            <CardBody p={6}>
-                              <VStack align="stretch" spacing={3}>
-                                <Heading 
-                                  size="md" 
-                                  color={useColorModeValue('gray.900', 'white')}
-                                  fontWeight="600"
-                                  letterSpacing="-0.01em"
-                                >
-                                  {template.title}
-                                </Heading>
-                                <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')} lineHeight="1.5">
-                                  {template.description}
-                                </Text>
-                                <HStack spacing={2}>
-                                  <Badge 
-                                    bgGradient={
-                                      template.difficulty === 'easy' ? 'linear(to-r, green.400, teal.400)' : 
-                                      template.difficulty === 'medium' ? 'linear(to-r, yellow.400, orange.400)' : 
-                                      template.difficulty === 'hard' ? 'linear(to-r, orange.400, red.400)' : 
-                                      'linear(to-r, red.500, pink.500)'
-                                    }
-                                    color="white"
-                                    textTransform="capitalize"
-                                    borderRadius="full"
-                                    px={3}
-                                    py={1}
-                                    fontWeight="600"
-                                    shadow="sm"
-                                  >
-                                    {template.difficulty}
-                                  </Badge>
-                                </HStack>
-                              </VStack>
+                            <CardBody p={5}>
+                              <Flex justify="space-between" align="flex-start" mb={4}>
+                                <Box flex={1} onClick={() => handleViewTemplate(template)} cursor="pointer">
+                                  <HStack justify="space-between" align="flex-start" mb={3}>
+                                    <Heading 
+                                      size="md" 
+                                      color={useColorModeValue('gray.900', 'white')}
+                                      fontWeight="600"
+                                      letterSpacing="-0.01em"
+                                    >
+                                      {template.title}
+                                    </Heading>
+                                  </HStack>
+                                  
+                                  <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')} mb={4} lineHeight="1.5">
+                                    {template.description}
+                                  </Text>
+                                  
+                                  <HStack spacing={3} mb={4}>
+                                    <Badge 
+                                      bgGradient={
+                                        template.difficulty === 'easy' ? 'linear(to-r, green.400, teal.400)' : 
+                                        template.difficulty === 'medium' ? 'linear(to-r, yellow.400, orange.400)' : 
+                                        template.difficulty === 'hard' ? 'linear(to-r, orange.400, red.400)' : 
+                                        'linear(to-r, red.500, pink.500)'
+                                      }
+                                      color="white"
+                                      textTransform="capitalize"
+                                      borderRadius="full"
+                                      px={3}
+                                      py={1}
+                                      fontWeight="600"
+                                      shadow="sm"
+                                    >
+                                      {template.difficulty}
+                                    </Badge>
+                                  </HStack>
+                                </Box>
+                                <Menu>
+                                  <MenuButton
+                                    as={IconButton}
+                                    icon={<Icon as={MoreVertical} />}
+                                    variant="ghost"
+                                    size="sm"
+                                    aria-label="Template actions"
+                                    borderRadius="lg"
+                                    _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                  <MenuList borderRadius="xl" border="1px solid" borderColor={useColorModeValue('gray.100', 'gray.700')}>
+                                    <MenuItem 
+                                      icon={<Icon as={Copy} />}
+                                      onClick={() => handleDuplicateTemplate(template)}
+                                      borderRadius="lg"
+                                      _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                                    >
+                                      Duplicate
+                                    </MenuItem>
+                                  </MenuList>
+                                </Menu>
+                              </Flex>
                             </CardBody>
                           </Card>
                         ))}
@@ -1123,42 +1161,68 @@ Speaker: Clear dialogue format"
                             }}
                             transition="all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)"
                             shadow="lg"
-                            cursor="pointer"
-                            onClick={() => handleViewTemplate(template)}
                           >
-                            <CardBody p={6}>
-                              <VStack align="stretch" spacing={3}>
-                                <Heading 
-                                  size="md" 
-                                  color={useColorModeValue('gray.900', 'white')}
-                                  fontWeight="600"
-                                  letterSpacing="-0.01em"
-                                >
-                                  {template.title}
-                                </Heading>
-                                <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')} lineHeight="1.5">
-                                  {template.description}
-                                </Text>
-                                <HStack spacing={2}>
-                                  <Badge 
-                                    bgGradient={
-                                      template.difficulty === 'easy' ? 'linear(to-r, green.400, teal.400)' : 
-                                      template.difficulty === 'medium' ? 'linear(to-r, yellow.400, orange.400)' : 
-                                      template.difficulty === 'hard' ? 'linear(to-r, orange.400, red.400)' : 
-                                      'linear(to-r, red.500, pink.500)'
-                                    }
-                                    color="white"
-                                    textTransform="capitalize"
-                                    borderRadius="full"
-                                    px={3}
-                                    py={1}
-                                    fontWeight="600"
-                                    shadow="sm"
-                                  >
-                                    {template.difficulty}
-                                  </Badge>
-                                </HStack>
-                              </VStack>
+                            <CardBody p={5}>
+                              <Flex justify="space-between" align="flex-start" mb={4}>
+                                <Box flex={1} onClick={() => handleViewTemplate(template)} cursor="pointer">
+                                  <HStack justify="space-between" align="flex-start" mb={3}>
+                                    <Heading 
+                                      size="md" 
+                                      color={useColorModeValue('gray.900', 'white')}
+                                      fontWeight="600"
+                                      letterSpacing="-0.01em"
+                                    >
+                                      {template.title}
+                                    </Heading>
+                                  </HStack>
+                                  
+                                  <Text fontSize="sm" color={useColorModeValue('gray.500', 'gray.400')} mb={4} lineHeight="1.5">
+                                    {template.description}
+                                  </Text>
+                                  
+                                  <HStack spacing={3} mb={4}>
+                                    <Badge 
+                                      bgGradient={
+                                        template.difficulty === 'easy' ? 'linear(to-r, green.400, teal.400)' : 
+                                        template.difficulty === 'medium' ? 'linear(to-r, yellow.400, orange.400)' : 
+                                        template.difficulty === 'hard' ? 'linear(to-r, orange.400, red.400)' : 
+                                        'linear(to-r, red.500, pink.500)'
+                                      }
+                                      color="white"
+                                      textTransform="capitalize"
+                                      borderRadius="full"
+                                      px={3}
+                                      py={1}
+                                      fontWeight="600"
+                                      shadow="sm"
+                                    >
+                                      {template.difficulty}
+                                    </Badge>
+                                  </HStack>
+                                </Box>
+                                <Menu>
+                                  <MenuButton
+                                    as={IconButton}
+                                    icon={<Icon as={MoreVertical} />}
+                                    variant="ghost"
+                                    size="sm"
+                                    aria-label="Template actions"
+                                    borderRadius="lg"
+                                    _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                  <MenuList borderRadius="xl" border="1px solid" borderColor={useColorModeValue('gray.100', 'gray.700')}>
+                                    <MenuItem 
+                                      icon={<Icon as={Copy} />}
+                                      onClick={() => handleDuplicateTemplate(template)}
+                                      borderRadius="lg"
+                                      _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                                    >
+                                      Duplicate
+                                    </MenuItem>
+                                  </MenuList>
+                                </Menu>
+                              </Flex>
                             </CardBody>
                           </Card>
                         ))}
