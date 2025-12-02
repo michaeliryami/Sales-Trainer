@@ -28,7 +28,8 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
-  useDisclosure
+  useDisclosure,
+  Tooltip
 } from '@chakra-ui/react'
 import {
   TrendingUp,
@@ -954,20 +955,7 @@ const MyAnalytics: React.FC = () => {
                                   <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')} fontSize="sm">
                                     {session.template}
                                   </Text>
-                                  <Flex gap="8px" flexWrap="wrap" align="center">
-                                    {session.closed !== null && (
-                                      <Badge
-                                        colorScheme={session.closed ? 'green' : 'red'}
-                                        variant="subtle"
-                                        fontSize="xs"
-                                        textTransform="none"
-                                      >
-                                        <HStack spacing={1}>
-                                          <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
-                                          <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
-                                        </HStack>
-                                      </Badge>
-                                    )}
+                                  <HStack spacing={1.5} flexWrap="wrap" align="center">
                                     {session.isPlayground ? (
                                       <Badge
                                         colorScheme="orange"
@@ -982,7 +970,7 @@ const MyAnalytics: React.FC = () => {
                                         colorScheme={session.type === 'assignment' ? 'purple' : 'blue'}
                                         variant="subtle"
                                         fontSize="xs"
-                                        textTransform="none"
+                                        textTransform="capitalize"
                                       >
                                         {session.type}
                                       </Badge>
@@ -1005,21 +993,34 @@ const MyAnalytics: React.FC = () => {
                                         Submitted
                                       </Badge>
                                     )}
-                                  </Flex>
+                                  </HStack>
                                 </VStack>
-                                {session.score !== null && (
-                                  <Badge
-                                    colorScheme={session.score >= 85 ? 'green' : session.score >= 70 ? 'yellow' : 'red'}
-                                    variant="subtle"
-                                    borderRadius="full"
-                                    px={3}
-                                    py={1}
-                                    fontSize="sm"
-                                    fontWeight="600"
-                                  >
-                                    {session.score}%
-                                  </Badge>
-                                )}
+                                <HStack spacing={2}>
+                                  {session.closed !== null && (
+                                    <Tooltip label={session.closed ? 'Closed' : 'Not Closed'} hasArrow>
+                                      <Box>
+                                        <Icon 
+                                          as={session.closed ? CheckCircle : XCircle} 
+                                          boxSize={5} 
+                                          color={session.closed ? 'green.500' : 'red.500'}
+                                        />
+                                      </Box>
+                                    </Tooltip>
+                                  )}
+                                  {session.score !== null && (
+                                    <Badge
+                                      colorScheme={session.score >= 85 ? 'green' : session.score >= 70 ? 'yellow' : 'red'}
+                                      variant="subtle"
+                                      borderRadius="full"
+                                      px={3}
+                                      py={1}
+                                      fontSize="sm"
+                                      fontWeight="600"
+                                    >
+                                      {session.score}%
+                                    </Badge>
+                                  )}
+                                </HStack>
                               </HStack>
 
                               <HStack justify="space-between" align="center">
