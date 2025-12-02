@@ -9,6 +9,7 @@ import {
   Icon,
   IconButton,
   useColorModeValue,
+  useColorMode,
   Menu,
   MenuButton,
   MenuList,
@@ -19,7 +20,7 @@ import {
   Image,
 } from '@chakra-ui/react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Database, Zap, Settings, BarChart3, Building2, LogOut, User, ClipboardList, PlusCircle } from 'lucide-react'
+import { Database, Zap, Settings, BarChart3, Building2, LogOut, User, ClipboardList, PlusCircle, Moon, Sun } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 
@@ -28,6 +29,7 @@ function Header() {
   const location = useLocation()
   const { user, signOut } = useAuth()
   const { profile, organization, userRole } = useProfile()
+  const { colorMode, toggleColorMode } = useColorMode()
 
   const bg = useColorModeValue('white', 'gray.800')
   const borderColor = useColorModeValue('gray.200', 'gray.700')
@@ -253,6 +255,22 @@ function Header() {
               </Button>
             </>
           )}
+
+          {/* Dark Mode Toggle */}
+          <IconButton
+            aria-label="Toggle dark mode"
+            icon={<Icon as={colorMode === 'light' ? Moon : Sun} boxSize={5} />}
+            onClick={toggleColorMode}
+            variant="ghost"
+            colorScheme="orange"
+            size="sm"
+            borderRadius="xl"
+            _hover={{
+              transform: 'translateY(-2px)',
+              bg: useColorModeValue('orange.50', 'orange.900')
+            }}
+            transition="all 0.2s"
+          />
 
           <Menu>
             <MenuButton>
