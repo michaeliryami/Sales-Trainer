@@ -39,7 +39,8 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
-  useDisclosure
+  useDisclosure,
+  Tooltip
 } from '@chakra-ui/react'
 import {
   BarChart3,
@@ -96,8 +97,8 @@ const Analytics: React.FC = () => {
   const [assignments, setAssignments] = useState<any[]>([])
   const toast = useToast()
 
-  // Cache TTL: 2 minutes
-  const CACHE_TTL = 2 * 60 * 1000
+  // Cache TTL: 10 seconds
+  const CACHE_TTL = 10 * 1000
 
   // Get assignment filter from URL
   useEffect(() => {
@@ -1114,24 +1115,13 @@ const Analytics: React.FC = () => {
                                   <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
                                     {session.template}
                                   </Text>
-                                  <HStack spacing={2} flexWrap="wrap">
-                                    {session.closed !== null && (
-                                      <Badge
-                                        colorScheme={session.closed ? 'green' : 'red'}
-                                        variant="subtle"
-                                        fontSize="xs"
-                                      >
-                                        <HStack spacing={1}>
-                                          <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
-                                          <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
-                                        </HStack>
-                                      </Badge>
-                                    )}
+                                  <HStack spacing={1.5} flexWrap="wrap" align="center">
                                     {session.isPlayground ? (
                                       <Badge
                                         colorScheme="orange"
                                         variant="subtle"
                                         fontSize="xs"
+                                        textTransform="none"
                                       >
                                         Practice
                                       </Badge>
@@ -1140,8 +1130,9 @@ const Analytics: React.FC = () => {
                                         colorScheme="purple"
                                         variant="subtle"
                                         fontSize="xs"
+                                        textTransform="capitalize"
                                       >
-                                        Assignment
+                                        assignment
                                       </Badge>
                                     )}
                                     <Badge
@@ -1152,30 +1143,34 @@ const Analytics: React.FC = () => {
                                     >
                                       {session.status}
                                     </Badge>
-                                    {session.submittedForReview && (
-                                      <Badge
-                                        colorScheme="purple"
-                                        variant="solid"
-                                        fontSize="xs"
-                                      >
-                                        Submitted
-                                      </Badge>
-                                    )}
                                   </HStack>
                                 </VStack>
-                                {session.score !== null && (
-                                  <Badge
-                                    colorScheme={session.score >= 85 ? 'green' : session.score >= 70 ? 'yellow' : 'red'}
-                                    variant="subtle"
-                                    borderRadius="full"
-                                    px={3}
-                                    py={1}
-                                    fontSize="sm"
-                                    fontWeight="600"
-                                  >
-                                    {session.score}%
-                                  </Badge>
-                                )}
+                                <HStack spacing={2} align="center">
+                                  {session.closed !== null && (
+                                    <Tooltip label={session.closed ? 'Closed' : 'Not Closed'} hasArrow>
+                                      <Box display="flex" alignItems="center">
+                                        <Icon 
+                                          as={session.closed ? CheckCircle : XCircle} 
+                                          boxSize={5} 
+                                          color={session.closed ? 'green.500' : 'red.500'}
+                                        />
+                                      </Box>
+                                    </Tooltip>
+                                  )}
+                                  {session.score !== null && (
+                                    <Badge
+                                      colorScheme={session.score >= 85 ? 'green' : session.score >= 70 ? 'yellow' : 'red'}
+                                      variant="subtle"
+                                      borderRadius="full"
+                                      px={3}
+                                      py={1}
+                                      fontSize="sm"
+                                      fontWeight="600"
+                                    >
+                                      {session.score}%
+                                    </Badge>
+                                  )}
+                                </HStack>
                               </HStack>
 
                               <HStack justify="space-between" align="center">
