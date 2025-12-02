@@ -84,7 +84,7 @@ const MyAnalytics: React.FC = () => {
   const fetchAnalytics = React.useCallback(async (loadMore = false) => {
     if (!profile?.id) return
 
-    const CACHE_TTL = 2 * 60 * 1000 // 2 minutes
+    const CACHE_TTL = 10 * 1000 // 10 seconds
     const cacheKey = `my_analytics_${profile.id}_${timeRange}`
     const cached = localStorage.getItem(cacheKey)
     const now = Date.now()
@@ -153,7 +153,7 @@ const MyAnalytics: React.FC = () => {
   useEffect(() => {
     if (!profile?.id) return
 
-    const CACHE_TTL = 2 * 60 * 1000 // 2 minutes
+    const CACHE_TTL = 10 * 1000 // 10 seconds
     const cacheKey = `my_analytics_${profile.id}_${timeRange}`
     const cached = localStorage.getItem(cacheKey)
     const now = Date.now()
@@ -995,10 +995,10 @@ const MyAnalytics: React.FC = () => {
                                     )}
                                   </HStack>
                                 </VStack>
-                                <HStack spacing={2}>
+                                <HStack spacing={2} align="center">
                                   {session.closed !== null && (
                                     <Tooltip label={session.closed ? 'Closed' : 'Not Closed'} hasArrow>
-                                      <Box>
+                                      <Box display="flex" alignItems="center">
                                         <Icon 
                                           as={session.closed ? CheckCircle : XCircle} 
                                           boxSize={5} 
@@ -1087,8 +1087,8 @@ const MyAnalytics: React.FC = () => {
                                 </Button>
                               </HStack>
                               
-                              {/* Submit/Unsubmit for Review Button - Only for practice sessions and non-admin users */}
-                              {session.isPlayground && !userRole.isAdmin && (
+                              {/* Submit/Unsubmit for Review Button - For all sessions except admin users */}
+                              {!userRole.isAdmin && (
                                 <Button
                                   size="sm"
                                   colorScheme={session.submittedForReview ? 'red' : 'purple'}
