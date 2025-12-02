@@ -954,7 +954,7 @@ const MyAnalytics: React.FC = () => {
                                   <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')} fontSize="sm">
                                     {session.template}
                                   </Text>
-                                  <HStack spacing={3} flexWrap="wrap">
+                                  <Flex gap="8px" flexWrap="wrap" align="center">
                                     {session.closed !== null && (
                                       <Badge
                                         colorScheme={session.closed ? 'green' : 'red'}
@@ -1005,7 +1005,7 @@ const MyAnalytics: React.FC = () => {
                                         Submitted
                                       </Badge>
                                     )}
-                                  </HStack>
+                                  </Flex>
                                 </VStack>
                                 {session.score !== null && (
                                   <Badge
