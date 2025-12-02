@@ -2023,16 +2023,14 @@ router.get('/debug-vapi-call/:callId', async (req, res) => {
 })
 
 // POST /api/analytics/submit-for-review/:sessionId - Submit practice session for review
-router.post('/submit-for-review/:sessionId',
-async (req: Request, res: Response): Promise<void> => {
+router.post('/submit-for-review/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params
 
     if (!sessionId) {
-      res.status(400).json({
+      return res.status(400).json({
         error: 'Missing sessionId parameter'
       })
-      return
     }
 
     // Update the session to mark it as submitted for review
@@ -2045,21 +2043,61 @@ async (req: Request, res: Response): Promise<void> => {
 
     if (updateError) {
       console.error('Error submitting session for review:', updateError)
-      res.status(500).json({
+      return res.status(500).json({
         error: 'Failed to submit session for review',
         details: updateError.message
       })
-      return
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: session
     })
 
   } catch (error) {
     console.error('Error in submit for review:', error)
-    res.status(500).json({
+    return res.status(500).json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})
+
+// POST /api/analytics/unsubmit-from-review/:sessionId - Unsubmit practice session from review
+router.post('/unsubmit-from-review/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params
+
+    if (!sessionId) {
+      return res.status(400).json({
+        error: 'Missing sessionId parameter'
+      })
+    }
+
+    // Update the session to mark it as not submitted for review
+    const { data: session, error: updateError } = await supabase
+      .from('training_sessions')
+      .update({ submitted_for_review: false })
+      .eq('id', parseInt(sessionId))
+      .select()
+      .single()
+
+    if (updateError) {
+      console.error('Error unsubmitting session from review:', updateError)
+      return res.status(500).json({
+        error: 'Failed to unsubmit session from review',
+        details: updateError.message
+      })
+    }
+
+    return res.json({
+      success: true,
+      data: session
+    })
+
+  } catch (error) {
+    console.error('Error in unsubmit from review:', error)
+    return res.status(500).json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     })

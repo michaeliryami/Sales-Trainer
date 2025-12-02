@@ -378,6 +378,46 @@ const MyAnalytics: React.FC = () => {
     }
   }
 
+  // Handle unsubmitting practice session from review
+  const handleUnsubmitFromReview = async (session: any) => {
+    try {
+      const response = await apiFetch(`/api/analytics/unsubmit-from-review/${session.id}`, {
+        method: 'POST'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: 'Unsubmitted from Review',
+          description: 'Your practice session has been removed from Team Performance.',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        })
+        
+        // Refresh analytics to show updated status
+        fetchAnalytics()
+      } else {
+        toast({
+          title: 'Unsubmit Failed',
+          description: result.error || 'Failed to unsubmit session',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        })
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) console.error('Error unsubmitting from review:', error)
+      toast({
+        title: 'Unsubmit Failed',
+        description: 'An error occurred while unsubmitting your session',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    }
+  }
+
   const generatePdf = async () => {
     if (!selectedSession || !sessionGrade) return
 
@@ -914,17 +954,18 @@ const MyAnalytics: React.FC = () => {
                                   <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')} fontSize="sm">
                                     {session.template}
                                   </Text>
-                                  <HStack spacing={2} flexWrap="wrap">
+                                  <Flex gap={2} flexWrap="wrap" align="center">
                                     {session.closed !== null && (
                                       <Badge
                                         colorScheme={session.closed ? 'green' : 'red'}
                                         variant="subtle"
                                         fontSize="xs"
+                                        display="flex"
+                                        alignItems="center"
+                                        gap={1}
                                       >
-                                        <HStack spacing={1}>
-                                          <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
-                                          <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
-                                        </HStack>
+                                        <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
+                                        <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
                                       </Badge>
                                     )}
                                     {session.isPlayground ? (
@@ -958,12 +999,11 @@ const MyAnalytics: React.FC = () => {
                                         colorScheme="purple"
                                         variant="solid"
                                         fontSize="xs"
-                                        textTransform="capitalize"
                                       >
                                         Submitted
                                       </Badge>
                                     )}
-                                  </HStack>
+                                  </Flex>
                                 </VStack>
                                 {session.score !== null && (
                                   <Badge
@@ -1044,17 +1084,17 @@ const MyAnalytics: React.FC = () => {
                                 </Button>
                               </HStack>
                               
-                              {/* Submit for Review Button - Only for practice sessions */}
-                              {session.isPlayground && !session.submittedForReview && (
+                              {/* Submit/Unsubmit for Review Button - Only for practice sessions */}
+                              {session.isPlayground && (
                                 <Button
                                   size="sm"
-                                  colorScheme="purple"
-                                  variant="solid"
-                                  onClick={() => handleSubmitForReview(session)}
+                                  colorScheme={session.submittedForReview ? 'red' : 'purple'}
+                                  variant={session.submittedForReview ? 'outline' : 'solid'}
+                                  onClick={() => session.submittedForReview ? handleUnsubmitFromReview(session) : handleSubmitForReview(session)}
                                   w="full"
                                   mt={2}
                                 >
-                                  Submit for Review
+                                  {session.submittedForReview ? 'Unsubmit from Review' : 'Submit for Review'}
                                 </Button>
                               )}
                             </VStack>
