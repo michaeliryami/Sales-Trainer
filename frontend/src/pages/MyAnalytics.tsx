@@ -954,15 +954,13 @@ const MyAnalytics: React.FC = () => {
                                   <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')} fontSize="sm">
                                     {session.template}
                                   </Text>
-                                  <HStack spacing={2} flexWrap="wrap">
+                                  <HStack spacing={3} flexWrap="wrap">
                                     {session.closed !== null && (
                                       <Badge
                                         colorScheme={session.closed ? 'green' : 'red'}
                                         variant="subtle"
                                         fontSize="xs"
                                         textTransform="none"
-                                        px={2}
-                                        py={1}
                                       >
                                         <HStack spacing={1}>
                                           <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
@@ -976,8 +974,6 @@ const MyAnalytics: React.FC = () => {
                                         variant="subtle"
                                         fontSize="xs"
                                         textTransform="none"
-                                        px={2}
-                                        py={1}
                                       >
                                         Practice
                                       </Badge>
@@ -987,8 +983,6 @@ const MyAnalytics: React.FC = () => {
                                         variant="subtle"
                                         fontSize="xs"
                                         textTransform="none"
-                                        px={2}
-                                        py={1}
                                       >
                                         {session.type}
                                       </Badge>
@@ -998,8 +992,6 @@ const MyAnalytics: React.FC = () => {
                                       variant="subtle"
                                       fontSize="xs"
                                       textTransform="capitalize"
-                                      px={2}
-                                      py={1}
                                     >
                                       {session.status}
                                     </Badge>
@@ -1009,8 +1001,6 @@ const MyAnalytics: React.FC = () => {
                                         variant="solid"
                                         fontSize="xs"
                                         textTransform="none"
-                                        px={2}
-                                        py={1}
                                       >
                                         Submitted
                                       </Badge>
