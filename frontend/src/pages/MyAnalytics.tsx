@@ -954,18 +954,20 @@ const MyAnalytics: React.FC = () => {
                                   <Text fontWeight="600" color={useColorModeValue('gray.900', 'white')} fontSize="sm">
                                     {session.template}
                                   </Text>
-                                  <Flex gap={2} flexWrap="wrap" align="center">
+                                  <HStack spacing={2} flexWrap="wrap">
                                     {session.closed !== null && (
                                       <Badge
                                         colorScheme={session.closed ? 'green' : 'red'}
                                         variant="subtle"
                                         fontSize="xs"
-                                        display="flex"
-                                        alignItems="center"
-                                        gap={1}
+                                        textTransform="none"
+                                        px={2}
+                                        py={1}
                                       >
-                                        <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
-                                        <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
+                                        <HStack spacing={1}>
+                                          <Icon as={session.closed ? CheckCircle : XCircle} boxSize={3} />
+                                          <Text>{session.closed ? 'Closed' : 'Not Closed'}</Text>
+                                        </HStack>
                                       </Badge>
                                     )}
                                     {session.isPlayground ? (
@@ -973,6 +975,9 @@ const MyAnalytics: React.FC = () => {
                                         colorScheme="orange"
                                         variant="subtle"
                                         fontSize="xs"
+                                        textTransform="none"
+                                        px={2}
+                                        py={1}
                                       >
                                         Practice
                                       </Badge>
@@ -981,7 +986,9 @@ const MyAnalytics: React.FC = () => {
                                         colorScheme={session.type === 'assignment' ? 'purple' : 'blue'}
                                         variant="subtle"
                                         fontSize="xs"
-                                        textTransform="capitalize"
+                                        textTransform="none"
+                                        px={2}
+                                        py={1}
                                       >
                                         {session.type}
                                       </Badge>
@@ -991,6 +998,8 @@ const MyAnalytics: React.FC = () => {
                                       variant="subtle"
                                       fontSize="xs"
                                       textTransform="capitalize"
+                                      px={2}
+                                      py={1}
                                     >
                                       {session.status}
                                     </Badge>
@@ -999,11 +1008,14 @@ const MyAnalytics: React.FC = () => {
                                         colorScheme="purple"
                                         variant="solid"
                                         fontSize="xs"
+                                        textTransform="none"
+                                        px={2}
+                                        py={1}
                                       >
                                         Submitted
                                       </Badge>
                                     )}
-                                  </Flex>
+                                  </HStack>
                                 </VStack>
                                 {session.score !== null && (
                                   <Badge
