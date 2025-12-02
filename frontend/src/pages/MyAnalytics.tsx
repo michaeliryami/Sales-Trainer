@@ -48,7 +48,7 @@ import { useToast } from '@chakra-ui/react'
 import apiFetch from '../utils/api'
 
 const MyAnalytics: React.FC = () => {
-  const { profile } = useProfile()
+  const { profile, userRole } = useProfile()
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [timeRange, setTimeRange] = useState('30d')
@@ -1084,8 +1084,8 @@ const MyAnalytics: React.FC = () => {
                                 </Button>
                               </HStack>
                               
-                              {/* Submit/Unsubmit for Review Button - Only for practice sessions */}
-                              {session.isPlayground && (
+                              {/* Submit/Unsubmit for Review Button - Only for practice sessions and non-admin users */}
+                              {session.isPlayground && !userRole.isAdmin && (
                                 <Button
                                   size="sm"
                                   colorScheme={session.submittedForReview ? 'red' : 'purple'}
