@@ -69,7 +69,7 @@ const MyAnalytics: React.FC = () => {
   const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure()
   const { isOpen: isClosedModalOpen, onOpen: onClosedModalOpen, onClose: onClosedModalClose } = useDisclosure()
   const [selectedClosedSession, setSelectedClosedSession] = useState<any>(null)
-  const [sessionOffset, setSessionOffset] = useState(0)
+  const sessionOffsetRef = React.useRef(0)
   const [hasMoreSessions, setHasMoreSessions] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const toast = useToast()
@@ -88,7 +88,7 @@ const MyAnalytics: React.FC = () => {
     const cacheKey = `my_analytics_${profile.id}_${timeRange}`
     const cached = localStorage.getItem(cacheKey)
     const now = Date.now()
-    const offset = loadMore ? sessionOffset : 0
+    const offset = loadMore ? sessionOffsetRef.current : 0
 
     // If we have cached data (even if expired), refresh in background
     if (cached && !loadMore) {
@@ -116,12 +116,12 @@ const MyAnalytics: React.FC = () => {
           }))
         } else {
           setAnalyticsData(result.data)
-          setSessionOffset(0)
+          sessionOffsetRef.current = 0
         }
 
         // Update pagination state
         setHasMoreSessions(result.pagination?.hasMore || false)
-        setSessionOffset(offset + 10)
+        sessionOffsetRef.current = offset + 10
 
         // Update cache (only for initial load)
         if (!loadMore) {
@@ -148,7 +148,7 @@ const MyAnalytics: React.FC = () => {
       setRefreshing(false)
       setLoadingMore(false)
     }
-  }, [profile?.id, timeRange, sessionOffset])
+  }, [profile?.id, timeRange])
 
   useEffect(() => {
     if (!profile?.id) return
