@@ -109,9 +109,9 @@ const MyAnalytics: React.FC = () => {
 
       if (result.success) {
         if (loadMore) {
-          // Append new sessions to existing ones
+          // Append new sessions to existing ones - keep original stats unchanged
           setAnalyticsData((prev: any) => ({
-            ...result.data,
+            ...prev,
             recentSessions: [...(prev?.recentSessions || []), ...(result.data.recentSessions || [])]
           }))
         } else {
